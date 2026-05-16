@@ -14,9 +14,10 @@
     --error-color: #B85C5C;
     --success-color: #5C8C61;
     --nav-sticky-height: 64px;
-    --search-filter-sticky-height: 0px;
+    --search-filter-sticky-height: 190px;
     --sticky-gap: 0.75rem;
     --table-safe-bottom: 5.8rem;
+    --table-sticky-top: calc(var(--nav-sticky-height) + var(--search-filter-sticky-height) + var(--sticky-gap));
     --sticky-panel-height: calc(100vh - var(--nav-sticky-height) - var(--sticky-gap) - var(--table-safe-bottom));
 }
 
@@ -282,9 +283,9 @@ button:hover,
 
 .sticky-data-panel .table-container {
     position: sticky;
-    top: calc(var(--nav-sticky-height) + var(--search-filter-sticky-height) + var(--sticky-gap));
+    top: var(--table-sticky-top);
     z-index: 11;
-    max-height: max(300px, calc(100vh - var(--nav-sticky-height) - var(--search-filter-sticky-height) - var(--sticky-gap) - var(--table-safe-bottom)));
+    max-height: max(280px, calc(100vh - var(--table-sticky-top) - var(--table-safe-bottom)));
 }
 
 .sticky-data-panel .table-end-note {
@@ -303,9 +304,9 @@ button:hover,
 
 .sticky-data-panel > #sim-results > .table-container {
     position: sticky;
-    top: calc(var(--nav-sticky-height) + var(--search-filter-sticky-height) + var(--sticky-gap));
+    top: var(--table-sticky-top);
     z-index: 11;
-    max-height: max(300px, calc(100vh - var(--nav-sticky-height) - var(--search-filter-sticky-height) - var(--sticky-gap) - var(--table-safe-bottom)));
+    max-height: max(280px, calc(100vh - var(--table-sticky-top) - var(--table-safe-bottom)));
 }
 
 #sim-results,
@@ -379,12 +380,16 @@ table.data-table a:hover {
     border: 1px solid var(--border-color);
 }
 
-.crud-form .form-group {
-    margin-bottom: 1rem;
+.crud-form {
+    margin: 0 auto 2rem;
 }
 
 .confirm-box {
-    margin-bottom: 2rem;
+    margin: 0 auto 2rem;
+}
+
+.crud-form .form-group {
+    margin-bottom: 1rem;
 }
 
 .confirm-box p {
@@ -868,4 +873,127 @@ footer p.disclaimer {
     .state-tabs {
         grid-template-columns: 1fr;
     }
+}
+
+/* Pulsante interno per svuotare rapidamente i campi numerici.
+   È applicato solo agli input marcati con data-clearable="true". */
+.clearable-input {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+
+.form-group .clearable-input input,
+.duration-inputs .clearable-input input {
+    width: 100%;
+    padding-right: 2.4rem;
+}
+
+.clear-input-button,
+.clear-input-button:hover,
+.clear-input-button:focus {
+    position: absolute;
+    right: 0.45rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.55rem !important;
+    height: 1.55rem;
+    min-width: 0;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background-color: #EEE8E3;
+    color: var(--primary-color);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+    z-index: 2;
+}
+
+.clear-input-button.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.clear-input-button:hover,
+.clear-input-button:focus {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+    outline: none;
+}
+
+.duration-inputs .clearable-input {
+    width: 5.8rem;
+    flex: 0 0 5.8rem;
+}
+
+/* Errori di campo coerenti con lo stile del sito: sostituiscono i tooltip nativi
+   del browser nei form della gestione SIM. */
+.field-error {
+    display: none;
+    margin-top: 0.35rem;
+    color: #9B4545;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.field-error.is-visible {
+    display: block;
+}
+
+input.input-invalid,
+select.input-invalid {
+    border-color: #B68578;
+    box-shadow: 0 0 0 2px rgba(182, 133, 120, 0.18);
+}
+
+.crud-form-blocked [data-crud-dependent="true"],
+input.input-disabled,
+select.input-disabled {
+    background-color: #EEE8E3;
+    color: var(--muted-text);
+    cursor: not-allowed;
+    opacity: 0.78;
+}
+
+button:disabled,
+.btn-disabled {
+    opacity: 0.58;
+    cursor: not-allowed;
+}
+
+button:disabled:hover,
+.btn-disabled:hover {
+    background-color: var(--primary-color);
+    color: var(--light-text);
+}
+
+/* Rifinitura della X interna ai campi: il simbolo è centrato nel pulsante e
+   mantiene colori coerenti con la palette tortora. */
+.clear-input-button,
+.clear-input-button:hover,
+.clear-input-button:focus {
+    width: 1.45rem !important;
+    height: 1.45rem;
+    right: 0.55rem;
+    font-size: 0;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clear-input-button::before {
+    content: "×";
+    display: block;
+    font-size: 1rem;
+    line-height: 1;
+    transform: none;
 }

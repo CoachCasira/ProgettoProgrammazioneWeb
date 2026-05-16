@@ -19,6 +19,28 @@ function decimal_for_sql(string $value): float
     return (float) str_replace(',', '.', $value);
 }
 
+function is_time_minutes_or_empty(string $value): bool
+{
+    return $value === '' || preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $value) === 1;
+}
+
+function time_minutes_for_sql(string $value, bool $end_of_minute = false): string
+{
+    if ($value === '') {
+        return '';
+    }
+
+    return $value . ($end_of_minute ? ':59' : ':00');
+}
+
+function format_time_minutes($value): string
+{
+    if ($value === null || $value === '') {
+        return '-';
+    }
+
+    return substr((string) $value, 0, 5);
+}
 
 function is_seconds_part_or_empty(string $value): bool
 {

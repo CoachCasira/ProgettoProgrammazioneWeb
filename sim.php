@@ -19,6 +19,158 @@ function sim_state_title(string $state): string
     return 'SIM in uso';
 }
 
+function is_valid_date_value(string $date): bool
+{
+    $parsed = DateTime::createFromFormat('Y-m-d', $date);
+    return $parsed !== false && $parsed->format('Y-m-d') === $date;
+}
+
+function later_date(?string $first, ?string $second): ?string
+{
+    if (!$first) {
+        return $second ?: null;
+    }
+    if (!$second) {
+        return $first;
+    }
+    return strtotime($first) >= strtotime($second) ? $first : $second;
+}
+
+function get_numero_info(mysqli $conn, string $numero): array
+{
+    $info = [
+        'exists' => false,
+        'numero' => $numero,
+        'dataAttivazione' => '',
+        'ultimaChiamata' => '',
+        'dataMinimaDisattivazione' => '',
+        'dataMassimaDisattivazione' => date('Y-m-d'),
+        'message' => ''
+    ];
+
+    if ($numero === '' || !ctype_digit($numero)) {
+        $info['message'] = 'Inserire un numero di telefono composto solo da cifre.';
+        return $info;
+    }
+
+    $numero_sql = $conn->real_escape_string($numero);
+    $contratto_res = $conn->query("SELECT numero, dataAttivazione FROM ContrattoTelefonico WHERE numero='$numero_sql' LIMIT 1");
+    if (!$contratto_res || $contratto_res->num_rows === 0) {
+        $info['message'] = 'Il numero indicato non risulta presente tra i numeri telefonici registrati.';
+        return $info;
+    }
+
+    $contratto = $contratto_res->fetch_assoc();
+    $chiamata_res = $conn->query("SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
+    $ultima_chiamata = '';
+    if ($chiamata_res) {
+        $chiamata_row = $chiamata_res->fetch_assoc();
+        $ultima_chiamata = $chiamata_row['ultimaChiamata'] ?? '';
+    }
+
+    $data_attivazione = $contratto['dataAttivazione'];
+    $info['exists'] = true;
+    $info['dataAttivazione'] = $data_attivazione;
+    $info['ultimaChiamata'] = $ultima_chiamata ?: '';
+    $info['dataMinimaDisattivazione'] = later_date($data_attivazione, $ultima_chiamata) ?: $data_attivazione;
+    return $info;
+}
+
+
+function get_sim_status_info(mysqli $conn, string $codice): array
+{
+    $info = [
+        'exists' => false,
+        'status' => '',
+        'codice' => $codice,
+        'tipoSIM' => '',
+        'numero' => '',
+        'dataAttivazione' => '',
+        'ultimaChiamata' => '',
+        'dataMinimaDisattivazione' => '',
+        'dataMassimaDisattivazione' => date('Y-m-d'),
+        'message' => ''
+    ];
+
+    if ($codice === '' || !ctype_digit($codice)) {
+        $info['message'] = 'Inserire un codice SIM composto solo da cifre.';
+        return $info;
+    }
+
+    $codice_sql = $conn->real_escape_string($codice);
+
+    $active_res = $conn->query("SELECT s.codice, s.tipoSIM, s.associataA, c.dataAttivazione AS dataNumero
+                                FROM SIMAttiva s
+                                JOIN ContrattoTelefonico c ON s.associataA = c.numero
+                                WHERE s.codice='$codice_sql'
+                                LIMIT 1");
+    if ($active_res && $active_res->num_rows > 0) {
+        $row = $active_res->fetch_assoc();
+        $numero_info = get_numero_info($conn, $row['associataA']);
+        $info['exists'] = true;
+        $info['status'] = 'attiva';
+        $info['tipoSIM'] = $row['tipoSIM'];
+        $info['numero'] = $row['associataA'];
+        $info['dataAttivazione'] = $numero_info['dataAttivazione'] ?: $row['dataNumero'];
+        $info['ultimaChiamata'] = $numero_info['ultimaChiamata'];
+        $info['dataMinimaDisattivazione'] = $numero_info['dataMinimaDisattivazione'] ?: $info['dataAttivazione'];
+        $info['message'] = 'SIM in uso trovata. I dati collegati sono stati recuperati automaticamente.';
+        return $info;
+    }
+
+    $available_res = $conn->query("SELECT codice FROM SIMNonAttiva WHERE codice='$codice_sql' LIMIT 1");
+    if ($available_res && $available_res->num_rows > 0) {
+        $info['exists'] = true;
+        $info['status'] = 'disponibile';
+        $info['message'] = 'La SIM indicata è disponibile per un nuovo numero e non può essere disattivata perché non risulta in uso.';
+        return $info;
+    }
+
+    $disabled_res = $conn->query("SELECT codice FROM SIMDisattiva WHERE codice='$codice_sql' LIMIT 1");
+    if ($disabled_res && $disabled_res->num_rows > 0) {
+        $info['exists'] = true;
+        $info['status'] = 'disattiva';
+        $info['message'] = 'La SIM indicata è già presente nello storico delle SIM disattivate.';
+        return $info;
+    }
+
+    $info['message'] = 'Il codice SIM indicato non risulta tra le SIM registrate nel sistema.';
+    return $info;
+}
+
+function get_active_sim_by_numero(mysqli $conn, string $numero): array
+{
+    $info = get_numero_info($conn, $numero);
+    $info['hasActiveSim'] = false;
+    $info['codice'] = '';
+    $info['tipoSIM'] = '';
+    $info['status'] = '';
+
+    if (!$info['exists']) {
+        return $info;
+    }
+
+    $numero_sql = $conn->real_escape_string($numero);
+    $active_res = $conn->query("SELECT codice, tipoSIM FROM SIMAttiva WHERE associataA='$numero_sql' LIMIT 1");
+    if ($active_res && $active_res->num_rows > 0) {
+        $row = $active_res->fetch_assoc();
+        $info['hasActiveSim'] = true;
+        $info['status'] = 'attiva';
+        $info['codice'] = $row['codice'];
+        $info['tipoSIM'] = $row['tipoSIM'];
+        $info['message'] = 'SIM in uso associata al numero trovata. I dati collegati sono stati recuperati automaticamente.';
+        return $info;
+    }
+
+    $info['message'] = 'Il numero indicato è registrato, ma non risulta associato a una SIM in uso da disattivare.';
+    return $info;
+}
+
+function field_error(array $errors, string $field): string
+{
+    return htmlspecialchars($errors[$field] ?? '');
+}
+
 function render_sim_rows(array $rows, string $state): string
 {
     ob_start();
@@ -99,29 +251,143 @@ if (!in_array($action, $allowed_actions, true)) {
 $state = normalize_sim_state($_POST['stato'] ?? $_GET['stato'] ?? 'attive');
 $msg = '';
 $msg_type = '';
+$field_errors = [];
+
+if ((($_GET['ajax_numero_info'] ?? $_POST['ajax_numero_info'] ?? '') === '1')) {
+    $numero_lookup = trim($_GET['numero'] ?? $_POST['numero'] ?? '');
+    $mode_lookup = trim($_GET['mode'] ?? $_POST['mode'] ?? 'edit');
+    header('Content-Type: application/json; charset=utf-8');
+    if ($mode_lookup === 'create') {
+        echo json_encode(get_active_sim_by_numero($conn, $numero_lookup));
+    } else {
+        echo json_encode(get_numero_info($conn, $numero_lookup));
+    }
+    exit;
+}
+
+if ((($_GET['ajax_sim_info'] ?? $_POST['ajax_sim_info'] ?? '') === '1')) {
+    $codice_lookup = trim($_GET['codice'] ?? $_POST['codice'] ?? '');
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(get_sim_status_info($conn, $codice_lookup));
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post_action = $_POST['action'] ?? '';
 
     if ($post_action === 'create' || $post_action === 'edit') {
         $state = 'disattive';
+        $action = $post_action;
         $codice_raw = trim($_POST['codice'] ?? '');
         $tipoSIM_raw = trim($_POST['tipoSIM'] ?? '');
         $eraAssociataA_raw = trim($_POST['eraAssociataA'] ?? '');
         $dataAttivazione_raw = trim($_POST['dataAttivazione'] ?? '');
         $dataDisattivazione_raw = trim($_POST['dataDisattivazione'] ?? '');
+        $numero_info = null;
+        $sim_info = null;
+        $blocked_by_sim_status = false;
 
-        if ($codice_raw === '' || $tipoSIM_raw === '' || $eraAssociataA_raw === '' || $dataAttivazione_raw === '' || $dataDisattivazione_raw === '') {
-            $msg = "Compilare tutti i campi richiesti.";
-            $msg_type = "error";
-            $action = $post_action;
-        } elseif (!is_digits_or_empty($codice_raw)) {
-            $msg = "Il campo Codice SIM può contenere solo cifre. Controllare il valore inserito e riprovare.";
-            $msg_type = "error";
-            $action = $post_action;
-        } elseif (!is_digits_or_empty($eraAssociataA_raw)) {
-            $msg = "Il campo Numero di telefono precedentemente associato può contenere solo cifre. Controllare il valore inserito e riprovare.";
-            $msg_type = "error";
+        if ($post_action === 'create') {
+            if ($codice_raw === '' && $eraAssociataA_raw === '') {
+                $field_errors['codice'] = 'Inserire il codice della SIM oppure il numero di telefono associato.';
+                $field_errors['eraAssociataA'] = 'Inserire il codice della SIM oppure il numero di telefono associato.';
+            }
+
+            if ($codice_raw !== '') {
+                if (!is_digits_or_empty($codice_raw)) {
+                    $field_errors['codice'] = 'Il codice SIM può contenere solo cifre.';
+                } else {
+                    $sim_info = get_sim_status_info($conn, $codice_raw);
+                    if (!$sim_info['exists']) {
+                        $field_errors['codice'] = $sim_info['message'];
+                        $blocked_by_sim_status = true;
+                    } elseif ($sim_info['status'] === 'disponibile') {
+                        $field_errors['codice'] = 'La SIM indicata è disponibile per un nuovo numero e non può essere disattivata perché non risulta in uso.';
+                        $blocked_by_sim_status = true;
+                    } elseif ($sim_info['status'] === 'disattiva') {
+                        $field_errors['codice'] = 'La SIM indicata è già presente nello storico delle SIM disattivate.';
+                        $blocked_by_sim_status = true;
+                    } elseif ($sim_info['status'] === 'attiva') {
+                        $tipoSIM_raw = $sim_info['tipoSIM'];
+                        if ($eraAssociataA_raw === '') {
+                            $eraAssociataA_raw = $sim_info['numero'];
+                        } elseif (!is_digits_or_empty($eraAssociataA_raw)) {
+                            $field_errors['eraAssociataA'] = 'Il numero di telefono può contenere solo cifre.';
+                        } elseif ($eraAssociataA_raw !== $sim_info['numero']) {
+                            $field_errors['eraAssociataA'] = 'Il numero indicato non corrisponde al numero associato alla SIM in uso.';
+                        }
+                        $dataAttivazione_raw = $sim_info['dataAttivazione'];
+                        $numero_info = get_numero_info($conn, $sim_info['numero']);
+                    }
+                }
+            }
+
+            if ($codice_raw === '' && $eraAssociataA_raw !== '') {
+                if (!is_digits_or_empty($eraAssociataA_raw)) {
+                    $field_errors['eraAssociataA'] = 'Il numero di telefono può contenere solo cifre.';
+                } else {
+                    $active_by_numero = get_active_sim_by_numero($conn, $eraAssociataA_raw);
+                    if (!$active_by_numero['exists']) {
+                        $field_errors['eraAssociataA'] = $active_by_numero['message'];
+                    } elseif (!$active_by_numero['hasActiveSim']) {
+                        $field_errors['eraAssociataA'] = 'Il numero indicato è registrato, ma non risulta associato a una SIM in uso da disattivare.';
+                    } else {
+                        $codice_raw = $active_by_numero['codice'];
+                        $tipoSIM_raw = $active_by_numero['tipoSIM'];
+                        $dataAttivazione_raw = $active_by_numero['dataAttivazione'];
+                        $numero_info = $active_by_numero;
+                    }
+                }
+            }
+        } else {
+            if ($eraAssociataA_raw === '') {
+                $field_errors['eraAssociataA'] = 'Inserire il numero di telefono precedentemente associato.';
+            } elseif (!is_digits_or_empty($eraAssociataA_raw)) {
+                $field_errors['eraAssociataA'] = 'Il numero di telefono può contenere solo cifre.';
+            } else {
+                $numero_info = get_numero_info($conn, $eraAssociataA_raw);
+                if (!$numero_info['exists']) {
+                    $field_errors['eraAssociataA'] = 'Il numero indicato non risulta presente tra i numeri telefonici registrati.';
+                } else {
+                    $dataAttivazione_raw = $numero_info['dataAttivazione'];
+                }
+            }
+        }
+
+        if (!$blocked_by_sim_status) {
+            if ($tipoSIM_raw === '') {
+                $field_errors['tipoSIM'] = 'Selezionare il formato della SIM.';
+            }
+
+            if ($dataAttivazione_raw !== '' && !is_valid_date_value($dataAttivazione_raw)) {
+                $field_errors['eraAssociataA'] = 'Non è stato possibile recuperare una data di attivazione valida dal numero indicato.';
+            }
+
+            if ($dataDisattivazione_raw === '') {
+                $field_errors['dataDisattivazione'] = 'Inserire la data di disattivazione.';
+            } elseif (!is_valid_date_value($dataDisattivazione_raw)) {
+                $field_errors['dataDisattivazione'] = 'La data di disattivazione non è valida.';
+            }
+        }
+
+        if (!$blocked_by_sim_status && empty($field_errors) && $numero_info && ($numero_info['exists'] ?? false)) {
+            $min_disattivazione = $numero_info['dataMinimaDisattivazione'];
+            $max_disattivazione = date('Y-m-d');
+
+            if (strtotime($dataDisattivazione_raw) < strtotime($min_disattivazione)) {
+                if (($numero_info['ultimaChiamata'] ?? '') !== '') {
+                    $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere precedente all’ultima chiamata registrata per questo numero (' . date('d/m/Y', strtotime($numero_info['ultimaChiamata'])) . ').';
+                } else {
+                    $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere precedente alla data di attivazione del numero.';
+                }
+            } elseif (strtotime($dataDisattivazione_raw) > strtotime($max_disattivazione)) {
+                $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere successiva alla data odierna.';
+            }
+        }
+
+        if (!empty($field_errors)) {
+            $msg = 'Controllare i campi evidenziati e riprovare.';
+            $msg_type = 'error';
             $action = $post_action;
         } else {
             $codice = $conn->real_escape_string($codice_raw);
@@ -129,72 +395,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $eraAssociataA = $conn->real_escape_string($eraAssociataA_raw);
             $dataAttivazione = $conn->real_escape_string($dataAttivazione_raw);
             $dataDisattivazione = $conn->real_escape_string($dataDisattivazione_raw);
-            $can_proceed = true;
 
             if ($post_action === 'create') {
-                $check_sql = "
-                    SELECT codice FROM SIMAttiva WHERE codice='$codice'
-                    UNION
-                    SELECT codice FROM SIMNonAttiva WHERE codice='$codice'
-                    UNION
-                    SELECT codice FROM SIMDisattiva WHERE codice='$codice'
-                ";
-                $check_res = $conn->query($check_sql);
-                if ($check_res && $check_res->num_rows > 0) {
-                    $msg = "Il codice SIM inserito è già registrato nel sistema. Ogni SIM può trovarsi in un solo stato: in uso, disponibile o disattivata.";
-                    $msg_type = "error";
-                    $can_proceed = false;
+                $insert_sql = "INSERT INTO SIMDisattiva (codice, tipoSIM, eraAssociataA, dataAttivazione, dataDisattivazione)
+                               VALUES ('$codice', '$tipoSIM', '$eraAssociataA', '$dataAttivazione', '$dataDisattivazione')";
+                $delete_sql = "DELETE FROM SIMAttiva WHERE codice='$codice'";
+
+                $conn->begin_transaction();
+                if ($conn->query($insert_sql) && $conn->query($delete_sql)) {
+                    $conn->commit();
+                    $msg = 'SIM disattivata registrata nello storico correttamente.';
+                    $msg_type = 'success';
+                    $action = 'list';
+                } else {
+                    $conn->rollback();
+                    $msg = 'Operazione non riuscita. Controllare i dati inseriti e riprovare.';
+                    $msg_type = 'error';
                     $action = 'create';
                 }
-            }
-
-            if ($can_proceed) {
-                $check_contratto = $conn->query("SELECT numero FROM ContrattoTelefonico WHERE numero='$eraAssociataA'");
-                if ($check_contratto && $check_contratto->num_rows === 0) {
-                    $msg = "Il numero indicato non risulta presente tra i numeri telefonici registrati. Inserire un numero di telefono esistente.";
-                    $msg_type = "error";
-                    $can_proceed = false;
-                    $action = $post_action;
-                }
-            }
-
-            if ($can_proceed && strtotime($dataDisattivazione) < strtotime($dataAttivazione)) {
-                $msg = "La data di disattivazione non può essere precedente alla data di attivazione.";
-                $msg_type = "error";
-                $can_proceed = false;
-                $action = $post_action;
-            }
-
-            if ($can_proceed) {
-                if ($post_action === 'create') {
-                    $sql = "INSERT INTO SIMDisattiva (codice, tipoSIM, eraAssociataA, dataAttivazione, dataDisattivazione)
-                            VALUES ('$codice', '$tipoSIM', '$eraAssociataA', '$dataAttivazione', '$dataDisattivazione')";
-                    if ($conn->query($sql)) {
-                        $msg = "Nuova SIM disattivata registrata correttamente.";
-                        $msg_type = "success";
-                        $action = 'list';
-                    } else {
-                        $msg = "Operazione non riuscita. Controllare i dati inseriti e riprovare.";
-                        $msg_type = "error";
-                        $action = 'create';
-                    }
+            } else {
+                $old_codice = $conn->real_escape_string($_POST['old_codice'] ?? '');
+                $sql = "UPDATE SIMDisattiva SET
+                            tipoSIM='$tipoSIM',
+                            eraAssociataA='$eraAssociataA',
+                            dataAttivazione='$dataAttivazione',
+                            dataDisattivazione='$dataDisattivazione'
+                        WHERE codice='$old_codice'";
+                if ($conn->query($sql)) {
+                    $msg = 'Dati della SIM disattivata aggiornati correttamente.';
+                    $msg_type = 'success';
+                    $action = 'list';
                 } else {
-                    $old_codice = $conn->real_escape_string($_POST['old_codice'] ?? '');
-                    $sql = "UPDATE SIMDisattiva SET
-                                tipoSIM='$tipoSIM',
-                                eraAssociataA='$eraAssociataA',
-                                dataAttivazione='$dataAttivazione',
-                                dataDisattivazione='$dataDisattivazione'
-                            WHERE codice='$old_codice'";
-                    if ($conn->query($sql)) {
-                        $msg = "Dati della SIM disattivata aggiornati correttamente.";
-                        $msg_type = "success";
-                        $action = 'list';
-                    } else {
-                        $msg = "Aggiornamento non riuscito. Controllare i dati inseriti e riprovare.";
-                        $msg_type = "error";
-                        $action = 'edit';
-                    }
+                    $msg = 'Aggiornamento non riuscito. Controllare i dati inseriti e riprovare.';
+                    $msg_type = 'error';
+                    $action = 'edit';
                 }
             }
         }
@@ -204,14 +438,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $check_res = $conn->query("SELECT codice FROM SIMDisattiva WHERE codice='$codice'");
 
         if ($codice === '' || !$check_res || $check_res->num_rows === 0) {
-            $msg = "La SIM selezionata non è più disponibile nello storico.";
-            $msg_type = "error";
+            $msg = 'La SIM selezionata non è più disponibile nello storico.';
+            $msg_type = 'error';
         } elseif ($conn->query("DELETE FROM SIMDisattiva WHERE codice='$codice'")) {
-            $msg = "SIM disattivata rimossa dallo storico correttamente.";
-            $msg_type = "success";
+            $msg = 'SIM disattivata rimossa dallo storico correttamente.';
+            $msg_type = 'success';
         } else {
-            $msg = "Eliminazione non riuscita. Riprovare più tardi.";
-            $msg_type = "error";
+            $msg = 'Eliminazione non riuscita. Riprovare più tardi.';
+            $msg_type = 'error';
         }
         $action = 'list';
     }
@@ -360,7 +594,7 @@ if ($ajax_rows) {
 
             <div class="form-group">
                 <label for="codice">Codice SIM anche parziale:</label>
-                <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off">
+                <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
             <div class="form-group">
                 <label for="tipoSIM">Formato SIM:</label>
@@ -374,11 +608,11 @@ if ($ajax_rows) {
             </div>
             <div class="form-group <?= $state === 'attive' ? '' : 'is-hidden' ?>" data-state-field="attive">
                 <label for="numero_attivo">Numero di telefono associato:</label>
-                <input type="text" id="numero_attivo" name="numero" value="<?= htmlspecialchars($state === 'attive' ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-state-dependent-input <?= $state === 'attive' ? '' : 'disabled' ?>>
+                <input type="text" id="numero_attivo" name="numero" value="<?= htmlspecialchars($state === 'attive' ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $state === 'attive' ? '' : 'disabled' ?>>
             </div>
             <div class="form-group <?= $state === 'disattive' ? '' : 'is-hidden' ?>" data-state-field="disattive">
                 <label for="numero_disattivo">Numero di telefono precedentemente associato:</label>
-                <input type="text" id="numero_disattivo" name="numero" value="<?= htmlspecialchars($state === 'disattive' ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-state-dependent-input <?= $state === 'disattive' ? '' : 'disabled' ?>>
+                <input type="text" id="numero_disattivo" name="numero" value="<?= htmlspecialchars($state === 'disattive' ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $state === 'disattive' ? '' : 'disabled' ?>>
             </div>
             <div class="form-group <?= $state === 'attive' ? '' : 'is-hidden' ?>" data-state-field="attive">
                 <label for="data_da_attiva">Attivata dal:</label>
@@ -493,6 +727,24 @@ if ($ajax_rows) {
             $msg_type = "error";
         }
     }
+
+    $numero_info_form = null;
+    $data_min_disattivazione = '';
+    $data_max_disattivazione = date('Y-m-d');
+    if (($row['eraAssociataA'] ?? '') !== '' && ctype_digit((string)$row['eraAssociataA'])) {
+        $numero_info_form = get_numero_info($conn, (string)$row['eraAssociataA']);
+        if ($numero_info_form['exists']) {
+            $row['dataAttivazione'] = $numero_info_form['dataAttivazione'];
+            $data_min_disattivazione = $numero_info_form['dataMinimaDisattivazione'];
+        }
+    }
+
+    $crud_blocked = false;
+    if (!$is_edit && ($row['codice'] ?? '') !== '' && ctype_digit((string)$row['codice'])) {
+        $sim_status_form = get_sim_status_info($conn, (string)$row['codice']);
+        $crud_blocked = ($sim_status_form['status'] ?? '') !== 'attiva';
+    }
+    $crud_disabled_attr = $crud_blocked ? 'disabled' : '';
     ?>
 
     <?php if ($is_edit && $msg && $msg_type === 'error' && empty($row['codice'])): ?>
@@ -503,9 +755,13 @@ if ($ajax_rows) {
             <h3 class="crud-title">
                 <?= $is_edit ? 'Aggiorna SIM disattivata nello storico' : 'Registra SIM disattivata nello storico' ?>
             </h3>
-            <p class="intro-text">Usa questa sezione per conservare nello storico una SIM non più attiva.</p>
+            <p class="intro-text">
+                <?= $is_edit
+                    ? 'Aggiorna i dati storici della SIM disattivata. La modifica serve a correggere formato, numero di telefono associato o date; non riattiva la SIM.'
+                    : 'Registra nello storico una SIM non più attiva. L’operazione non modifica i numeri telefonici già presenti nel sistema.' ?>
+            </p>
 
-            <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?>" data-ajax-content="true" data-update-target=".content">
+            <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?>" data-ajax-content="true" data-update-target=".content" data-sim-crud-form="true" data-form-mode="<?= $is_edit ? 'edit' : 'create' ?>" data-crud-blocked="<?= $crud_blocked ? 'true' : 'false' ?>" data-lookup-url="sim.php?ajax_numero_info=1" data-sim-lookup-url="sim.php?ajax_sim_info=1" novalidate>
                 <input type="hidden" name="action" value="<?= $is_edit ? 'edit' : 'create' ?>">
                 <?php if ($is_edit): ?>
                     <input type="hidden" name="old_codice" value="<?= htmlspecialchars($row['codice']) ?>">
@@ -513,42 +769,48 @@ if ($ajax_rows) {
 
                 <div class="form-group">
                     <label for="codice">Codice SIM:</label>
-                    <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($row['codice']) ?>" <?= $is_edit ? 'readonly class="input-readonly"' : 'required' ?> placeholder="Inserire il codice SIM" inputmode="numeric" autocomplete="off">
+                    <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($row['codice']) ?>" <?= $is_edit ? 'readonly class="input-readonly"' : 'required data-clearable="true" data-validation="digits" data-sim-code-lookup="true" data-required-message="Inserire il codice della SIM." data-format-message="Il codice SIM può contenere solo cifre."' ?> placeholder="Inserire il codice SIM" inputmode="numeric" autocomplete="off" aria-describedby="codice-error<?= $is_edit ? ' codice-help' : '' ?>" aria-invalid="<?= !empty($field_errors['codice']) ? 'true' : 'false' ?>">
                     <?php if ($is_edit): ?>
-                        <small class="help-text">Il codice identifica la SIM e non è modificabile.</small>
+                        <small class="help-text" id="codice-help">Il codice identifica la SIM e non è modificabile.</small>
                     <?php endif; ?>
+                    <small class="field-error <?= !empty($field_errors['codice']) ? 'is-visible' : '' ?>" id="codice-error" data-field-error-for="codice" aria-live="polite"><?= field_error($field_errors, 'codice') ?></small>
                 </div>
 
                 <div class="form-group">
                     <label for="tipoSIMForm">Formato SIM:</label>
-                    <select id="tipoSIMForm" name="tipoSIM" required>
-                        <option value="">Seleziona formato</option>
+                    <select id="tipoSIMForm" name="tipoSIM" required data-crud-dependent="true" <?= $crud_disabled_attr ?> data-required-message="Selezionare il formato della SIM." aria-describedby="tipoSIM-error" aria-invalid="<?= !empty($field_errors['tipoSIM']) ? 'true' : 'false' ?>">
+                        <option value="" disabled hidden <?= $row['tipoSIM'] === '' ? 'selected' : '' ?>>Seleziona formato</option>
                         <option value="Nano" <?= $row['tipoSIM'] == 'Nano' ? 'selected' : '' ?>>Nano SIM</option>
                         <option value="Micro" <?= $row['tipoSIM'] == 'Micro' ? 'selected' : '' ?>>Micro SIM</option>
                         <option value="Standard" <?= $row['tipoSIM'] == 'Standard' ? 'selected' : '' ?>>Standard SIM</option>
                         <option value="eSIM" <?= $row['tipoSIM'] == 'eSIM' ? 'selected' : '' ?>>Virtuale eSIM</option>
                     </select>
+                    <small class="field-error <?= !empty($field_errors['tipoSIM']) ? 'is-visible' : '' ?>" id="tipoSIM-error" data-field-error-for="tipoSIM" aria-live="polite"><?= field_error($field_errors, 'tipoSIM') ?></small>
                 </div>
 
                 <div class="form-group">
                     <label for="eraAssociataA">Numero di telefono precedentemente associato:</label>
-                    <input type="text" id="eraAssociataA" name="eraAssociataA" value="<?= htmlspecialchars($row['eraAssociataA']) ?>" required placeholder="Es. 3401234567" inputmode="numeric" autocomplete="off">
-                    <small class="help-text">Il numero deve corrispondere a un numero telefonico già registrato.</small>
+                    <input type="text" id="eraAssociataA" name="eraAssociataA" value="<?= htmlspecialchars($row['eraAssociataA']) ?>" required <?= $crud_disabled_attr ?> placeholder="Es. 3401234567" inputmode="numeric" autocomplete="off" data-clearable="true" data-crud-dependent="true" data-validation="digits" data-phone-lookup="true" data-required-message="Inserire il numero di telefono precedentemente associato." data-format-message="Il numero di telefono può contenere solo cifre." aria-describedby="eraAssociataA-help eraAssociataA-error" aria-invalid="<?= !empty($field_errors['eraAssociataA']) ? 'true' : 'false' ?>">
+                    <small class="help-text" id="eraAssociataA-help">Il numero deve corrispondere a un numero telefonico già registrato.</small>
+                    <small class="field-error <?= !empty($field_errors['eraAssociataA']) ? 'is-visible' : '' ?>" id="eraAssociataA-error" data-field-error-for="eraAssociataA" aria-live="polite"><?= field_error($field_errors, 'eraAssociataA') ?></small>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
                         <label for="dataAttivazione">Data di attivazione:</label>
-                        <input type="date" id="dataAttivazione" name="dataAttivazione" value="<?= htmlspecialchars($row['dataAttivazione']) ?>" required>
+                        <input type="date" id="dataAttivazione" name="dataAttivazione" value="<?= htmlspecialchars($row['dataAttivazione']) ?>" readonly <?= $crud_disabled_attr ?> class="input-readonly" data-crud-dependent="true" data-auto-activation-date="true" aria-describedby="dataAttivazione-help">
+                        <small class="help-text" id="dataAttivazione-help">La data viene recuperata automaticamente dai dati della SIM o dal numero indicato.</small>
                     </div>
                     <div class="form-group">
                         <label for="dataDisattivazione">Data di disattivazione:</label>
-                        <input type="date" id="dataDisattivazione" name="dataDisattivazione" value="<?= htmlspecialchars($row['dataDisattivazione']) ?>" required>
+                        <input type="date" id="dataDisattivazione" name="dataDisattivazione" value="<?= htmlspecialchars($row['dataDisattivazione']) ?>" required <?= $crud_disabled_attr ?> min="<?= htmlspecialchars($data_min_disattivazione) ?>" max="<?= htmlspecialchars($data_max_disattivazione) ?>" data-crud-dependent="true" data-deactivation-date="true" data-required-message="Inserire la data di disattivazione." aria-describedby="dataDisattivazione-help dataDisattivazione-error" aria-invalid="<?= !empty($field_errors['dataDisattivazione']) ? 'true' : 'false' ?>">
+                        <small class="help-text" id="dataDisattivazione-help">La data deve essere coerente con l’attivazione del numero e con le chiamate registrate.</small>
+                        <small class="field-error <?= !empty($field_errors['dataDisattivazione']) ? 'is-visible' : '' ?>" id="dataDisattivazione-error" data-field-error-for="dataDisattivazione" aria-live="polite"><?= field_error($field_errors, 'dataDisattivazione') ?></small>
                     </div>
                 </div>
 
                 <div class="form-actions">
-                    <button type="submit" class="btn">Salva SIM disattivata</button>
+                    <button type="submit" class="btn" data-crud-submit="true" <?= $crud_disabled_attr ?>>Salva SIM disattivata</button>
                     <a href="sim.php?stato=disattive" class="btn btn-cancel">Annulla operazione</a>
                 </div>
             </form>

@@ -99,7 +99,7 @@ if ($ajax_rows) {
     <form id="contratti-filter" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
         <div class="form-group">
             <label for="numero">Numero di telefono anche parziale:</label>
-            <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off">
+            <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
         </div>
         <div class="form-group">
             <label for="tipo">Piano del numero:</label>

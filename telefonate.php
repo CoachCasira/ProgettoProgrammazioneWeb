@@ -8,12 +8,12 @@ function render_telefonate_rows(array $rows): string
     foreach ($rows as $row): ?>
         <tr>
             <td><?= htmlspecialchars(format_date_it($row['data'])) ?></td>
-            <td><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></td>
             <td class="identifier">
                 <a href="contratti.php?numero=<?= urlencode($row['effettuataDa']) ?>" title="Vai al numero telefonico associato">
                     <?= htmlspecialchars($row['effettuataDa']) ?>
                 </a>
             </td>
+            <td><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></td>
             <td><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></td>
             <td class="numeric duration-value"><?= htmlspecialchars(format_duration_seconds($row['durata'])) ?></td>
             <td class="numeric"><?= htmlspecialchars(format_euro($row['costo'])) ?></td>
@@ -27,6 +27,8 @@ $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $search_ora_da = trim($_POST['ora_da'] ?? $_GET['ora_da'] ?? '');
 $search_ora_a = trim($_POST['ora_a'] ?? $_GET['ora_a'] ?? '');
+$search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
+$search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
 $search_costo_max = trim($_POST['costo_max'] ?? $_GET['costo_max'] ?? '');
 $limit = max(30, min(150, (int)($_POST['limit'] ?? $_GET['limit'] ?? 80)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
@@ -44,6 +46,12 @@ if (!is_time_minutes_or_empty($search_ora_a)) {
 }
 if ($search_ora_da !== '' && $search_ora_a !== '' && is_time_minutes_or_empty($search_ora_da) && is_time_minutes_or_empty($search_ora_a) && $search_ora_da > $search_ora_a) {
     $search_errors[] = 'L’orario iniziale non può essere successivo all’orario finale.';
+}
+if (!is_non_negative_integer_or_empty($search_durata_min)) {
+    $search_errors[] = 'Il campo “Durata minima - minuti” deve contenere un numero intero positivo o pari a zero.';
+}
+if (!is_seconds_part_or_empty($search_durata_sec)) {
+    $search_errors[] = 'Il campo “Durata minima - secondi” deve contenere un valore tra 0 e 59.';
 }
 if (!is_non_negative_decimal_or_empty($search_costo_max)) {
     $search_errors[] = 'Il campo “Addebito massimo” deve contenere un valore numerico positivo o pari a zero.';
@@ -76,6 +84,12 @@ if (empty($search_errors)) {
     if ($search_ora_a !== '') {
         $ora_a = $conn->real_escape_string(time_minutes_for_sql($search_ora_a, true));
         $sql .= " AND t.ora <= '$ora_a'";
+    }
+    if ($search_durata_min !== '' || $search_durata_sec !== '') {
+        $durata_minuti = $search_durata_min !== '' ? (int) $search_durata_min : 0;
+        $durata_secondi = $search_durata_sec !== '' ? (int) $search_durata_sec : 0;
+        $durata_totale = ($durata_minuti * 60) + $durata_secondi;
+        $sql .= " AND t.durata >= $durata_totale";
     }
     if ($search_costo_max !== '') {
         $costo_max = decimal_for_sql($search_costo_max);
@@ -132,6 +146,15 @@ if ($ajax_rows) {
             <label for="ora_a">Alle ore:</label>
             <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>">
         </div>
+        <div class="form-group duration-filter-group">
+            <label>Durata minima:</label>
+            <div class="duration-inputs">
+                <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
+                <span>min</span>
+                <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
+                <span>sec</span>
+            </div>
+        </div>
         <div class="form-group cost-filter-group">
             <label for="costo_max">Addebito massimo in euro:</label>
             <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1.50" inputmode="decimal" autocomplete="off" data-clearable="true">
@@ -148,8 +171,8 @@ if ($ajax_rows) {
             <thead>
                 <tr>
                     <th><span class="th-icon" aria-hidden="true">📅</span>Data</th>
-                    <th><span class="th-icon" aria-hidden="true">🕒</span>Ora</th>
                     <th><span class="th-icon" aria-hidden="true">📱</span>Numero chiamante</th>
+                    <th><span class="th-icon" aria-hidden="true">🕒</span>Ora</th>
                     <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
                     <th class="numeric"><span class="th-icon" aria-hidden="true">⏱️</span>Durata</th>
                     <th class="numeric"><span class="th-icon" aria-hidden="true">💳</span>Addebito</th>
@@ -166,7 +189,6 @@ if ($ajax_rows) {
     <?php endif; ?>
 </div>
 <?php if ($has_more): ?>
-    <p class="table-end-note">Scorri la tabella per visualizzare altre chiamate.</p>
 <?php endif; ?>
 </div>
 

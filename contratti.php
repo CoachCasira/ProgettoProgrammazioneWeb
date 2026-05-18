@@ -147,7 +147,6 @@ if ($ajax_rows) {
     <?php endif; ?>
 </div>
 <?php if ($has_more): ?>
-    <p class="table-end-note">Scorri la tabella per visualizzare altri risultati.</p>
 <?php endif; ?>
 </div>
 

@@ -177,14 +177,19 @@ function render_sim_rows(array $rows, string $state): string
     foreach ($rows as $row): ?>
         <?php if ($state === 'attive'): ?>
             <tr>
-                <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td class="identifier sim-code-cell">
+                    <div class="sim-code-actions">
+                        <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>" class="action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
+                        <span class="sim-code-value"><?= htmlspecialchars($row['codice']) ?></span>
+                    </div>
+                </td>
                 <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
                 <td class="identifier">
                     <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Visualizza il numero telefonico associato">
                         <?= htmlspecialchars($row['associataA']) ?>
                     </a>
                 </td>
+                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
                 <td><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></td>
             </tr>
         <?php elseif ($state === 'disponibili'): ?>
@@ -195,14 +200,14 @@ function render_sim_rows(array $rows, string $state): string
         <?php else: ?>
             <tr>
                 <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
                 <td class="identifier">
                     <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" title="Visualizza il numero telefonico precedentemente associato">
                         <?= htmlspecialchars($row['eraAssociataA']) ?>
                     </a>
                 </td>
+                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
                 <td><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars($row['tipoContratto'])) : '-' ?></td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
                 <td><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
                 <td class="actions-cell">
                     <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>" class="action-edit">Modifica</a>
@@ -221,19 +226,19 @@ function render_sim_header(string $state): string
         <tr>
             <?php if ($state === 'attive'): ?>
                 <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
                 <th><span class="th-icon" aria-hidden="true">📅</span>Data attivazione</th>
                 <th><span class="th-icon" aria-hidden="true">📱</span>Numero associato</th>
+                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
                 <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
             <?php elseif ($state === 'disponibili'): ?>
                 <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
                 <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
             <?php else: ?>
                 <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📱</span>Numero precedente</th>
-                <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
                 <th><span class="th-icon" aria-hidden="true">📅</span>Attivata il</th>
+                <th><span class="th-icon" aria-hidden="true">📱</span>Numero precedente</th>
+                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
+                <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
                 <th><span class="th-icon" aria-hidden="true">🛑</span>Disattivata il</th>
                 <th class="text-center"><span class="th-icon" aria-hidden="true">⚙️</span>Azioni</th>
             <?php endif; ?>
@@ -661,8 +666,7 @@ if ($ajax_rows) {
             <?php endif; ?>
         </div>
         <?php if ($has_more): ?>
-            <p class="table-end-note">Scorri la tabella per visualizzare altre SIM.</p>
-        <?php endif; ?>
+<?php endif; ?>
     </div>
     </div>
 
@@ -717,6 +721,25 @@ if ($ajax_rows) {
     ];
     $is_edit = ($action === 'edit');
 
+    if (!$is_edit && empty($_POST)) {
+        $prefill_codice = trim($_GET['codice'] ?? '');
+        if ($prefill_codice !== '') {
+            $row['codice'] = $prefill_codice;
+            if (!ctype_digit($prefill_codice)) {
+                $field_errors['codice'] = 'Il codice SIM può contenere solo cifre.';
+            } else {
+                $prefill_info = get_sim_status_info($conn, $prefill_codice);
+                if (($prefill_info['status'] ?? '') === 'attiva') {
+                    $row['tipoSIM'] = $prefill_info['tipoSIM'];
+                    $row['eraAssociataA'] = $prefill_info['numero'];
+                    $row['dataAttivazione'] = $prefill_info['dataAttivazione'];
+                } else {
+                    $field_errors['codice'] = $prefill_info['message'] ?: 'La SIM indicata non risulta in uso.';
+                }
+            }
+        }
+    }
+
     if ($is_edit && empty($_POST)) {
         $edit_id = $conn->real_escape_string($_GET['codice'] ?? '');
         $res = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$edit_id'");
@@ -740,11 +763,7 @@ if ($ajax_rows) {
     }
 
     $crud_blocked = false;
-    if (!$is_edit && ($row['codice'] ?? '') !== '' && ctype_digit((string)$row['codice'])) {
-        $sim_status_form = get_sim_status_info($conn, (string)$row['codice']);
-        $crud_blocked = ($sim_status_form['status'] ?? '') !== 'attiva';
-    }
-    $crud_disabled_attr = $crud_blocked ? 'disabled' : '';
+    $crud_disabled_attr = '';
     ?>
 
     <?php if ($is_edit && $msg && $msg_type === 'error' && empty($row['codice'])): ?>
@@ -760,6 +779,7 @@ if ($ajax_rows) {
                     ? 'Aggiorna i dati storici della SIM disattivata. La modifica serve a correggere formato, numero di telefono associato o date; non riattiva la SIM.'
                     : 'Registra nello storico una SIM non più attiva. L’operazione non modifica i numeri telefonici già presenti nel sistema.' ?>
             </p>
+            <p class="required-note"><span class="required-marker" aria-hidden="true">*</span> Campi obbligatori</p>
 
             <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?>" data-ajax-content="true" data-update-target=".content" data-sim-crud-form="true" data-form-mode="<?= $is_edit ? 'edit' : 'create' ?>" data-crud-blocked="<?= $crud_blocked ? 'true' : 'false' ?>" data-lookup-url="sim.php?ajax_numero_info=1" data-sim-lookup-url="sim.php?ajax_sim_info=1" novalidate>
                 <input type="hidden" name="action" value="<?= $is_edit ? 'edit' : 'create' ?>">
@@ -768,7 +788,7 @@ if ($ajax_rows) {
                 <?php endif; ?>
 
                 <div class="form-group">
-                    <label for="codice">Codice SIM:</label>
+                    <label for="codice">Codice SIM <span class="required-marker" aria-hidden="true">*</span></label>
                     <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($row['codice']) ?>" <?= $is_edit ? 'readonly class="input-readonly"' : 'required data-clearable="true" data-validation="digits" data-sim-code-lookup="true" data-required-message="Inserire il codice della SIM." data-format-message="Il codice SIM può contenere solo cifre."' ?> placeholder="Inserire il codice SIM" inputmode="numeric" autocomplete="off" aria-describedby="codice-error<?= $is_edit ? ' codice-help' : '' ?>" aria-invalid="<?= !empty($field_errors['codice']) ? 'true' : 'false' ?>">
                     <?php if ($is_edit): ?>
                         <small class="help-text" id="codice-help">Il codice identifica la SIM e non è modificabile.</small>
@@ -777,7 +797,7 @@ if ($ajax_rows) {
                 </div>
 
                 <div class="form-group">
-                    <label for="tipoSIMForm">Formato SIM:</label>
+                    <label for="tipoSIMForm">Formato SIM <span class="required-marker" aria-hidden="true">*</span></label>
                     <select id="tipoSIMForm" name="tipoSIM" required data-crud-dependent="true" <?= $crud_disabled_attr ?> data-required-message="Selezionare il formato della SIM." aria-describedby="tipoSIM-error" aria-invalid="<?= !empty($field_errors['tipoSIM']) ? 'true' : 'false' ?>">
                         <option value="" disabled hidden <?= $row['tipoSIM'] === '' ? 'selected' : '' ?>>Seleziona formato</option>
                         <option value="Nano" <?= $row['tipoSIM'] == 'Nano' ? 'selected' : '' ?>>Nano SIM</option>
@@ -789,7 +809,7 @@ if ($ajax_rows) {
                 </div>
 
                 <div class="form-group">
-                    <label for="eraAssociataA">Numero di telefono precedentemente associato:</label>
+                    <label for="eraAssociataA">Numero di telefono precedentemente associato <span class="required-marker" aria-hidden="true">*</span></label>
                     <input type="text" id="eraAssociataA" name="eraAssociataA" value="<?= htmlspecialchars($row['eraAssociataA']) ?>" required <?= $crud_disabled_attr ?> placeholder="Es. 3401234567" inputmode="numeric" autocomplete="off" data-clearable="true" data-crud-dependent="true" data-validation="digits" data-phone-lookup="true" data-required-message="Inserire il numero di telefono precedentemente associato." data-format-message="Il numero di telefono può contenere solo cifre." aria-describedby="eraAssociataA-help eraAssociataA-error" aria-invalid="<?= !empty($field_errors['eraAssociataA']) ? 'true' : 'false' ?>">
                     <small class="help-text" id="eraAssociataA-help">Il numero deve corrispondere a un numero telefonico già registrato.</small>
                     <small class="field-error <?= !empty($field_errors['eraAssociataA']) ? 'is-visible' : '' ?>" id="eraAssociataA-error" data-field-error-for="eraAssociataA" aria-live="polite"><?= field_error($field_errors, 'eraAssociataA') ?></small>
@@ -797,12 +817,12 @@ if ($ajax_rows) {
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="dataAttivazione">Data di attivazione:</label>
+                        <label for="dataAttivazione">Data di attivazione <span class="required-marker" aria-hidden="true">*</span></label>
                         <input type="date" id="dataAttivazione" name="dataAttivazione" value="<?= htmlspecialchars($row['dataAttivazione']) ?>" readonly <?= $crud_disabled_attr ?> class="input-readonly" data-crud-dependent="true" data-auto-activation-date="true" aria-describedby="dataAttivazione-help">
                         <small class="help-text" id="dataAttivazione-help">La data viene recuperata automaticamente dai dati della SIM o dal numero indicato.</small>
                     </div>
                     <div class="form-group">
-                        <label for="dataDisattivazione">Data di disattivazione:</label>
+                        <label for="dataDisattivazione">Data di disattivazione <span class="required-marker" aria-hidden="true">*</span></label>
                         <input type="date" id="dataDisattivazione" name="dataDisattivazione" value="<?= htmlspecialchars($row['dataDisattivazione']) ?>" required <?= $crud_disabled_attr ?> min="<?= htmlspecialchars($data_min_disattivazione) ?>" max="<?= htmlspecialchars($data_max_disattivazione) ?>" data-crud-dependent="true" data-deactivation-date="true" data-required-message="Inserire la data di disattivazione." aria-describedby="dataDisattivazione-help dataDisattivazione-error" aria-invalid="<?= !empty($field_errors['dataDisattivazione']) ? 'true' : 'false' ?>">
                         <small class="help-text" id="dataDisattivazione-help">La data deve essere coerente con l’attivazione del numero e con le chiamate registrate.</small>
                         <small class="field-error <?= !empty($field_errors['dataDisattivazione']) ? 'is-visible' : '' ?>" id="dataDisattivazione-error" data-field-error-for="dataDisattivazione" aria-live="polite"><?= field_error($field_errors, 'dataDisattivazione') ?></small>

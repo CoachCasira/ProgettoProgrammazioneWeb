@@ -523,8 +523,8 @@ table.data-table a:hover {
 
 .action-card {
     display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+    align-items: center;
+    gap: 1.1rem;
     text-decoration: none;
     color: var(--text-color);
     background-color: var(--surface-color);
@@ -541,11 +541,48 @@ table.data-table a:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
+.action-card-icon {
+    flex: 0 0 62px;
+    width: 62px;
+    height: 62px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background-color: #F8F5F2;
+    color: var(--primary-color);
+}
+
+.action-card-icon svg {
+    width: 34px;
+    height: 34px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.action-card-icon img,
+.quick-card-icon {
+    display: block;
+    width: 34px;
+    height: 34px;
+}
+
+.action-card-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
 .action-card strong {
     color: var(--primary-color);
 }
 
-.action-card span {
+.action-card-text span {
     color: var(--muted-text);
 }
 
@@ -996,4 +1033,663 @@ button:disabled:hover,
     font-size: 1rem;
     line-height: 1;
     transform: none;
+}
+
+/* Responsive finale: il layout resta vicino al template assegnato, ma si adatta
+   a tablet e telefono senza rompere filtri, tabelle e form. */
+@media (max-width: 1180px) {
+    .content {
+        width: 98%;
+        padding: 1.5rem;
+    }
+
+    .search-filter form {
+        gap: 0.9rem;
+    }
+
+    .form-group {
+        flex: 1 1 240px;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 900px) {
+    :root {
+        --sticky-gap: 0.5rem;
+        --table-safe-bottom: 4.25rem;
+    }
+
+    body {
+        overflow-x: hidden;
+    }
+
+    .main-header {
+        padding: 0.9rem 1rem;
+    }
+
+    .header-content {
+        justify-content: flex-start;
+        align-items: center;
+        gap: 0.8rem;
+        text-align: left;
+    }
+
+    .header-logo {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+    }
+
+    .header-titles {
+        text-align: left;
+        min-width: 0;
+    }
+
+    .header-titles h1 {
+        font-size: 1.35rem;
+        line-height: 1.15;
+    }
+
+    .header-titles p {
+        font-size: 0.86rem;
+        line-height: 1.35;
+    }
+
+    .main-nav {
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .main-nav ul,
+    .main-nav-list {
+        max-width: none;
+        width: max-content;
+        min-width: 100%;
+        padding: 0.55rem 0.75rem;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        gap: 0.45rem;
+    }
+
+    .main-nav a,
+    .main-nav-list a {
+        white-space: nowrap;
+        padding: 0.55rem 0.75rem;
+        font-size: 0.94rem;
+    }
+
+    .content {
+        width: 100%;
+        margin: 0.75rem 0;
+        padding: 1rem;
+        border-left: none;
+        border-right: none;
+        border-radius: 0;
+    }
+
+    .content h2 {
+        font-size: 1.35rem;
+        margin-bottom: 1rem;
+    }
+
+    .intro-text {
+        max-width: 100%;
+    }
+
+    .stat-grid,
+    .action-grid,
+    .state-tabs {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        min-height: auto;
+        padding: 1rem;
+    }
+
+    .stat-value {
+        font-size: 1.8rem;
+    }
+
+    .search-filter {
+        padding: 1rem;
+        margin-bottom: 0.85rem;
+    }
+
+    .sticky-data-panel .search-filter {
+        position: static;
+        top: auto;
+        margin-bottom: 0.85rem;
+    }
+
+    .search-filter form {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+        align-items: stretch;
+    }
+
+    .form-group {
+        width: 100%;
+        min-width: 0;
+        flex-basis: 100%;
+    }
+
+    .form-row {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .duration-inputs {
+        align-items: center;
+        gap: 0.45rem;
+        flex-wrap: nowrap;
+    }
+
+    .duration-inputs .clearable-input {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+
+    button,
+    .btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .table-container,
+    .sticky-data-panel .table-container,
+    .sticky-data-panel > #sim-results > .table-container {
+        position: relative;
+        top: auto;
+        max-height: 62vh;
+        width: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    table.data-table {
+        min-width: 820px;
+        font-size: 0.92rem;
+    }
+
+    table.data-table th,
+    table.data-table td {
+        padding: 0.64rem;
+    }
+
+    table.data-table th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+
+    .sim-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .actions-cell {
+        white-space: nowrap;
+    }
+
+    .crud-form,
+    .confirm-box {
+        max-width: 100%;
+        padding: 1rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .confirm-detail-row {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .confirm-detail-value {
+        text-align: left;
+    }
+
+    footer {
+        padding: 1.1rem 0.9rem;
+    }
+}
+
+@media (max-width: 520px) {
+    .main-header {
+        padding: 0.75rem;
+    }
+
+    .header-logo {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+        padding: 4px;
+    }
+
+    .header-titles h1 {
+        font-size: 1.18rem;
+    }
+
+    .header-titles p {
+        font-size: 0.78rem;
+    }
+
+    .content {
+        padding: 0.8rem;
+    }
+
+    .content h2 {
+        font-size: 1.22rem;
+    }
+
+    .search-filter {
+        padding: 0.85rem;
+    }
+
+    .form-group label {
+        font-size: 0.88rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        font-size: 0.95rem;
+        padding: 0.58rem;
+    }
+
+    table.data-table {
+        min-width: 760px;
+        font-size: 0.88rem;
+    }
+
+    table.data-table th,
+    table.data-table td {
+        padding: 0.55rem;
+    }
+
+    .state-tab-button {
+        text-align: left;
+    }
+}
+
+
+/* v42 mobile refinement */
+@media (max-width: 600px) {
+    .main-header {
+        padding: 0.65rem 0.75rem;
+    }
+
+    .header-content {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 0.65rem;
+    }
+
+    .header-logo {
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
+        padding: 4px;
+        border-radius: 8px;
+    }
+
+    .header-titles h1 {
+        font-size: 1.08rem;
+        line-height: 1.12;
+        margin-bottom: 0.1rem;
+    }
+
+    .header-titles p {
+        font-size: 0.72rem;
+        line-height: 1.25;
+    }
+
+    .main-nav {
+        overflow-x: hidden;
+    }
+
+    .main-nav ul,
+    .main-nav-list {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        padding: 0.42rem 0.25rem;
+        gap: 0.1rem;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+    }
+
+    .main-nav li,
+    .main-nav-list li {
+        flex: 0 1 auto;
+    }
+
+    .main-nav a,
+    .main-nav-list a {
+        padding: 0.42rem 0.34rem;
+        font-size: 0.78rem;
+        line-height: 1.05;
+        border-radius: 5px;
+        letter-spacing: -0.02em;
+        white-space: nowrap;
+    }
+
+    .content {
+        width: 100%;
+        margin: 0.55rem 0;
+        padding: 0.65rem;
+    }
+
+    .content h2 {
+        font-size: 1.08rem;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.45rem;
+    }
+
+    .search-filter {
+        padding: 0.75rem;
+        border-radius: 7px;
+    }
+
+    .search-filter form {
+        gap: 0.7rem;
+    }
+
+    .form-group label {
+        font-size: 0.82rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        font-size: 0.86rem;
+        padding: 0.52rem;
+        min-height: 2.35rem;
+    }
+
+    button,
+    .btn {
+        font-size: 0.86rem;
+        padding: 0.58rem 0.75rem;
+    }
+
+    .table-container,
+    .sticky-data-panel .table-container,
+    .sticky-data-panel > #sim-results > .table-container {
+        max-height: 60vh;
+        border-radius: 6px;
+    }
+
+    table.data-table {
+        min-width: 640px;
+        font-size: 0.78rem;
+        line-height: 1.35;
+    }
+
+    table.data-table th,
+    table.data-table td {
+        padding: 0.42rem 0.36rem;
+    }
+
+    table.data-table th {
+        font-size: 0.76rem;
+        line-height: 1.2;
+    }
+
+    table.data-table td.numeric,
+    table.data-table td.identifier {
+        font-size: 0.78rem;
+        letter-spacing: -0.02em;
+    }
+
+    .th-icon {
+        margin-right: 0.18rem;
+        font-size: 0.82rem;
+        vertical-align: -0.04em;
+    }
+
+    .stat-grid,
+    .action-grid {
+        gap: 0.75rem;
+    }
+
+    .stat-card,
+    .action-card {
+        padding: 0.85rem;
+    }
+
+    .stat-value {
+        font-size: 1.55rem;
+    }
+
+    .state-tabs {
+        gap: 0.55rem;
+    }
+
+    .state-tab-button {
+        padding: 0.65rem 0.75rem;
+    }
+
+    .state-tab-button strong {
+        font-size: 0.9rem;
+    }
+
+    .state-tab-button span {
+        font-size: 0.74rem;
+    }
+
+    .crud-form,
+    .confirm-box {
+        padding: 0.85rem;
+    }
+
+    .form-actions {
+        margin-top: 1rem;
+        gap: 0.6rem;
+    }
+}
+
+@media (max-width: 390px) {
+    .main-nav a,
+    .main-nav-list a {
+        font-size: 0.72rem;
+        padding: 0.4rem 0.26rem;
+        letter-spacing: -0.035em;
+    }
+
+    .header-titles h1 {
+        font-size: 1rem;
+    }
+
+    .header-titles p {
+        font-size: 0.68rem;
+    }
+
+    table.data-table {
+        min-width: 590px;
+        font-size: 0.72rem;
+    }
+
+    table.data-table th,
+    table.data-table td {
+        padding: 0.36rem 0.3rem;
+    }
+
+    table.data-table th {
+        font-size: 0.7rem;
+    }
+
+    table.data-table td.numeric,
+    table.data-table td.identifier {
+        font-size: 0.72rem;
+    }
+}
+
+/* Evidenziazione righe tabella su desktop: aiuta l'utente a seguire la riga letta
+   senza modificare la struttura tabellare o usare JavaScript. */
+@media (hover: hover) and (pointer: fine) {
+    table.data-table tbody tr {
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+    }
+
+    table.data-table tbody tr:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(51, 45, 41, 0.14);
+        position: relative;
+        z-index: 3;
+    }
+
+    table.data-table tbody tr:hover td {
+        background-color: #F3EEE9;
+    }
+}
+
+/* Azione operativa per disattivare una SIM in uso: il pulsante resta nella tabella,
+   ma usa dimensioni contenute per non appesantire la lettura dei dati. */
+.action-disable-sim {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.34rem 0.72rem;
+    border-radius: 999px;
+    background-color: #8A766B;
+    color: var(--light-text) !important;
+    text-decoration: none !important;
+    font-size: 0.84rem;
+    font-weight: 800;
+    white-space: nowrap;
+    line-height: 1.1;
+    box-shadow: 0 2px 5px rgba(51, 45, 41, 0.12);
+    transition: background-color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.action-disable-sim:hover,
+.action-disable-sim:focus {
+    background-color: var(--link-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 9px rgba(51, 45, 41, 0.18);
+    outline: none;
+}
+
+.actions-cell-inline {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.required-marker {
+    color: #9B4545;
+    font-weight: 900;
+    margin-left: 0.12rem;
+}
+
+.required-note {
+    margin-top: -0.2rem;
+    margin-bottom: 1rem;
+    color: var(--muted-text);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+/* Pulsante operativo dentro la colonna del codice SIM: evita una colonna tecnica
+   separata e collega l'azione direttamente alla SIM su cui l'utente sta lavorando. */
+.sim-code-cell {
+    min-width: 19rem;
+}
+
+.sim-code-actions {
+    display: grid;
+    grid-template-columns: auto minmax(9rem, 1fr);
+    align-items: center;
+    gap: 1.25rem;
+    width: 100%;
+}
+
+.sim-code-value {
+    display: inline-block;
+    justify-self: end;
+    white-space: nowrap;
+}
+
+.sim-code-actions .action-disable-sim {
+    justify-self: start;
+}
+
+
+/* Il comando "Disattiva SIM" compare su desktop solo quando l'utente passa
+   sulla riga: l'azione resta disponibile ma non appesantisce la lettura della tabella. */
+table.data-table a.action-disable-sim,
+table.data-table a.action-disable-sim:hover,
+table.data-table a.action-disable-sim:focus {
+    text-decoration: none !important;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .sim-code-actions .action-disable-sim {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: translateX(-0.35rem);
+    }
+
+    table.data-table tbody tr:hover .sim-code-actions .action-disable-sim,
+    table.data-table tbody tr:focus-within .sim-code-actions .action-disable-sim {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateX(0);
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .sim-code-actions .action-disable-sim {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: none;
+    }
+}
+
+
+@media (max-width: 760px) {
+    .sim-code-cell {
+        min-width: 16rem;
+    }
+
+    .sim-code-actions {
+        grid-template-columns: auto minmax(7.5rem, 1fr);
+        gap: 0.75rem;
+    }
+
+    .sim-code-actions .action-disable-sim {
+        padding: 0.28rem 0.5rem;
+        font-size: 0.72rem;
+    }
+}
+
+
+@media (max-width: 600px) {
+    .action-card {
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .action-card-icon {
+        flex-basis: 48px;
+        width: 48px;
+        height: 48px;
+        border-radius: 11px;
+    }
+
+    .action-card-icon svg {
+        width: 27px;
+        height: 27px;
+    }
+
+    .action-card-text {
+        gap: 0.25rem;
+    }
 }

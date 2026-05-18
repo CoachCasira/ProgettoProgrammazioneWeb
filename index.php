@@ -67,16 +67,31 @@ $costo_totale = singleValue($conn, "SELECT ROUND(SUM(costo), 2) AS totale FROM T
 
 <section class="action-grid" aria-label="Accessi rapidi">
     <a class="action-card" href="contratti.php">
-        <strong>Consulta numeri telefonici</strong>
-        <span>Filtra numeri per telefono, piano e periodo di attivazione.</span>
+        <span class="action-card-icon" aria-hidden="true">
+            <img src="<?= $base_path ?>/assets/images/icons/numeri-telefonici.svg" alt="Icona numeri telefonici" title="Numeri telefonici" class="quick-card-icon">
+        </span>
+        <span class="action-card-text">
+            <strong>Consulta numeri telefonici</strong>
+            <span>Filtra numeri per telefono, piano e periodo di attivazione.</span>
+        </span>
     </a>
     <a class="action-card" href="telefonate.php">
-        <strong>Consulta chiamate</strong>
-        <span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span>
+        <span class="action-card-icon" aria-hidden="true">
+            <img src="<?= $base_path ?>/assets/images/icons/chiamate.svg" alt="Icona chiamate" title="Chiamate" class="quick-card-icon">
+        </span>
+        <span class="action-card-text">
+            <strong>Consulta chiamate</strong>
+            <span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span>
+        </span>
     </a>
     <a class="action-card" href="sim.php">
-        <strong>Gestisci SIM</strong>
-        <span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span>
+        <span class="action-card-icon" aria-hidden="true">
+            <img src="<?= $base_path ?>/assets/images/icons/sim.svg" alt="Icona SIM" title="SIM" class="quick-card-icon">
+        </span>
+        <span class="action-card-text">
+            <strong>Gestisci SIM</strong>
+            <span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span>
+        </span>
     </a>
 </section>
 

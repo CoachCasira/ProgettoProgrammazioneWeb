@@ -241,10 +241,6 @@
     }
 
     function validateSimCrudForm(form) {
-        if (form.dataset.crudBlocked === 'true') {
-            return false;
-        }
-
         var valid = true;
         form.querySelectorAll('input, select, textarea').forEach(function (field) {
             if (field.type === 'hidden' || field.disabled) {
@@ -273,6 +269,31 @@
         updateClearButton(field);
     }
 
+    function setSystemRecoveredField(field, locked) {
+        if (!field) {
+            return;
+        }
+
+        field.disabled = Boolean(locked);
+        field.classList.toggle('input-readonly', Boolean(locked));
+        field.classList.toggle('input-disabled', Boolean(locked));
+        field.setAttribute('aria-readonly', locked ? 'true' : 'false');
+
+        if (field.matches && field.matches('input[data-clearable="true"]')) {
+            updateClearButton(field);
+        }
+    }
+
+    function setRecoveredSimFieldsState(form, locked) {
+        var phoneField = form.querySelector('[data-phone-lookup="true"]');
+        var typeField = form.querySelector('select[name="tipoSIM"]');
+        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+
+        setSystemRecoveredField(phoneField, locked);
+        setSystemRecoveredField(typeField, locked);
+        setSystemRecoveredField(activationField, true);
+    }
+
     function applyLinkedSimData(form, payload) {
         var codeField = form.querySelector('[data-sim-code-lookup="true"]');
         var phoneField = form.querySelector('[data-phone-lookup="true"]');
@@ -299,6 +320,10 @@
             deactivationField.setAttribute('max', payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10));
             validateDeactivationDate(deactivationField);
         }
+
+        if ((form.dataset.formMode || 'edit') === 'create') {
+            setRecoveredSimFieldsState(form, true);
+        }
     }
 
     function clearLinkedSimData(form, keepField) {
@@ -307,6 +332,10 @@
         var typeField = form.querySelector('select[name="tipoSIM"]');
         var activationField = form.querySelector('[data-auto-activation-date="true"]');
         var deactivationField = form.querySelector('[data-deactivation-date="true"]');
+
+        if ((form.dataset.formMode || 'edit') === 'create') {
+            setRecoveredSimFieldsState(form, false);
+        }
 
         if (codeField && codeField !== keepField && !codeField.readOnly) {
             setFieldValue(codeField, '');
@@ -326,21 +355,21 @@
     }
 
     function setCrudDependentFieldsState(form, disabled) {
-        var isDisabled = Boolean(disabled);
-        form.dataset.crudBlocked = isDisabled ? 'true' : 'false';
-        form.classList.toggle('crud-form-blocked', isDisabled);
-
+        /* La presenza di una SIM non utilizzabile viene comunicata con un messaggio
+           sotto il campo codice. Gli altri campi restano compilabili: l'utente può
+           correggere il codice o completare il form senza trovare controlli bloccati. */
+        form.dataset.crudBlocked = 'false';
+        form.classList.remove('crud-form-blocked');
         form.querySelectorAll('[data-crud-dependent="true"]').forEach(function (field) {
-            field.disabled = isDisabled;
-            field.classList.toggle('input-disabled', isDisabled);
-            if (isDisabled && field.matches('input[data-clearable="true"]')) {
+            field.disabled = false;
+            field.classList.remove('input-disabled');
+            if (field.matches('input[data-clearable="true"]')) {
                 updateClearButton(field);
             }
         });
-
         form.querySelectorAll('[data-crud-submit="true"]').forEach(function (button) {
-            button.disabled = isDisabled;
-            button.classList.toggle('btn-disabled', isDisabled);
+            button.disabled = false;
+            button.classList.remove('btn-disabled');
         });
     }
 
@@ -355,7 +384,7 @@
         if (value === '') {
             setCrudDependentFieldsState(form, false);
             clearLinkedSimData(form, codeField);
-            clearFieldError(codeField);
+            validateRequiredAndFormat(codeField);
             return;
         }
 
@@ -380,7 +409,7 @@
             .then(function (payload) {
                 if (!payload || payload.status !== 'attiva') {
                     clearLinkedSimData(form, codeField);
-                    setCrudDependentFieldsState(form, true);
+                    setCrudDependentFieldsState(form, false);
                     setFieldError(codeField, payload && payload.message ? payload.message : 'La SIM indicata non risulta in uso.');
                     return;
                 }
@@ -412,7 +441,7 @@
                 activationField.value = '';
                 deactivationField.removeAttribute('min');
             }
-            clearFieldError(phoneField);
+            validateRequiredAndFormat(phoneField);
             return;
         }
 
@@ -478,6 +507,7 @@
                 }
 
                 field.addEventListener('blur', function () {
+                    field.dataset.touched = 'true';
                     validateSimCrudField(field);
                     if (field.matches('[data-sim-code-lookup="true"]')) {
                         updateFromSimCode(form, field);
@@ -498,7 +528,7 @@
                 });
 
                 field.addEventListener('input', function () {
-                    if (field.matches('[data-validation="digits"]')) {
+                    if (field.dataset.touched === 'true' || field.matches('[data-validation="digits"]')) {
                         validateRequiredAndFormat(field);
                     }
                     if (field.matches('[data-sim-code-lookup="true"]')) {
@@ -559,6 +589,11 @@
         if (!(form instanceof HTMLFormElement) || !form.matches('form[data-sim-crud-form="true"]')) {
             return;
         }
+        form.querySelectorAll('input, select, textarea').forEach(function (field) {
+            if (field.type !== 'hidden') {
+                field.dataset.touched = 'true';
+            }
+        });
         if (!validateSimCrudForm(form)) {
             event.preventDefault();
             event.stopImmediatePropagation();

@@ -7,7 +7,7 @@ function render_telefonate_rows(array $rows): string
     ob_start();
     foreach ($rows as $row): ?>
         <tr>
-            <td><?= htmlspecialchars($row['data']) ?></td>
+            <td><?= htmlspecialchars(format_date_it($row['data'])) ?></td>
             <td><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></td>
             <td class="identifier">
                 <a href="contratti.php?numero=<?= urlencode($row['effettuataDa']) ?>" title="Vai al numero telefonico associato">

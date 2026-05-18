@@ -8,7 +8,7 @@ function render_contratti_rows(array $rows): string
     foreach ($rows as $row): ?>
         <tr>
             <td class="identifier"><?= htmlspecialchars($row['numero']) ?></td>
-            <td><?= htmlspecialchars($row['dataAttivazione']) ?></td>
+            <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
             <td><?= ucfirst(htmlspecialchars($row['tipo'])) ?></td>
             <td class="numeric"><?= htmlspecialchars(format_minutes_remaining($row['minutiResidui'])) ?></td>
             <td class="numeric"><?= htmlspecialchars(format_euro($row['creditoResiduo'])) ?></td>

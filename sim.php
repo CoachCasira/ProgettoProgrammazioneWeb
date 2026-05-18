@@ -179,7 +179,7 @@ function render_sim_rows(array $rows, string $state): string
             <tr>
                 <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
                 <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
-                <td><?= htmlspecialchars($row['dataAttivazione']) ?></td>
+                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
                 <td class="identifier">
                     <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Visualizza il numero telefonico associato">
                         <?= htmlspecialchars($row['associataA']) ?>
@@ -202,8 +202,8 @@ function render_sim_rows(array $rows, string $state): string
                     </a>
                 </td>
                 <td><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars($row['tipoContratto'])) : '-' ?></td>
-                <td><?= htmlspecialchars($row['dataAttivazione']) ?></td>
-                <td><?= htmlspecialchars($row['dataDisattivazione']) ?></td>
+                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
+                <td><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
                 <td class="actions-cell">
                     <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>" class="action-edit">Modifica</a>
                     <a href="sim.php?stato=disattive&amp;action=confirm_delete&amp;codice=<?= urlencode($row['codice']) ?>" class="action-delete">Elimina</a>

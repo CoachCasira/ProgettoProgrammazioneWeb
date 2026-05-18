@@ -33,6 +33,21 @@ function time_minutes_for_sql(string $value, bool $end_of_minute = false): strin
     return $value . ($end_of_minute ? ':59' : ':00');
 }
 
+
+function format_date_it($value): string
+{
+    if ($value === null || $value === '') {
+        return '-';
+    }
+
+    $parsed = DateTime::createFromFormat('Y-m-d', (string) $value);
+    if ($parsed === false) {
+        return (string) $value;
+    }
+
+    return $parsed->format('d/m/Y');
+}
+
 function format_time_minutes($value): string
 {
     if ($value === null || $value === '') {

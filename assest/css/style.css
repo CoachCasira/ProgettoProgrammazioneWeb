@@ -14,11 +14,8 @@
     --error-color: #B85C5C;
     --success-color: #5C8C61;
     --nav-sticky-height: 64px;
-    --search-filter-sticky-height: 190px;
     --sticky-gap: 0.75rem;
     --table-safe-bottom: 5.8rem;
-    --table-sticky-top: calc(var(--nav-sticky-height) + var(--search-filter-sticky-height) + var(--sticky-gap));
-    --sticky-panel-height: calc(100vh - var(--nav-sticky-height) - var(--sticky-gap) - var(--table-safe-bottom));
 }
 
 
@@ -253,6 +250,34 @@ button:hover,
     background-color: var(--secondary-color);
 }
 
+
+.btn-add-disattiva {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.56rem 1.05rem;
+    min-height: 2.45rem;
+    min-width: 9.6rem;
+    font-size: 0.9rem;
+    line-height: 1;
+    white-space: nowrap;
+    text-align: center;
+    background-color: var(--success-color);
+    color: var(--light-text);
+    border-radius: 0.42rem;
+    box-shadow: 0 4px 10px rgba(51, 45, 41, 0.14);
+}
+
+.btn-add-disattiva:hover,
+.btn-add-disattiva:focus-visible {
+    background-color: #4F7C54;
+    color: var(--light-text);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(51, 45, 41, 0.18);
+    outline: none;
+}
+
 .btn-cancel {
     background-color: var(--border-color);
     color: var(--text-color);
@@ -271,29 +296,26 @@ button:hover,
 .table-container {
     position: relative;
     z-index: 1;
-    max-height: max(300px, calc(100vh - var(--nav-sticky-height) - var(--search-filter-sticky-height) - var(--sticky-gap) - var(--table-safe-bottom)));
-    overflow-y: auto;
     overflow-x: auto;
+    overflow-y: visible;
     border: 1px solid var(--border-color);
     border-radius: 5px;
     background-color: var(--surface-color);
     box-shadow: 0 2px 6px rgba(51, 45, 41, 0.06);
-    overscroll-behavior: contain;
 }
 
 .sticky-data-panel .table-container {
-    position: sticky;
-    top: var(--table-sticky-top);
-    z-index: 11;
-    max-height: max(280px, calc(100vh - var(--table-sticky-top) - var(--table-safe-bottom)));
+    position: relative;
+    top: auto;
+    z-index: 1;
 }
 
 .sticky-data-panel .table-end-note {
     margin-top: 0.65rem;
 }
 
-/* La pagina SIM aggiorna i risultati dentro un blocco dedicato; il blocco resta
-   normale, mentre la tabella al suo interno si aggancia sotto navbar e filtri. */
+/* La pagina SIM aggiorna i risultati dentro un blocco dedicato; filtri e tabella
+   restano nel flusso naturale della pagina e non si agganciano alla navbar. */
 .sticky-data-panel > #sim-results {
     min-height: 0;
 }
@@ -303,15 +325,14 @@ button:hover,
 }
 
 .sticky-data-panel > #sim-results > .table-container {
-    position: sticky;
-    top: var(--table-sticky-top);
-    z-index: 11;
-    max-height: max(280px, calc(100vh - var(--table-sticky-top) - var(--table-safe-bottom)));
+    position: relative;
+    top: auto;
+    z-index: 1;
 }
 
 #sim-results,
 .results-area {
-    scroll-margin-top: calc(var(--nav-sticky-height) + var(--search-filter-sticky-height) + 1rem);
+    scroll-margin-top: calc(var(--nav-sticky-height) + 1rem);
 }
 
 table.data-table {
@@ -333,9 +354,6 @@ table.data-table th {
     color: var(--light-text);
     text-align: right;
     font-weight: 700;
-    position: sticky;
-    top: 0;
-    z-index: 1;
     box-shadow: 0 1px 0 var(--border-color);
 }
 
@@ -880,13 +898,20 @@ footer p.disclaimer {
     margin-top: 0.65rem;
 }
 
-/* Pannello dati coordinato con la navbar: i filtri si agganciano sotto la
-   navigazione e la tabella resta agganciata subito sotto i filtri. */
+/* Pannello dati: filtri e contenitore tabella restano nel punto naturale della pagina.
+   Durante lo scroll verticale della pagina non si agganciano alla navbar. */
 .sticky-data-panel .search-filter {
-    position: sticky;
-    top: var(--nav-sticky-height);
-    z-index: 12;
+    position: relative;
+    top: auto;
+    z-index: 1;
     margin-bottom: var(--sticky-gap);
+}
+
+.sticky-data-panel .table-container,
+.sticky-data-panel > #sim-results > .table-container {
+    position: relative;
+    top: auto;
+    z-index: 1;
 }
 
 .sticky-data-panel .search-filter,
@@ -913,7 +938,7 @@ footer p.disclaimer {
 }
 
 /* Pulsante interno per svuotare rapidamente i campi numerici.
-   È applicato solo agli input marcati con data-clearable="true". */
+   Ãˆ applicato solo agli input marcati con data-clearable="true". */
 .clearable-input {
     position: relative;
     display: block;
@@ -1012,7 +1037,7 @@ button:disabled:hover,
     color: var(--light-text);
 }
 
-/* Rifinitura della X interna ai campi: il simbolo è centrato nel pulsante e
+/* Rifinitura della X interna ai campi: il simbolo Ã¨ centrato nel pulsante e
    mantiene colori coerenti con la palette tortora. */
 .clear-input-button,
 .clear-input-button:hover,
@@ -1028,7 +1053,7 @@ button:disabled:hover,
 }
 
 .clear-input-button::before {
-    content: "×";
+    content: "Ã—";
     display: block;
     font-size: 1rem;
     line-height: 1;
@@ -1203,9 +1228,9 @@ button:disabled:hover,
     .sticky-data-panel > #sim-results > .table-container {
         position: relative;
         top: auto;
-        max-height: 62vh;
         width: 100%;
-        overflow: auto;
+        overflow-x: auto;
+        overflow-y: visible;
         -webkit-overflow-scrolling: touch;
     }
 
@@ -1217,12 +1242,6 @@ button:disabled:hover,
     table.data-table th,
     table.data-table td {
         padding: 0.64rem;
-    }
-
-    table.data-table th {
-        position: sticky;
-        top: 0;
-        z-index: 2;
     }
 
     .sim-toolbar {
@@ -1420,7 +1439,6 @@ button:disabled:hover,
     .table-container,
     .sticky-data-panel .table-container,
     .sticky-data-panel > #sim-results > .table-container {
-        max-height: 60vh;
         border-radius: 6px;
     }
 
@@ -1691,5 +1709,1320 @@ table.data-table a.action-disable-sim:focus {
 
     .action-card-text {
         gap: 0.25rem;
+    }
+}
+
+/* =========================================================
+   PROTOTIPO VISUALIZZAZIONE A SCHEDE
+   Le pagine di consultazione mostrano i risultati come schede operative:
+   piÃ¹ leggibili per un utente che vuole riconoscere subito numero, stato,
+   piano e azioni principali senza leggere righe tabellari dense.
+   ========================================================= */
+.cards-container {
+    position: relative;
+    z-index: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background-color: #FBFAF8;
+    box-shadow: 0 2px 6px rgba(51, 45, 41, 0.06);
+    padding: 1rem;
+}
+
+.result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1rem;
+}
+
+.call-card-grid {
+    grid-template-columns: 1fr;
+}
+
+.sim-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.data-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 100%;
+    padding: 1.15rem;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    background: linear-gradient(180deg, #FFFFFF 0%, #F7F3EF 100%);
+    box-shadow: 0 4px 12px rgba(51, 45, 41, 0.08);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.data-card:hover,
+.data-card:focus-within {
+    transform: translateY(-2px);
+    border-color: var(--secondary-color);
+    box-shadow: 0 8px 20px rgba(51, 45, 41, 0.14);
+}
+
+.data-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.card-kicker {
+    display: block;
+    color: var(--muted-text);
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.2rem;
+}
+
+.card-title {
+    color: var(--primary-color);
+    font-size: 1.35rem;
+    line-height: 1.15;
+    margin: 0;
+}
+
+.card-title a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.card-title a:hover,
+.card-title a:focus {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.card-title-mono {
+    font-family: Consolas, 'Courier New', monospace;
+    letter-spacing: 0.01em;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.34rem 0.72rem;
+    border-radius: 999px;
+    color: var(--light-text);
+    background-color: var(--secondary-color);
+    font-size: 0.78rem;
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.status-pill-plan,
+.status-pill-active {
+    background-color: #7A6A61;
+}
+
+.status-pill-available {
+    background-color: #5C8C61;
+}
+
+.status-pill-disabled {
+    background-color: #9B6A55;
+}
+
+.card-primary-metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 11px;
+    background-color: #EEE8E2;
+    border: 1px solid var(--border-color);
+}
+
+.card-primary-metric span {
+    color: var(--muted-text);
+    font-weight: 800;
+}
+
+.card-primary-metric strong {
+    color: var(--primary-color);
+    font-size: 1.15rem;
+    text-align: right;
+}
+
+.card-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.card-detail-grid-compact {
+    grid-template-columns: 1fr;
+}
+
+.card-detail-grid div {
+    min-width: 0;
+    padding: 0.72rem;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(209, 202, 195, 0.72);
+}
+
+.card-detail-grid dt {
+    color: var(--muted-text);
+    font-size: 0.78rem;
+    font-weight: 800;
+    margin-bottom: 0.18rem;
+}
+
+.card-detail-grid dd {
+    color: var(--text-color);
+    font-weight: 800;
+    word-break: break-word;
+}
+
+.card-detail-grid a {
+    color: var(--link-color);
+    text-decoration: none;
+}
+
+.card-detail-grid a:hover,
+.card-detail-grid a:focus {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: auto;
+}
+
+.card-actions-split {
+    justify-content: flex-start;
+}
+
+.card-action-link,
+.card-action-muted,
+.card-actions .action-edit,
+.card-actions .action-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.25rem;
+    padding: 0.52rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 900;
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.card-action-link,
+.card-actions .action-edit {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+}
+
+.card-action-link:hover,
+.card-action-link:focus,
+.card-actions .action-edit:hover,
+.card-actions .action-edit:focus {
+    background-color: var(--link-hover);
+    color: var(--light-text);
+    text-decoration: none;
+}
+
+.card-actions .action-delete {
+    background-color: #F4E5E1;
+    color: var(--error-color);
+    border-color: #E4C4BC;
+}
+
+.card-actions .action-delete:hover,
+.card-actions .action-delete:focus {
+    background-color: var(--error-color);
+    color: var(--light-text);
+    text-decoration: none;
+}
+
+.card-action-muted {
+    background-color: #EEE8E2;
+    color: var(--muted-text);
+}
+
+.call-card {
+    display: grid;
+    grid-template-columns: minmax(120px, 0.18fr) minmax(210px, 0.42fr) minmax(280px, 1fr);
+    align-items: center;
+}
+
+.call-card-date {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 5.2rem;
+    padding: 0.8rem;
+    border-radius: 12px;
+    background-color: #EEE8E2;
+    border: 1px solid var(--border-color);
+    text-align: center;
+}
+
+.call-card-date span {
+    color: var(--muted-text);
+    font-weight: 800;
+    font-size: 0.9rem;
+}
+
+.call-card-date strong {
+    color: var(--primary-color);
+    font-size: 1.4rem;
+    line-height: 1.1;
+}
+
+.call-card-main {
+    min-width: 0;
+}
+
+.call-detail-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sim-card-disabled {
+    border-left: 5px solid #9B6A55;
+}
+
+.sim-card-active {
+    border-left: 5px solid #7A6A61;
+}
+
+.sim-card-available {
+    border-left: 5px solid #5C8C61;
+}
+
+.cards-container.table-loading-more::after {
+    content: 'Caricamento altri risultati...';
+    display: block;
+    margin-top: 1rem;
+    color: var(--muted-text);
+    font-weight: 800;
+    text-align: center;
+}
+
+@media (max-width: 900px) {
+    .call-card {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .call-card-date {
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .call-detail-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .cards-container {
+        padding: 0.75rem;
+    }
+
+    .result-grid,
+    .sim-card-grid,
+    .phone-card-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .data-card {
+        padding: 1rem;
+        border-radius: 12px;
+    }
+
+    .data-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .card-detail-grid,
+    .call-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .card-primary-metric {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+}
+
+/* =========================================================
+   PROTOTIPO A SCHEDE - RIFINITURA UX v61
+   Le schede restano dentro un contenitore scrollabile, cosÃ¬ la pagina non
+   si allarga e il caricamento progressivo continua ad attivarsi sullo scroll.
+   ========================================================= */
+.cards-container {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(72vh, 760px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--secondary-color) #F0ECE8;
+}
+
+.cards-container::-webkit-scrollbar {
+    width: 0.7rem;
+}
+
+.cards-container::-webkit-scrollbar-track {
+    background-color: #F0ECE8;
+    border-radius: 999px;
+}
+
+.cards-container::-webkit-scrollbar-thumb {
+    background-color: var(--secondary-color);
+    border-radius: 999px;
+}
+
+.cards-container .result-grid,
+.cards-container .data-card,
+.cards-container .card-detail-grid,
+.cards-container .card-detail-grid div {
+    min-width: 0;
+}
+
+.data-card {
+    overflow: hidden;
+}
+
+.data-card-header {
+    min-width: 0;
+}
+
+.data-card-header > div {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.status-pill {
+    flex: 0 0 auto;
+    max-width: 100%;
+}
+
+.phone-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+}
+
+.sim-card-grid {
+    grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+}
+
+.sim-card .card-title-mono {
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+.sim-card .data-card-header {
+    align-items: flex-start;
+}
+
+.sim-card .status-pill {
+    margin-left: auto;
+}
+
+.phone-plan-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.72rem 0.9rem;
+    border-radius: 11px;
+    background-color: #F5F1ED;
+    border: 1px solid var(--border-color);
+}
+
+.phone-plan-banner span {
+    color: var(--muted-text);
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.phone-plan-banner strong {
+    color: var(--primary-color);
+    font-weight: 900;
+    white-space: nowrap;
+}
+
+.phone-card .card-primary-metric {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    min-height: 4.5rem;
+    align-items: center;
+}
+
+.phone-card .card-primary-metric span {
+    line-height: 1.25;
+}
+
+.phone-card .card-primary-metric strong {
+    white-space: nowrap;
+}
+
+.phone-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.call-number-link {
+    display: block;
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    padding: 0.72rem 0.85rem;
+    margin: -0.72rem -0.85rem;
+    border-radius: 11px;
+    transition: background-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.call-number-link .card-title {
+    display: inline-block;
+    transition: color 0.16s ease, text-decoration-color 0.16s ease;
+}
+
+.call-number-link:hover,
+.call-number-link:focus {
+    background-color: #F3EEE9;
+    box-shadow: inset 0 0 0 1px var(--border-color);
+    outline: none;
+}
+
+.call-number-link:hover .card-title,
+.call-number-link:focus .card-title {
+    color: var(--link-hover);
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.16em;
+}
+
+@media (max-width: 900px) {
+    .cards-container {
+        max-height: 68vh;
+    }
+}
+
+@media (max-width: 640px) {
+    .cards-container {
+        max-height: 66vh;
+    }
+
+    .phone-plan-banner,
+    .phone-card .card-primary-metric {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+    }
+
+    .phone-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .sim-card .data-card-header {
+        flex-direction: row;
+        align-items: flex-start;
+    }
+
+    .sim-card .status-pill {
+        margin-left: 0;
+    }
+}
+
+
+/* Quando la ricerca dei numeri restituisce una sola scheda, la card viene centrata
+   nella vista a schede: Ã¨ piÃ¹ naturale per l'utente, soprattutto quando arriva
+   dal dettaglio di una SIM o da un filtro preciso. */
+.phone-card-grid.is-single-result-grid {
+    width: min(100%, 390px);
+    margin-right: auto;
+    margin-left: auto;
+    grid-template-columns: minmax(270px, 1fr);
+    justify-content: center;
+}
+
+.phone-card-grid.is-single-result-grid .phone-card {
+    width: 100%;
+}
+
+/* =========================================================
+   VISTA A SCHEDE DEFINITIVA - caricamento a blocchi e dettaglio scheda
+   ========================================================= */
+.cards-container {
+    max-height: min(72vh, 760px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.expandable-card {
+    cursor: zoom-in;
+}
+
+.expandable-card a,
+.expandable-card button,
+.expandable-card input,
+.expandable-card select,
+.expandable-card textarea {
+    cursor: pointer;
+}
+
+.expandable-card:focus-visible {
+    outline: 3px solid rgba(122, 106, 97, 0.38);
+    outline-offset: 3px;
+}
+
+.card-detail-tile {
+    min-width: 0;
+}
+
+.card-detail-link {
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.card-detail-link[role="link"] {
+    outline: none;
+}
+
+.card-detail-link:hover,
+.card-detail-link:focus-within,
+.card-detail-link:focus {
+    background-color: #F3EEE9;
+    border-color: var(--secondary-color);
+    box-shadow: 0 4px 12px rgba(51, 45, 41, 0.12);
+    transform: translateY(-1px);
+}
+
+.card-detail-link dt,
+.card-detail-link dd {
+    position: relative;
+    z-index: 1;
+}
+
+.tile-overlay-link {
+    color: var(--muted-text);
+    text-decoration: none;
+}
+
+.tile-overlay-link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: 10px;
+}
+
+.card-detail-link:hover .tile-overlay-link,
+.card-detail-link:focus-within .tile-overlay-link,
+.card-detail-link:focus .tile-overlay-link {
+    color: var(--link-hover);
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.16em;
+}
+
+.card-detail-link:hover dd,
+.card-detail-link:focus-within dd,
+.card-detail-link:focus dd {
+    color: var(--link-hover);
+}
+
+body.card-modal-open {
+    overflow: hidden;
+}
+
+.card-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    background-color: rgba(51, 45, 41, 0.42);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+.card-modal-overlay.is-visible {
+    display: flex;
+}
+
+.card-modal-dialog {
+    width: min(980px, 96vw);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.38);
+    background-color: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 18px 50px rgba(32, 27, 24, 0.28);
+    overflow: auto;
+}
+
+.card-modal-content {
+    min-width: 0;
+}
+
+.card-modal-card {
+    width: 100%;
+    min-height: auto;
+    cursor: default;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.card-modal-card:hover,
+.card-modal-card:focus-within {
+    transform: none;
+    box-shadow: none;
+}
+
+.card-modal-card .card-actions {
+    margin-top: 0.5rem;
+}
+
+.card-modal-card.phone-card .card-detail-grid,
+.card-modal-card.sim-card .card-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card-modal-card.phone-card .phone-plan-banner,
+.card-modal-card.phone-card .card-primary-metric {
+    min-height: 4.2rem;
+}
+
+.card-modal-card .card-title {
+    font-size: 1.7rem;
+}
+
+.card-modal-footer {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.card-modal-back {
+    min-width: 8rem;
+}
+
+@media (max-width: 760px) {
+    .card-modal-overlay {
+        padding: 1rem;
+        align-items: stretch;
+    }
+
+    .card-modal-dialog {
+        width: 100%;
+        max-height: 92vh;
+    }
+
+    .card-modal-card.phone-card .card-detail-grid,
+    .card-modal-card.sim-card .card-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Chiamate: apertura del dettaglio numero nella stessa pagina */
+.call-number-link.is-loading {
+    opacity: 0.68;
+    cursor: progress;
+}
+
+.call-number-link.is-loading .card-title::after {
+    content: ' ...';
+    text-decoration: none;
+}
+
+.sim-phone-tile .tile-overlay-link.is-loading,
+.sim-phone-tile .tile-overlay-link.is-loading + dd {
+    opacity: 0.68;
+}
+
+.sim-phone-tile .tile-overlay-link.is-loading::before {
+    content: 'Caricamento...';
+    position: absolute;
+    right: 0.7rem;
+    bottom: 0.55rem;
+    z-index: 3;
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--muted-text);
+}
+
+
+/* Rientro contestuale SIM e apertura form: gli elementi target hanno un margine
+   di scroll coerente con la navbar sticky, cosÃ¬ non restano coperti in alto. */
+.crud-form,
+.cards-container {
+    scroll-margin-top: calc(var(--nav-sticky-height, 0px) + 1rem);
+}
+
+/* Rientro contestuale dalla disattivazione SIM: evidenzia la scheda da cui l'utente era partito. */
+.sim-return-focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 4px rgba(122, 106, 97, 0.18), 0 8px 22px rgba(51, 45, 41, 0.16);
+    transform: translateY(-2px);
+}
+
+/* =========================================================
+   Vista selezionabile dall'utente: schede / tabella + export CSV
+   ========================================================= */
+.results-tools {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.9rem;
+}
+
+.sim-toolbar .results-tools {
+    margin: 0;
+}
+
+.btn-view-toggle,
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    min-height: 2.55rem;
+    white-space: nowrap;
+}
+
+.btn-view-toggle {
+    background-color: #8F847C;
+}
+
+.btn-export {
+    background-color: #687B64;
+    color: var(--light-text);
+}
+
+.btn-export:hover,
+.btn-export:focus {
+    background-color: #51634E;
+    color: var(--light-text);
+}
+
+.view-toggle-icon {
+    font-weight: 900;
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+.view-panel {
+    display: none;
+}
+
+.results-view-root[data-current-view="cards"] [data-view-panel="cards"],
+.results-view-root[data-current-view="table"] [data-view-panel="table"] {
+    display: block;
+}
+
+.results-data-container .table-container-inner {
+    margin: 0;
+    box-shadow: none;
+    border-radius: 10px;
+    background-color: var(--surface-color);
+}
+
+.results-data-container table.data-table {
+    margin-top: 0;
+}
+
+.table-action-group {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.table-action-group .action-edit,
+.table-action-group .action-delete,
+table.data-table .card-action-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.42rem 0.72rem;
+    border-radius: 999px;
+    font-weight: 900;
+    text-decoration: none;
+    line-height: 1.1;
+}
+
+table.data-table .card-action-link,
+.table-action-group .action-edit {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+}
+
+table.data-table .card-action-link:hover,
+table.data-table .card-action-link:focus,
+.table-action-group .action-edit:hover,
+.table-action-group .action-edit:focus {
+    background-color: var(--link-hover);
+    color: var(--light-text);
+    text-decoration: none;
+}
+
+.table-action-group .action-delete {
+    background-color: #F4E5E1;
+    color: var(--error-color);
+    border: 1px solid #E4C4BC;
+}
+
+.table-action-group .action-delete:hover,
+.table-action-group .action-delete:focus {
+    background-color: var(--error-color);
+    color: var(--light-text);
+    text-decoration: none;
+}
+
+.sim-phone-table-cell a,
+table.data-table a[data-phone-card-modal="true"] {
+    display: inline-block;
+    padding: 0.18rem 0.28rem;
+    border-radius: 6px;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.sim-phone-table-cell a:hover,
+.sim-phone-table-cell a:focus,
+table.data-table a[data-phone-card-modal="true"]:hover,
+table.data-table a[data-phone-card-modal="true"]:focus {
+    background-color: #F3EEE9;
+    color: var(--link-hover);
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.16em;
+}
+
+@media (max-width: 760px) {
+    .results-tools,
+    .sim-toolbar .results-tools {
+        justify-content: stretch;
+    }
+
+    .btn-view-toggle,
+    .btn-export,
+    .sim-results-tools .btn-secondary {
+        flex: 1 1 100%;
+    }
+}
+
+
+/* Numeri cliccabili dentro le schede SIM: stesso comportamento visivo delle chiamate registrate. */
+.sim-card .sim-phone-tile {
+    overflow: hidden;
+}
+
+.sim-card .sim-phone-tile dd {
+    word-break: break-word;
+}
+
+.sim-phone-table-cell a {
+    transition: background-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.sim-phone-table-cell a:hover,
+.sim-phone-table-cell a:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(51, 45, 41, 0.12);
+}
+
+.table-header-icon,
+table.data-table th span[aria-hidden="true"] {
+    display: inline-block;
+    margin-right: 0.28rem;
+}
+
+/* SIM in uso in vista tabellare: azione collegata direttamente al codice SIM. */
+table.data-table td.sim-code-cell {
+    text-align: right;
+}
+
+.results-view-root[data-current-view="table"] table.data-table tbody tr:hover {
+    background-color: #F3EEE9;
+}
+
+/* Quando la ricerca produce una sola card, il contenitore non blocca piÃ¹ la rotella:
+   lo scroll torna alla pagina, evitando l'effetto "gabbia" su un risultato unico. */
+.cards-container.is-single-result-container {
+    max-height: none;
+    overflow: visible;
+    overscroll-behavior: auto;
+}
+
+/* Rende davvero cliccabile tutta la superficie dei riquadri di dettaglio,
+   anche nelle schede ingrandite clonate nel popup. */
+.card-detail-link {
+    isolation: isolate;
+}
+
+.card-detail-link .tile-overlay-link {
+    display: inline-block;
+}
+
+.card-detail-link .tile-overlay-link::after {
+    cursor: pointer;
+}
+
+.card-modal-card .card-detail-link {
+    cursor: pointer;
+}
+
+/* Numeri telefonici collegati allo storico SIM disattivate */
+.phone-card-disabled-number {
+    border-color: #D8A9A0;
+    background: linear-gradient(180deg, #FFFFFF 0%, #FBF4F2 100%);
+}
+
+.status-pill-number-disabled {
+    background-color: #F4E5E1;
+    color: var(--error-color);
+    border: 1px solid #E4C4BC;
+}
+
+.status-pill-number-active {
+    background-color: var(--success-color);
+    color: var(--light-text);
+    border: 1px solid var(--success-color);
+}
+
+.disabled-sim-tile {
+    border-color: #E4C4BC;
+    background-color: #FFF8F6;
+}
+
+.disabled-sim-tile:hover,
+.disabled-sim-tile:focus,
+.disabled-sim-tile:focus-within {
+    background-color: #F4E5E1;
+    border-color: #9B4545;
+}
+
+.disabled-sim-tile .tile-overlay-link,
+.disabled-sim-tile dd {
+    color: #9B4545;
+}
+
+.tile-subvalue {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--muted-text);
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: normal;
+}
+
+.number-disabled-row td {
+    background-color: #FFF8F6;
+}
+
+.disabled-sim-table-link {
+    display: inline-block;
+    margin-top: 0.35rem;
+    color: #9B4545;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+}
+
+.disabled-sim-table-link:hover,
+.disabled-sim-table-link:focus {
+    color: var(--error-color);
+}
+
+/* Il nuovo collegamento alla SIM disattivata usa lo stesso caricamento visivo
+   dei collegamenti ai numeri telefonici aperti in popup. */
+.disabled-sim-tile .tile-overlay-link.is-loading,
+.disabled-sim-table-link.is-loading {
+    opacity: 0.68;
+    cursor: progress;
+}
+
+
+/* =========================================================
+   Rifiniture finali: stati numeri, navigazione risultati, favicon
+   ========================================================= */
+.phone-card-active-number {
+    border-left: 5px solid #5C8C61;
+    border-color: rgba(92, 140, 97, 0.42);
+}
+
+.phone-card-active-number:hover,
+.phone-card-active-number:focus-within {
+    border-color: #5C8C61;
+}
+
+.phone-card-disabled-number {
+    border-left: 5px solid #9B6A55;
+    border-color: rgba(155, 106, 85, 0.52);
+    background: linear-gradient(180deg, #FFFFFF 0%, #F7F3EF 100%);
+}
+
+.phone-card-disabled-number:hover,
+.phone-card-disabled-number:focus-within {
+    border-color: #9B6A55;
+}
+
+.status-pill-number-active {
+    background-color: #5C8C61;
+    color: var(--light-text);
+    border: 1px solid #5C8C61;
+}
+
+.status-pill-number-disabled {
+    background-color: #9B6A55;
+    color: var(--light-text);
+    border: 1px solid #9B6A55;
+}
+
+.disabled-sim-tile {
+    border-color: rgba(155, 106, 85, 0.45);
+    background-color: #F7F3EF;
+}
+
+.disabled-sim-tile:hover,
+.disabled-sim-tile:focus,
+.disabled-sim-tile:focus-within {
+    background-color: #EEE8E2;
+    border-color: #9B6A55;
+}
+
+.disabled-sim-tile .tile-overlay-link,
+.disabled-sim-tile dd {
+    color: #6A5B52;
+}
+
+.number-disabled-row td {
+    background-color: #F7F3EF;
+}
+
+.results-navigation {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 0.65rem;
+    margin: -0.25rem 0 0.9rem;
+    color: var(--muted-text);
+    font-weight: 800;
+}
+
+.results-counter {
+    min-width: 10.5rem;
+    text-align: center;
+    letter-spacing: 0.01em;
+}
+
+.results-page-button {
+    width: 2.55rem;
+    height: 2.55rem;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: #8F847C;
+    color: var(--light-text);
+    font-size: 1.65rem;
+    line-height: 1;
+    box-shadow: 0 2px 5px rgba(51, 45, 41, 0.12);
+}
+
+.results-page-button:hover,
+.results-page-button:focus {
+    background-color: var(--link-hover);
+}
+
+.results-page-button:disabled,
+.results-page-button[aria-disabled="true"] {
+    opacity: 0.42;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+@media (max-width: 760px) {
+    .results-navigation {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .results-counter {
+        min-width: 9rem;
+        order: -1;
+        flex: 1 1 100%;
+    }
+}
+
+/* Allineamento orizzontale tra navigazione risultati e pulsanti azione */
+.results-actions-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 0 0 0.9rem;
+}
+
+.results-actions-row > .results-navigation,
+.sim-toolbar-left .results-navigation {
+    margin: 0;
+}
+
+.results-actions-row > .results-tools,
+.results-actions-row .results-tools,
+.sim-toolbar .results-tools {
+    margin: 0;
+}
+
+.sim-toolbar.results-actions-row {
+    margin-bottom: 1rem;
+}
+
+.sim-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.sim-toolbar-left .sim-toolbar-title {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 760px) {
+    .results-actions-row {
+        align-items: stretch;
+    }
+
+    .results-actions-row > .results-navigation,
+    .sim-toolbar-left {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .results-actions-row > .results-tools,
+    .results-actions-row .results-tools {
+        width: 100%;
+    }
+}
+
+/* Righe tabellari apribili: la vista estesa deve essere accessibile anche cliccando il record. */
+.results-view-root[data-current-view="table"] table.data-table tbody tr[data-table-row-modal-ready="true"] {
+    cursor: pointer;
+}
+
+.results-view-root[data-current-view="table"] table.data-table tbody tr[data-table-row-modal-ready="true"]:focus {
+    outline: 3px solid rgba(143, 132, 124, 0.35);
+    outline-offset: -3px;
+}
+
+.results-view-root[data-current-view="table"] table.data-table tbody tr[data-table-row-modal-ready="true"] .table-action-group,
+.results-view-root[data-current-view="table"] table.data-table tbody tr[data-table-row-modal-ready="true"] .action-disable-sim {
+    cursor: auto;
+}
+
+/* Frecce verticali: la navigazione dei risultati scorre su/giÃ¹ nel contenitore. */
+.results-page-button {
+    font-weight: 900;
+}
+
+/* =========================================================
+   Pulsante rapido per tornare all'inizio dei risultati
+   ========================================================= */
+.results-view-root {
+    position: relative;
+}
+
+.results-scroll-top-button {
+    position: absolute;
+    right: 2.25rem;
+    bottom: 1.45rem;
+    z-index: 12;
+    width: 3rem;
+    height: 3rem;
+    border: 0;
+    border-radius: 999px;
+    background-color: var(--secondary-color);
+    color: #FFFFFF;
+    font-size: 0;
+    font-weight: 800;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(51, 45, 41, 0.22);
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px) scale(0.94);
+    transition: opacity 0.18s ease, transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.results-scroll-top-icon {
+    display: block;
+    width: 1.45rem;
+    height: 1.45rem;
+    object-fit: contain;
+    object-position: center;
+    pointer-events: none;
+    user-select: none;
+}
+
+
+.results-data-container.results-returning-top {
+    opacity: 0.72;
+    transition: opacity 0.22s ease;
+}
+
+.results-scroll-top-button.is-working {
+    opacity: 0.78;
+    pointer-events: none;
+    transform: translateY(0) scale(0.96);
+}
+
+.results-scroll-top-button.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.results-scroll-top-button:hover,
+.results-scroll-top-button:focus-visible {
+    background-color: var(--primary-color);
+    box-shadow: 0 10px 24px rgba(51, 45, 41, 0.3);
+    transform: translateY(-2px) scale(1.04);
+    outline: none;
+}
+
+@media (max-width: 760px) {
+    .results-scroll-top-button {
+        right: 1.25rem;
+        bottom: 1rem;
+        width: 2.75rem;
+        height: 2.75rem;
     }
 }

@@ -1,0 +1,73 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestione SIM</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
+        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
+        <div>
+            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
+            <a href="{% url 'home' %}" style="color: #f3f0ec; text-decoration: none; font-size: 14px;">&larr; Torna alla Panoramica</a>
+        </div>
+    </header>
+
+    <main style="padding: 30px; max-width: 1200px; margin: auto;">
+        <h2>Gestione SIM</h2>
+
+        <div style="margin-bottom: 20px;">
+            <a href="?stato=attive" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'attive' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'attive' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px; margin-right: 10px;">SIM in uso</a>
+            
+            <a href="?stato=disponibili" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'disponibili' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'disponibili' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px; margin-right: 10px;">SIM disponibili</a>
+            
+            <a href="?stato=disattive" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'disattive' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'disattive' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px;">SIM disattivate</a>
+        </div>
+
+        <div class="table-container">
+            {% if sim_list %}
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #eadecf; text-align: left;">
+                            <th style="padding: 12px;">Codice SIM (ICCID)</th>
+                            <th style="padding: 12px;">Formato</th>
+                            
+                            {% if stato == 'attive' %}
+                                <th style="padding: 12px;">Data Attivazione</th>
+                                <th style="padding: 12px;">Numero Associato</th>
+                            {% elif stato == 'disattive' %}
+                                <th style="padding: 12px;">Era associata a</th>
+                                <th style="padding: 12px;">Data Attivazione</th>
+                                <th style="padding: 12px;">Data Disattivazione</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sim in sim_list %}
+                            <tr style="border-bottom: 1px solid #eadecf;">
+                                <td style="padding: 12px; font-weight: bold;">{{ sim.codice }}</td>
+                                <td style="padding: 12px;">{{ sim.get_tipoSIM_display }}</td>
+                                
+                                {% if stato == 'attive' %}
+                                    <td style="padding: 12px;">{{ sim.dataAttivazione|date:"d/m/Y" }}</td>
+                                    <td style="padding: 12px; color: #6e6157; font-weight: bold;">{{ sim.associataA.numero }}</td>
+                                {% elif stato == 'disattive' %}
+                                    <td style="padding: 12px;">{{ sim.eraAssociataA }}</td>
+                                    <td style="padding: 12px;">{{ sim.dataAttivazione|date:"d/m/Y" }}</td>
+                                    <td style="padding: 12px;">{{ sim.dataDisattivazione|date:"d/m/Y" }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div style="background-color: #f2dede; color: #a94442; padding: 15px; border-radius: 4px;">
+                    Nessuna SIM presente in questa categoria.
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

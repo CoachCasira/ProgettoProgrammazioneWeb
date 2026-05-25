@@ -1,0 +1,75 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Consulta Numeri Telefonici</title>
+    <link rel="stylesheet" href="{% static 'style.css' %}">
+</head>
+<body>
+    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
+        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
+        <div>
+            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
+            <a href="{% url 'home' %}" style="color: #f3f0ec; text-decoration: none; font-size: 14px;">&larr; Torna alla Panoramica</a>
+        </div>
+    </header>
+
+    <main style="padding: 30px; max-width: 1200px; margin: auto;">
+        <h2>Consulta numeri telefonici</h2>
+
+        <form method="GET" action="{% url 'lista_contratti' %}" style="background: #fcfbf9; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eadecf;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
+                
+                <div>
+                    <label for="numero" style="display:block; margin-bottom:5px; font-weight:bold;">Numero di telefono:</label>
+                    <input type="text" id="numero" name="numero" value="{{ request.GET.numero }}" placeholder="Es. 345...">
+                </div>
+
+                <div>
+                    <label for="tipo" style="display:block; margin-bottom:5px; font-weight:bold;">Piano tariffario:</label>
+                    <select id="tipo" name="tipo">
+                        <option value="">Tutti i piani</option>
+                        <option value="consumo" {% if request.GET.tipo == 'consumo' %}selected{% endif %}>A consumo</option>
+                        <option value="ricarica" {% if request.GET.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
+                    </select>
+                </div>
+
+                <button type="submit" style="background-color: #6e6157; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Filtra Risultati</button>
+                <a href="{% url 'lista_contratti' %}" style="padding: 10px; color: #6e6157;">Resetta</a>
+            </div>
+        </form>
+
+        <div class="table-container">
+            {% if contratti %}
+                <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background-color: #eadecf; text-align: left;">
+                            <th style="padding: 12px;">📱 Numero di telefono</th>
+                            <th style="padding: 12px;">📅 Data attivazione</th>
+                            <th style="padding: 12px;">🧾 Piano</th>
+                            <th style="padding: 12px;">⏱️ Tempo residuo (min)</th>
+                            <th style="padding: 12px;">💳 Credito residuo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for contratto in contratti %}
+                            <tr style="border-bottom: 1px solid #eadecf;">
+                                <td style="padding: 12px; font-weight: bold;">{{ contratto.numero }}</td>
+                                <td style="padding: 12px;">{{ contratto.dataAttivazione|date:"d/m/Y" }}</td>
+                                <td style="padding: 12px;">{{ contratto.get_tipo_display }}</td>
+                                <td style="padding: 12px;">{{ contratto.minutiResidui }}</td>
+                                <td style="padding: 12px;">&euro; {{ contratto.creditoResiduo }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div style="background-color: #f2dede; color: #a94442; padding: 15px; border-radius: 4px;">
+                    Nessun numero telefonico corrisponde ai filtri selezionati o il database è vuoto.
+                </div>
+            {% endif %}
+        </div>
+    </main>
+</body>
+</html>

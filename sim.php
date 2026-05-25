@@ -76,6 +76,18 @@ function get_numero_info(mysqli $conn, string $numero): array
     return $info;
 }
 
+function get_ultima_chiamata_by_numero(mysqli $conn, string $numero): string
+{
+    $numero_sql = $conn->real_escape_string($numero);
+    $chiamata_res = $conn->query("SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
+    if (!$chiamata_res) {
+        return '';
+    }
+
+    $chiamata_row = $chiamata_res->fetch_assoc();
+    return $chiamata_row['ultimaChiamata'] ?? '';
+}
+
 
 function get_sim_status_info(mysqli $conn, string $codice): array
 {
@@ -99,21 +111,21 @@ function get_sim_status_info(mysqli $conn, string $codice): array
 
     $codice_sql = $conn->real_escape_string($codice);
 
-    $active_res = $conn->query("SELECT s.codice, s.tipoSIM, s.associataA, c.dataAttivazione AS dataNumero
+    $active_res = $conn->query("SELECT s.codice, s.tipoSIM, s.associataA, s.dataAttivazione AS dataSIM
                                 FROM SIMAttiva s
                                 JOIN ContrattoTelefonico c ON s.associataA = c.numero
                                 WHERE s.codice='$codice_sql'
                                 LIMIT 1");
     if ($active_res && $active_res->num_rows > 0) {
         $row = $active_res->fetch_assoc();
-        $numero_info = get_numero_info($conn, $row['associataA']);
+        $ultima_chiamata = get_ultima_chiamata_by_numero($conn, $row['associataA']);
         $info['exists'] = true;
         $info['status'] = 'attiva';
         $info['tipoSIM'] = $row['tipoSIM'];
         $info['numero'] = $row['associataA'];
-        $info['dataAttivazione'] = $numero_info['dataAttivazione'] ?: $row['dataNumero'];
-        $info['ultimaChiamata'] = $numero_info['ultimaChiamata'];
-        $info['dataMinimaDisattivazione'] = $numero_info['dataMinimaDisattivazione'] ?: $info['dataAttivazione'];
+        $info['dataAttivazione'] = $row['dataSIM'];
+        $info['ultimaChiamata'] = $ultima_chiamata;
+        $info['dataMinimaDisattivazione'] = later_date($row['dataSIM'], $ultima_chiamata) ?: $row['dataSIM'];
         $info['message'] = 'SIM in uso trovata. I dati collegati sono stati recuperati automaticamente.';
         return $info;
     }
@@ -151,13 +163,17 @@ function get_active_sim_by_numero(mysqli $conn, string $numero): array
     }
 
     $numero_sql = $conn->real_escape_string($numero);
-    $active_res = $conn->query("SELECT codice, tipoSIM FROM SIMAttiva WHERE associataA='$numero_sql' LIMIT 1");
+    $active_res = $conn->query("SELECT codice, tipoSIM, dataAttivazione FROM SIMAttiva WHERE associataA='$numero_sql' LIMIT 1");
     if ($active_res && $active_res->num_rows > 0) {
         $row = $active_res->fetch_assoc();
+        $ultima_chiamata = get_ultima_chiamata_by_numero($conn, $numero);
         $info['hasActiveSim'] = true;
         $info['status'] = 'attiva';
         $info['codice'] = $row['codice'];
         $info['tipoSIM'] = $row['tipoSIM'];
+        $info['dataAttivazione'] = $row['dataAttivazione'];
+        $info['ultimaChiamata'] = $ultima_chiamata;
+        $info['dataMinimaDisattivazione'] = later_date($row['dataAttivazione'], $ultima_chiamata) ?: $row['dataAttivazione'];
         $info['message'] = 'SIM in uso associata al numero trovata. I dati collegati sono stati recuperati automaticamente.';
         return $info;
     }
@@ -176,42 +192,167 @@ function render_sim_rows(array $rows, string $state): string
     ob_start();
     foreach ($rows as $row): ?>
         <?php if ($state === 'attive'): ?>
-            <tr>
+            <article class="data-card sim-card sim-card-active expandable-card" data-expandable-card="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM in uso <?= htmlspecialchars($row['codice']) ?>">
+                <div class="data-card-header">
+                    <div>
+                        <span class="card-kicker">SIM in uso</span>
+                        <h3 class="card-title card-title-mono"><?= htmlspecialchars($row['codice']) ?></h3>
+                    </div>
+                    <span class="status-pill status-pill-active">In uso</span>
+                </div>
+
+                <dl class="card-detail-grid">
+                    <div class="card-detail-tile card-detail-link sim-phone-tile">
+                        <dt>
+                            <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" class="tile-overlay-link" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['associataA']) ?>">
+                                Numero associato
+                            </a>
+                        </dt>
+                        <dd><?= htmlspecialchars($row['associataA']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Data attivazione</dt>
+                        <dd><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Formato SIM</dt>
+                        <dd><?= htmlspecialchars($row['tipoSIM']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Piano</dt>
+                        <dd><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></dd>
+                    </div>
+                </dl>
+
+                <div class="card-actions">
+                    <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=attive" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
+                </div>
+            </article>
+        <?php elseif ($state === 'disponibili'): ?>
+            <article class="data-card sim-card sim-card-available expandable-card" data-expandable-card="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM disponibile <?= htmlspecialchars($row['codice']) ?>">
+                <div class="data-card-header">
+                    <div>
+                        <span class="card-kicker">SIM disponibile</span>
+                        <h3 class="card-title card-title-mono"><?= htmlspecialchars($row['codice']) ?></h3>
+                    </div>
+                    <span class="status-pill status-pill-available">Disponibile</span>
+                </div>
+
+                <dl class="card-detail-grid card-detail-grid-compact">
+                    <div>
+                        <dt>Formato SIM</dt>
+                        <dd><?= htmlspecialchars($row['tipoSIM']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Stato operativo</dt>
+                        <dd>Non associata a un numero</dd>
+                    </div>
+                </dl>
+            </article>
+        <?php else: ?>
+            <article class="data-card sim-card sim-card-disabled expandable-card" data-expandable-card="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM disattivata <?= htmlspecialchars($row['codice']) ?>">
+                <div class="data-card-header">
+                    <div>
+                        <span class="card-kicker">SIM disattivata</span>
+                        <h3 class="card-title card-title-mono"><?= htmlspecialchars($row['codice']) ?></h3>
+                    </div>
+                    <span class="status-pill status-pill-disabled">Storico</span>
+                </div>
+
+                <dl class="card-detail-grid">
+                    <div class="card-detail-tile card-detail-link sim-phone-tile">
+                        <dt>
+                            <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" class="tile-overlay-link" title="Apri il dettaglio del numero telefonico precedentemente associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['eraAssociataA']) ?>">
+                                Numero precedente
+                            </a>
+                        </dt>
+                        <dd><?= htmlspecialchars($row['eraAssociataA']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Data attivazione</dt>
+                        <dd><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Data disattivazione</dt>
+                        <dd><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Formato SIM</dt>
+                        <dd><?= htmlspecialchars($row['tipoSIM']) ?></dd>
+                    </div>
+                    <div>
+                        <dt>Piano</dt>
+                        <dd><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars($row['tipoContratto'])) : '-' ?></dd>
+                    </div>
+                </dl>
+
+                <div class="card-actions card-actions-split">
+                    <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=disattive" class="action-edit action-edit-sim">Modifica</a>
+                    <a href="sim.php?stato=disattive&amp;action=confirm_delete&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=disattive" class="action-delete action-delete-sim">Elimina</a>
+                </div>
+            </article>
+        <?php endif; ?>
+    <?php endforeach;
+    return ob_get_clean();
+}
+
+
+
+function render_sim_table_header(string $state): string
+{
+    if ($state === 'attive') {
+        return '<tr><th class="identifier sim-code-cell">🔢 Codice SIM</th><th class="identifier">📱 Numero associato</th><th>🗓️ Data attivazione</th><th>📐 Formato SIM</th><th>📋 Piano</th></tr>';
+    }
+    if ($state === 'disponibili') {
+        return '<tr><th class="identifier">🔢 Codice SIM</th><th>📐 Formato SIM</th><th>⚙️ Stato operativo</th></tr>';
+    }
+    return '<tr><th class="identifier">🔢 Codice SIM</th><th class="identifier">📱 Numero precedente</th><th>🗓️ Data attivazione</th><th>🛑 Data disattivazione</th><th>📐 Formato SIM</th><th>📋 Piano</th><th>⚙️ Azioni</th></tr>';
+}
+
+function render_sim_table_rows(array $rows, string $state): string
+{
+    ob_start();
+    foreach ($rows as $row): ?>
+        <?php if ($state === 'attive'): ?>
+            <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
                 <td class="identifier sim-code-cell">
                     <div class="sim-code-actions">
-                        <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>" class="action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
+                        <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=attive" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
                         <span class="sim-code-value"><?= htmlspecialchars($row['codice']) ?></span>
                     </div>
                 </td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
-                <td class="identifier">
-                    <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Visualizza il numero telefonico associato">
+                <td class="identifier sim-phone-table-cell">
+                    <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['associataA']) ?>">
                         <?= htmlspecialchars($row['associataA']) ?>
                     </a>
                 </td>
+                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
                 <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
                 <td><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></td>
             </tr>
         <?php elseif ($state === 'disponibili'): ?>
-            <tr>
+            <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
                 <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
                 <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td>Non associata a un numero</td>
             </tr>
         <?php else: ?>
-            <tr>
+            <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
                 <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
-                <td class="identifier">
-                    <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" title="Visualizza il numero telefonico precedentemente associato">
+                <td class="identifier sim-phone-table-cell">
+                    <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" title="Apri il dettaglio del numero telefonico precedentemente associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['eraAssociataA']) ?>">
                         <?= htmlspecialchars($row['eraAssociataA']) ?>
                     </a>
                 </td>
+                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
+                <td><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
                 <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
                 <td><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars($row['tipoContratto'])) : '-' ?></td>
-                <td><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
-                <td class="actions-cell">
-                    <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>" class="action-edit">Modifica</a>
-                    <a href="sim.php?stato=disattive&amp;action=confirm_delete&amp;codice=<?= urlencode($row['codice']) ?>" class="action-delete">Elimina</a>
+                <td>
+                    <div class="table-action-group">
+                        <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=disattive" class="action-edit action-edit-sim">Modifica</a>
+                        <a href="sim.php?stato=disattive&amp;action=confirm_delete&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=disattive" class="action-delete action-delete-sim">Elimina</a>
+                    </div>
                 </td>
             </tr>
         <?php endif; ?>
@@ -219,32 +360,54 @@ function render_sim_rows(array $rows, string $state): string
     return ob_get_clean();
 }
 
-function render_sim_header(string $state): string
+function query_total_count(mysqli $conn, string $sql): int
 {
-    ob_start(); ?>
-    <thead>
-        <tr>
-            <?php if ($state === 'attive'): ?>
-                <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📅</span>Data attivazione</th>
-                <th><span class="th-icon" aria-hidden="true">📱</span>Numero associato</th>
-                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
-                <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
-            <?php elseif ($state === 'disponibili'): ?>
-                <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
-            <?php else: ?>
-                <th><span class="th-icon" aria-hidden="true">🔢</span>Codice SIM</th>
-                <th><span class="th-icon" aria-hidden="true">📅</span>Attivata il</th>
-                <th><span class="th-icon" aria-hidden="true">📱</span>Numero precedente</th>
-                <th><span class="th-icon" aria-hidden="true">📐</span>Formato SIM</th>
-                <th><span class="th-icon" aria-hidden="true">🧾</span>Piano</th>
-                <th><span class="th-icon" aria-hidden="true">🛑</span>Disattivata il</th>
-                <th class="text-center"><span class="th-icon" aria-hidden="true">⚙️</span>Azioni</th>
-            <?php endif; ?>
-        </tr>
-    </thead>
-    <?php return ob_get_clean();
+    $result = $conn->query("SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results");
+    if (!$result) {
+        return 0;
+    }
+    $row = $result->fetch_assoc();
+    return (int)($row['total_count'] ?? 0);
+}
+
+function output_csv_response(string $filename, array $headers, array $rows): void
+{
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+    $out = fopen('php://output', 'w');
+
+    // BOM UTF-8: permette ad Excel di riconoscere correttamente caratteri come "€".
+    fwrite($out, "\xEF\xBB\xBF");
+
+    fputcsv($out, $headers, ';');
+    foreach ($rows as $row) {
+        fputcsv($out, $row, ';');
+    }
+    fclose($out);
+    exit;
+}
+
+function sim_csv_headers(string $state): array
+{
+    if ($state === 'attive') {
+        return ['Codice SIM', 'Numero associato', 'Data attivazione', 'Formato SIM', 'Piano'];
+    }
+    if ($state === 'disponibili') {
+        return ['Codice SIM', 'Formato SIM', 'Stato operativo'];
+    }
+    return ['Codice SIM', 'Numero precedente', 'Data attivazione', 'Data disattivazione', 'Formato SIM', 'Piano'];
+}
+
+function sim_csv_row(array $row, string $state): array
+{
+    if ($state === 'attive') {
+        return [$row['codice'], $row['associataA'], format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
+    }
+    if ($state === 'disponibili') {
+        return [$row['codice'], $row['tipoSIM'], 'Non associata a un numero'];
+    }
+    return [$row['codice'], $row['eraAssociataA'], format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
 }
 
 $allowed_actions = ['list', 'create', 'edit', 'confirm_delete'];
@@ -291,6 +454,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $numero_info = null;
         $sim_info = null;
         $blocked_by_sim_status = false;
+        $stored_edit_row = null;
 
         if ($post_action === 'create') {
             if ($codice_raw === '' && $eraAssociataA_raw === '') {
@@ -322,7 +486,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $field_errors['eraAssociataA'] = 'Il numero indicato non corrisponde al numero associato alla SIM in uso.';
                         }
                         $dataAttivazione_raw = $sim_info['dataAttivazione'];
-                        $numero_info = get_numero_info($conn, $sim_info['numero']);
+                        $numero_info = $sim_info;
                     }
                 }
             }
@@ -345,6 +509,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
         } else {
+            $old_codice_lookup = $conn->real_escape_string($_POST['old_codice'] ?? '');
+            if ($old_codice_lookup !== '') {
+                $stored_res = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$old_codice_lookup' LIMIT 1");
+                if ($stored_res && $stored_res->num_rows > 0) {
+                    $stored_edit_row = $stored_res->fetch_assoc();
+                    $dataAttivazione_raw = $stored_edit_row['dataAttivazione'];
+                } else {
+                    $field_errors['codice'] = 'La SIM selezionata non è più disponibile nello storico.';
+                }
+            } else {
+                $field_errors['codice'] = 'La SIM selezionata non è valida.';
+            }
+
             if ($eraAssociataA_raw === '') {
                 $field_errors['eraAssociataA'] = 'Inserire il numero di telefono precedentemente associato.';
             } elseif (!is_digits_or_empty($eraAssociataA_raw)) {
@@ -353,8 +530,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $numero_info = get_numero_info($conn, $eraAssociataA_raw);
                 if (!$numero_info['exists']) {
                     $field_errors['eraAssociataA'] = 'Il numero indicato non risulta presente tra i numeri telefonici registrati.';
-                } else {
-                    $dataAttivazione_raw = $numero_info['dataAttivazione'];
                 }
             }
         }
@@ -376,14 +551,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (!$blocked_by_sim_status && empty($field_errors) && $numero_info && ($numero_info['exists'] ?? false)) {
-            $min_disattivazione = $numero_info['dataMinimaDisattivazione'];
+            if ($post_action === 'create') {
+                $min_disattivazione = $numero_info['dataMinimaDisattivazione'] ?: $dataAttivazione_raw;
+            } else {
+                $min_disattivazione = $dataAttivazione_raw;
+            }
             $max_disattivazione = date('Y-m-d');
 
             if (strtotime($dataDisattivazione_raw) < strtotime($min_disattivazione)) {
-                if (($numero_info['ultimaChiamata'] ?? '') !== '') {
+                if ($post_action === 'create' && ($numero_info['ultimaChiamata'] ?? '') !== '') {
                     $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere precedente all’ultima chiamata registrata per questo numero (' . date('d/m/Y', strtotime($numero_info['ultimaChiamata'])) . ').';
                 } else {
-                    $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere precedente alla data di attivazione del numero.';
+                    $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere precedente alla data di attivazione della SIM.';
                 }
             } elseif (strtotime($dataDisattivazione_raw) > strtotime($max_disattivazione)) {
                 $field_errors['dataDisattivazione'] = 'La data di disattivazione non può essere successiva alla data odierna.';
@@ -462,9 +641,11 @@ $search_tipo = trim($is_filter_request ? ($_POST['tipoSIM'] ?? $_GET['tipoSIM'] 
 $search_numero = trim($is_filter_request ? ($_POST['numero'] ?? $_GET['numero'] ?? '') : '');
 $search_data_da = trim($is_filter_request ? ($_POST['data_da'] ?? $_GET['data_da'] ?? '') : '');
 $search_data_a = trim($is_filter_request ? ($_POST['data_a'] ?? $_GET['data_a'] ?? '') : '');
-$limit = max(20, min(120, (int)($_POST['limit'] ?? $_GET['limit'] ?? 50)));
+$limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
+$export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
+$lazy_direction = ($_POST['direction'] ?? $_GET['direction'] ?? 'next') === 'prev' ? 'prev' : 'next';
 
 $search_errors = [];
 if (!is_digits_or_empty($search_codice)) {
@@ -477,6 +658,10 @@ if (!is_digits_or_empty($search_numero)) {
 
 $rows = [];
 $has_more = false;
+$has_prev = false;
+$total_count = 0;
+$list_start_offset = $offset;
+$query_limit = $limit;
 
 if ($action === 'list' && empty($search_errors)) {
     if ($state === 'attive') {
@@ -544,15 +729,33 @@ if ($action === 'list' && empty($search_errors)) {
         $sql_list .= " ORDER BY s.dataDisattivazione DESC, s.codice ASC";
     }
 
-    $sql_list .= " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
+    $sql_list_without_limit = $sql_list;
+    $total_count = query_total_count($conn, $sql_list_without_limit);
+
+
+    if ($export_csv) {
+        $csv_rows = [];
+        $export_result = $conn->query($sql_list_without_limit);
+        if ($export_result) {
+            while ($row = $export_result->fetch_assoc()) {
+                $csv_rows[] = sim_csv_row($row, $state);
+            }
+        }
+        output_csv_response('sim_' . $state . '.csv', sim_csv_headers($state), $csv_rows);
+    }
+
+    $list_start_offset = $offset;
+    $has_prev = $offset > 0;
+
+    $sql_list .= " LIMIT " . ($query_limit + 1) . " OFFSET " . $offset;
     $result_list = $conn->query($sql_list);
     if ($result_list) {
         while ($row = $result_list->fetch_assoc()) {
             $rows[] = $row;
         }
-        if (count($rows) > $limit) {
+        if (count($rows) > $query_limit) {
             $has_more = true;
-            $rows = array_slice($rows, 0, $limit);
+            $rows = array_slice($rows, 0, $query_limit);
         }
     }
 }
@@ -561,8 +764,12 @@ if ($ajax_rows) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'html' => render_sim_rows($rows, $state),
+        'table_html' => render_sim_table_rows($rows, $state),
         'has_more' => $has_more,
-        'next_offset' => $offset + count($rows)
+        'has_prev' => $has_prev,
+        'next_offset' => $offset + count($rows),
+        'prev_offset' => $offset,
+        'total_count' => $total_count
     ]);
     exit;
 }
@@ -639,24 +846,49 @@ if ($ajax_rows) {
         </form>
     </div>
 
-    <div id="sim-results">
-        <div class="sim-toolbar">
-            <div class="sim-toolbar-title"><?= htmlspecialchars(sim_state_title($state)) ?></div>
-            <?php if ($state === 'disattive'): ?>
-                <a href="sim.php?stato=disattive&amp;action=create" class="btn btn-secondary">Aggiungi SIM disattivata allo storico</a>
-            <?php endif; ?>
+    <div id="sim-results" class="results-view-root" data-results-view-root="true" data-view-key="sim" data-current-view="cards">
+        <div class="sim-toolbar results-actions-row" data-card-modal-exclude="true">
+            <div class="sim-toolbar-left">
+                <div class="sim-toolbar-title"><?= htmlspecialchars(sim_state_title($state)) ?></div>
+                <div class="results-navigation" data-results-navigation="true" aria-label="Navigazione risultati">
+                    <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+                    <span class="results-counter" data-results-counter="true">0 risultati</span>
+                    <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+                </div>
+            </div>
+            <div class="results-tools sim-results-tools">
+                <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
+                    <span class="view-toggle-icon" aria-hidden="true">▤</span>
+                    <span data-view-toggle-text>Vista tabellare</span>
+                </button>
+                <button type="submit" form="sim-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
+                <?php if ($state === 'disattive'): ?>
+                    <a href="sim.php?stato=disattive&amp;action=create" class="btn btn-secondary btn-add-disattiva">+ Disattiva SIM</a>
+                <?php endif; ?>
+            </div>
         </div>
 
-        <div class="table-container" data-lazy-container="true" data-lazy-form="#sim-filter" data-next-offset="<?= count($rows) ?>" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>">
+        <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#sim-filter" data-next-offset="<?= $list_start_offset + count($rows) ?>" data-prev-offset="<?= $list_start_offset ?>" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-has-prev="<?= $has_prev ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
             <?php if (!empty($search_errors)): ?>
                 <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
             <?php elseif (!empty($rows)): ?>
-                <table class="data-table">
-                    <?= render_sim_header($state) ?>
-                    <tbody>
+                <div class="view-panel view-panel-cards" data-view-panel="cards">
+                    <div class="result-grid sim-card-grid" data-lazy-list="cards">
                         <?= render_sim_rows($rows, $state) ?>
-                    </tbody>
-                </table>
+                    </div>
+                </div>
+                <div class="view-panel view-panel-table" data-view-panel="table">
+                    <div class="table-container table-container-inner">
+                        <table class="data-table">
+                            <thead>
+                                <?= render_sim_table_header($state) ?>
+                            </thead>
+                            <tbody data-lazy-list="table">
+                                <?= render_sim_table_rows($rows, $state) ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             <?php elseif ($search_numero !== ''): ?>
                 <div class="alert alert-error">Nessuna <?= htmlspecialchars(strtolower(sim_state_title($state))) ?> trovata per numeri di telefono che contengono “<?= htmlspecialchars($search_numero) ?>”. Controllare il valore digitato oppure modificare gli altri filtri.</div>
             <?php elseif ($search_codice !== ''): ?>
@@ -665,8 +897,6 @@ if ($ajax_rows) {
                 <div class="alert alert-error">Nessuna <?= htmlspecialchars(strtolower(sim_state_title($state))) ?> trovata con i criteri selezionati.</div>
             <?php endif; ?>
         </div>
-        <?php if ($has_more): ?>
-<?php endif; ?>
     </div>
     </div>
 
@@ -676,6 +906,7 @@ if ($ajax_rows) {
     $delete_id = $conn->real_escape_string($_GET['codice'] ?? '');
     $res_delete = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$delete_id'");
     $delete_row = ($res_delete && $res_delete->num_rows > 0) ? $res_delete->fetch_assoc() : null;
+    $delete_cancel_url = 'sim.php?stato=disattive';
     ?>
 
     <?php if ($delete_row): ?>
@@ -701,7 +932,7 @@ if ($ajax_rows) {
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="codice" value="<?= htmlspecialchars($delete_row['codice']) ?>">
                 <button type="submit" class="btn btn-delete">Conferma rimozione</button>
-                <a href="sim.php?stato=disattive" class="btn btn-cancel">Annulla</a>
+                <a href="<?= htmlspecialchars($delete_cancel_url) ?>" class="btn btn-cancel">Annulla</a>
             </form>
         </div>
     <?php else: ?>
@@ -754,23 +985,30 @@ if ($ajax_rows) {
     $numero_info_form = null;
     $data_min_disattivazione = '';
     $data_max_disattivazione = date('Y-m-d');
-    if (($row['eraAssociataA'] ?? '') !== '' && ctype_digit((string)$row['eraAssociataA'])) {
-        $numero_info_form = get_numero_info($conn, (string)$row['eraAssociataA']);
-        if ($numero_info_form['exists']) {
+    if (($row['dataAttivazione'] ?? '') !== '' && is_valid_date_value((string)$row['dataAttivazione'])) {
+        $data_min_disattivazione = $row['dataAttivazione'];
+    }
+    if (!$is_edit && ($row['eraAssociataA'] ?? '') !== '' && ctype_digit((string)$row['eraAssociataA'])) {
+        $numero_info_form = get_active_sim_by_numero($conn, (string)$row['eraAssociataA']);
+        if ($numero_info_form['exists'] && ($numero_info_form['hasActiveSim'] ?? false)) {
             $row['dataAttivazione'] = $numero_info_form['dataAttivazione'];
-            $data_min_disattivazione = $numero_info_form['dataMinimaDisattivazione'];
+            $data_min_disattivazione = $numero_info_form['dataMinimaDisattivazione'] ?: $row['dataAttivazione'];
         }
     }
 
     $crud_blocked = false;
     $crud_disabled_attr = '';
+
+    $return_state_raw = $_POST['return_stato'] ?? $_GET['return_stato'] ?? ($is_edit ? 'disattive' : '');
+    $return_state = in_array($return_state_raw, ['attive', 'disponibili', 'disattive'], true) ? $return_state_raw : '';
+    $cancel_url = $return_state !== '' ? 'sim.php?stato=' . urlencode($return_state) : 'sim.php?stato=disattive';
     ?>
 
     <?php if ($is_edit && $msg && $msg_type === 'error' && empty($row['codice'])): ?>
         <div class="alert alert-error"><?= htmlspecialchars($msg) ?></div>
         <p><a href="sim.php?stato=disattive" class="btn btn-cancel">Torna alla gestione SIM</a></p>
     <?php else: ?>
-        <div class="crud-form">
+        <div class="crud-form" id="sim-crud-form" data-page-auto-focus="sim-crud">
             <h3 class="crud-title">
                 <?= $is_edit ? 'Aggiorna SIM disattivata nello storico' : 'Registra SIM disattivata nello storico' ?>
             </h3>
@@ -781,8 +1019,11 @@ if ($ajax_rows) {
             </p>
             <p class="required-note"><span class="required-marker" aria-hidden="true">*</span> Campi obbligatori</p>
 
-            <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?>" data-ajax-content="true" data-update-target=".content" data-sim-crud-form="true" data-form-mode="<?= $is_edit ? 'edit' : 'create' ?>" data-crud-blocked="<?= $crud_blocked ? 'true' : 'false' ?>" data-lookup-url="sim.php?ajax_numero_info=1" data-sim-lookup-url="sim.php?ajax_sim_info=1" novalidate>
+            <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?><?= ($return_state !== '') ? '&amp;return_stato=' . urlencode($return_state) : '' ?>" data-ajax-content="true" data-update-target=".content" data-sim-crud-form="true" data-form-mode="<?= $is_edit ? 'edit' : 'create' ?>" data-crud-blocked="<?= $crud_blocked ? 'true' : 'false' ?>" data-lookup-url="sim.php?ajax_numero_info=1" data-sim-lookup-url="sim.php?ajax_sim_info=1" novalidate>
                 <input type="hidden" name="action" value="<?= $is_edit ? 'edit' : 'create' ?>">
+                <?php if ($return_state !== ''): ?>
+                    <input type="hidden" name="return_stato" value="<?= htmlspecialchars($return_state) ?>">
+                <?php endif; ?>
                 <?php if ($is_edit): ?>
                     <input type="hidden" name="old_codice" value="<?= htmlspecialchars($row['codice']) ?>">
                 <?php endif; ?>
@@ -819,19 +1060,19 @@ if ($ajax_rows) {
                     <div class="form-group">
                         <label for="dataAttivazione">Data di attivazione <span class="required-marker" aria-hidden="true">*</span></label>
                         <input type="date" id="dataAttivazione" name="dataAttivazione" value="<?= htmlspecialchars($row['dataAttivazione']) ?>" readonly <?= $crud_disabled_attr ?> class="input-readonly" data-crud-dependent="true" data-auto-activation-date="true" aria-describedby="dataAttivazione-help">
-                        <small class="help-text" id="dataAttivazione-help">La data viene recuperata automaticamente dai dati della SIM o dal numero indicato.</small>
+                        <small class="help-text" id="dataAttivazione-help">La data viene recuperata automaticamente dai dati della SIM.</small>
                     </div>
                     <div class="form-group">
                         <label for="dataDisattivazione">Data di disattivazione <span class="required-marker" aria-hidden="true">*</span></label>
                         <input type="date" id="dataDisattivazione" name="dataDisattivazione" value="<?= htmlspecialchars($row['dataDisattivazione']) ?>" required <?= $crud_disabled_attr ?> min="<?= htmlspecialchars($data_min_disattivazione) ?>" max="<?= htmlspecialchars($data_max_disattivazione) ?>" data-crud-dependent="true" data-deactivation-date="true" data-required-message="Inserire la data di disattivazione." aria-describedby="dataDisattivazione-help dataDisattivazione-error" aria-invalid="<?= !empty($field_errors['dataDisattivazione']) ? 'true' : 'false' ?>">
-                        <small class="help-text" id="dataDisattivazione-help">La data deve essere coerente con l’attivazione del numero e con le chiamate registrate.</small>
+                        <small class="help-text" id="dataDisattivazione-help">La data deve essere coerente con l’attivazione della SIM<?= $is_edit ? '' : ' e con le chiamate registrate' ?>.</small>
                         <small class="field-error <?= !empty($field_errors['dataDisattivazione']) ? 'is-visible' : '' ?>" id="dataDisattivazione-error" data-field-error-for="dataDisattivazione" aria-live="polite"><?= field_error($field_errors, 'dataDisattivazione') ?></small>
                     </div>
                 </div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn" data-crud-submit="true" <?= $crud_disabled_attr ?>>Salva SIM disattivata</button>
-                    <a href="sim.php?stato=disattive" class="btn btn-cancel">Annulla operazione</a>
+                    <a href="<?= htmlspecialchars($cancel_url) ?>" class="btn btn-cancel">Annulla operazione</a>
                 </div>
             </form>
         </div>

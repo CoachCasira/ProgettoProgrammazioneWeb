@@ -1,0 +1,1786 @@
+(function () {
+
+    function updateStickyLayout() {
+        var nav = document.querySelector('.main-nav');
+        var searchFilter = document.querySelector('.sticky-data-panel > .search-filter') || document.querySelector('.search-filter');
+        var navHeight = nav ? Math.ceil(nav.getBoundingClientRect().height) : 0;
+        var filterHeight = searchFilter ? Math.ceil(searchFilter.getBoundingClientRect().height) : 0;
+
+        if (navHeight > 0) {
+            document.documentElement.style.setProperty('--nav-sticky-height', navHeight + 'px');
+        }
+        if (filterHeight > 0) {
+            document.documentElement.style.setProperty('--search-filter-sticky-height', filterHeight + 'px');
+        }
+    }
+
+    function getPageScrollOffset() {
+        var nav = document.querySelector('.main-nav');
+        var navHeight = nav ? Math.ceil(nav.getBoundingClientRect().height) : 0;
+        return navHeight + 18;
+    }
+
+    function scrollPageToElement(element, behavior) {
+        if (!element) {
+            return;
+        }
+
+        var rect = element.getBoundingClientRect();
+        var targetTop = window.pageYOffset + rect.top - getPageScrollOffset();
+        window.scrollTo({
+            top: Math.max(0, targetTop),
+            behavior: behavior || 'smooth'
+        });
+    }
+
+    function schedulePageScrollToElement(element, behavior) {
+        if (!element) {
+            return;
+        }
+
+        window.requestAnimationFrame(function () {
+            scrollPageToElement(element, behavior || 'auto');
+        });
+        window.setTimeout(function () {
+            scrollPageToElement(element, behavior || 'auto');
+        }, 180);
+        window.setTimeout(function () {
+            scrollPageToElement(element, behavior || 'smooth');
+        }, 520);
+    }
+
+    function initPageAutoFocus(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-page-auto-focus]:not([data-page-auto-focus-ready="true"])').forEach(function (target) {
+            target.dataset.pageAutoFocusReady = 'true';
+            schedulePageScrollToElement(target, 'auto');
+        });
+    }
+
+    function initAlerts(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.alert-success:not([data-alert-ready="true"])').forEach(function (message) {
+            message.dataset.alertReady = 'true';
+            window.setTimeout(function () {
+                message.classList.add('alert-soft-hidden');
+            }, 6000);
+        });
+    }
+
+    function applySimState(form, state) {
+        form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
+            var isActive = button.dataset.simStateValue === state;
+            button.classList.toggle('active', isActive);
+            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        });
+
+        form.querySelectorAll('[data-state-field]').forEach(function (fieldGroup) {
+            var allowedStates = (fieldGroup.dataset.stateField || '').split(',');
+            var shouldShow = allowedStates.indexOf(state) !== -1;
+            fieldGroup.classList.toggle('is-hidden', !shouldShow);
+
+            fieldGroup.querySelectorAll('input, select, textarea').forEach(function (field) {
+                field.disabled = !shouldShow;
+                if (field.matches && field.matches('input[data-clearable="true"]')) {
+                    updateClearButton(field);
+                }
+            });
+        });
+
+        updateStickyLayout();
+    }
+
+    function initSimStateControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-sim-state-filter="true"]:not([data-sim-state-ready="true"])').forEach(function (form) {
+            form.dataset.simStateReady = 'true';
+            var stateInput = form.querySelector('input[name="stato"]');
+            if (!stateInput) {
+                return;
+            }
+
+            applySimState(form, stateInput.value || 'attive');
+
+            form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var newState = button.dataset.simStateValue;
+                    if (!newState || stateInput.value === newState) {
+                        return;
+                    }
+
+                    stateInput.value = newState;
+                    form.querySelectorAll('[data-state-dependent-input]').forEach(function (field) {
+                        field.value = '';
+                    });
+                    applySimState(form, newState);
+
+                    var submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                });
+            });
+        });
+    }
+
+
+    function updateClearButton(input) {
+        var wrapper = input.parentElement;
+        if (!wrapper || !wrapper.classList.contains('clearable-input')) {
+            return;
+        }
+
+        var button = wrapper.querySelector('.clear-input-button');
+        if (!button) {
+            return;
+        }
+
+        var hasValue = input.value !== '';
+        var canClear = !input.disabled && !input.readOnly;
+        button.classList.toggle('is-visible', hasValue && canClear);
+        button.setAttribute('aria-hidden', hasValue && canClear ? 'false' : 'true');
+        button.tabIndex = hasValue && canClear ? 0 : -1;
+    }
+
+    function initClearableInputs(root) {
+        var scope = root || document;
+        scope.querySelectorAll('input[data-clearable="true"]:not([data-clear-ready="true"])').forEach(function (input) {
+            if (input.type === 'hidden' || input.readOnly) {
+                return;
+            }
+
+            input.dataset.clearReady = 'true';
+
+            var wrapper = document.createElement('span');
+            wrapper.className = 'clearable-input';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'clear-input-button';
+            button.setAttribute('aria-label', 'Svuota campo');
+            button.setAttribute('title', 'Svuota campo');
+            button.textContent = 'Ã—';
+            wrapper.appendChild(button);
+
+            input.addEventListener('input', function () {
+                updateClearButton(input);
+            });
+
+            input.addEventListener('change', function () {
+                updateClearButton(input);
+            });
+
+            button.addEventListener('click', function () {
+                if (input.disabled || input.readOnly) {
+                    return;
+                }
+
+                input.value = '';
+                updateClearButton(input);
+                input.focus();
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            updateClearButton(input);
+        });
+
+        scope.querySelectorAll('input[data-clearable="true"][data-clear-ready="true"]').forEach(updateClearButton);
+    }
+
+
+    function getFieldError(field) {
+        var form = field.closest('form');
+        if (!form || !field.name) {
+            return null;
+        }
+        return form.querySelector('[data-field-error-for="' + field.name + '"]');
+    }
+
+    function setFieldError(field, message) {
+        var error = getFieldError(field);
+        field.classList.toggle('input-invalid', Boolean(message));
+        field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        if (error) {
+            error.textContent = message || '';
+            error.classList.toggle('is-visible', Boolean(message));
+        }
+    }
+
+    function clearFieldError(field) {
+        setFieldError(field, '');
+    }
+
+    function isDigits(value) {
+        return /^\d+$/.test(value);
+    }
+
+    function formatItalianDate(value) {
+        if (!value || value.indexOf('-') === -1) {
+            return value || '';
+        }
+        var parts = value.split('-');
+        if (parts.length !== 3) {
+            return value;
+        }
+        return parts[2] + '/' + parts[1] + '/' + parts[0];
+    }
+
+    function validateRequiredAndFormat(field) {
+        if (field.disabled || field.readOnly && !field.hasAttribute('data-auto-activation-date')) {
+            clearFieldError(field);
+            return true;
+        }
+
+        var value = (field.value || '').trim();
+        var requiredMessage = field.dataset.requiredMessage || 'Compilare questo campo.';
+        var formatMessage = field.dataset.formatMessage || 'Il valore inserito non Ã¨ valido.';
+
+        if (field.hasAttribute('required') && value === '') {
+            setFieldError(field, requiredMessage);
+            return false;
+        }
+
+        if (field.dataset.validation === 'digits' && value !== '' && !isDigits(value)) {
+            setFieldError(field, formatMessage);
+            return false;
+        }
+
+        clearFieldError(field);
+        return true;
+    }
+
+    function validateDeactivationDate(field) {
+        if (!validateRequiredAndFormat(field)) {
+            return false;
+        }
+
+        if (!field.value) {
+            return true;
+        }
+
+        var min = field.getAttribute('min');
+        var max = field.getAttribute('max');
+
+        if (min && field.value < min) {
+            setFieldError(field, 'La data di disattivazione non puÃ² essere precedente a ' + formatItalianDate(min) + '.');
+            return false;
+        }
+
+        if (max && field.value > max) {
+            setFieldError(field, 'La data di disattivazione non puÃ² essere successiva a ' + formatItalianDate(max) + '.');
+            return false;
+        }
+
+        clearFieldError(field);
+        return true;
+    }
+
+    function validateSimCrudField(field) {
+        if (field.matches('[data-deactivation-date="true"]')) {
+            return validateDeactivationDate(field);
+        }
+        return validateRequiredAndFormat(field);
+    }
+
+    function validateSimCrudForm(form) {
+        var valid = true;
+        form.querySelectorAll('input, select, textarea').forEach(function (field) {
+            if (field.type === 'hidden' || field.disabled) {
+                return;
+            }
+            if (!validateSimCrudField(field)) {
+                valid = false;
+            }
+        });
+        return valid;
+    }
+
+    function setSelectValue(select, value) {
+        if (!select) {
+            return;
+        }
+        select.value = value || '';
+        validateRequiredAndFormat(select);
+    }
+
+    function setFieldValue(field, value) {
+        if (!field) {
+            return;
+        }
+        field.value = value || '';
+        updateClearButton(field);
+    }
+
+    function setSystemRecoveredField(field, locked) {
+        if (!field) {
+            return;
+        }
+
+        field.disabled = Boolean(locked);
+        field.classList.toggle('input-readonly', Boolean(locked));
+        field.classList.toggle('input-disabled', Boolean(locked));
+        field.setAttribute('aria-readonly', locked ? 'true' : 'false');
+
+        if (field.matches && field.matches('input[data-clearable="true"]')) {
+            updateClearButton(field);
+        }
+    }
+
+    function setRecoveredSimFieldsState(form, locked) {
+        var phoneField = form.querySelector('[data-phone-lookup="true"]');
+        var typeField = form.querySelector('select[name="tipoSIM"]');
+        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+
+        setSystemRecoveredField(phoneField, locked);
+        setSystemRecoveredField(typeField, locked);
+        setSystemRecoveredField(activationField, true);
+    }
+
+    function applyLinkedSimData(form, payload) {
+        var codeField = form.querySelector('[data-sim-code-lookup="true"]');
+        var phoneField = form.querySelector('[data-phone-lookup="true"]');
+        var typeField = form.querySelector('select[name="tipoSIM"]');
+        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+        var deactivationField = form.querySelector('[data-deactivation-date="true"]');
+
+        if (payload.codice && codeField && !codeField.readOnly) {
+            setFieldValue(codeField, payload.codice);
+            clearFieldError(codeField);
+        }
+        if (payload.numero && phoneField) {
+            setFieldValue(phoneField, payload.numero);
+            clearFieldError(phoneField);
+        }
+        if (payload.tipoSIM && typeField) {
+            setSelectValue(typeField, payload.tipoSIM);
+        }
+        if (activationField) {
+            activationField.value = payload.dataAttivazione || '';
+        }
+        if (deactivationField) {
+            deactivationField.setAttribute('min', payload.dataMinimaDisattivazione || payload.dataAttivazione || '');
+            deactivationField.setAttribute('max', payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10));
+            validateDeactivationDate(deactivationField);
+        }
+
+        if ((form.dataset.formMode || 'edit') === 'create') {
+            setRecoveredSimFieldsState(form, true);
+        }
+    }
+
+    function clearLinkedSimData(form, keepField) {
+        var codeField = form.querySelector('[data-sim-code-lookup="true"]');
+        var phoneField = form.querySelector('[data-phone-lookup="true"]');
+        var typeField = form.querySelector('select[name="tipoSIM"]');
+        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+        var deactivationField = form.querySelector('[data-deactivation-date="true"]');
+
+        if ((form.dataset.formMode || 'edit') === 'create') {
+            setRecoveredSimFieldsState(form, false);
+        }
+
+        if (codeField && codeField !== keepField && !codeField.readOnly) {
+            setFieldValue(codeField, '');
+        }
+        if (phoneField && phoneField !== keepField) {
+            setFieldValue(phoneField, '');
+        }
+        if (typeField) {
+            typeField.value = '';
+        }
+        if (activationField) {
+            activationField.value = '';
+        }
+        if (deactivationField) {
+            deactivationField.removeAttribute('min');
+        }
+    }
+
+    function setCrudDependentFieldsState(form, disabled) {
+        /* La presenza di una SIM non utilizzabile viene comunicata con un messaggio
+           sotto il campo codice. Gli altri campi restano compilabili: l'utente puÃ²
+           correggere il codice o completare il form senza trovare controlli bloccati. */
+        form.dataset.crudBlocked = 'false';
+        form.classList.remove('crud-form-blocked');
+        form.querySelectorAll('[data-crud-dependent="true"]').forEach(function (field) {
+            field.disabled = false;
+            field.classList.remove('input-disabled');
+            if (field.matches('input[data-clearable="true"]')) {
+                updateClearButton(field);
+            }
+        });
+        form.querySelectorAll('[data-crud-submit="true"]').forEach(function (button) {
+            button.disabled = false;
+            button.classList.remove('btn-disabled');
+        });
+    }
+
+    function updateFromSimCode(form, codeField) {
+        var lookupUrl = form.dataset.simLookupUrl;
+        var value = (codeField.value || '').trim();
+
+        if (!lookupUrl || form.dataset.formMode !== 'create') {
+            return;
+        }
+
+        if (value === '') {
+            setCrudDependentFieldsState(form, false);
+            clearLinkedSimData(form, codeField);
+            validateRequiredAndFormat(codeField);
+            return;
+        }
+
+        if (!isDigits(value)) {
+            setCrudDependentFieldsState(form, false);
+            clearLinkedSimData(form, codeField);
+            validateRequiredAndFormat(codeField);
+            return;
+        }
+
+        fetch(lookupUrl + '&codice=' + encodeURIComponent(value), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || payload.status !== 'attiva') {
+                    clearLinkedSimData(form, codeField);
+                    setCrudDependentFieldsState(form, false);
+                    setFieldError(codeField, payload && payload.message ? payload.message : 'La SIM indicata non risulta in uso.');
+                    return;
+                }
+
+                setCrudDependentFieldsState(form, false);
+                clearFieldError(codeField);
+                applyLinkedSimData(form, payload);
+            })
+            .catch(function () {
+                setFieldError(codeField, 'Non Ã¨ stato possibile controllare la SIM indicata. Riprovare.');
+            });
+    }
+
+    function updateActivationFromNumber(form, phoneField) {
+        var lookupUrl = form.dataset.lookupUrl;
+        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+        var deactivationField = form.querySelector('[data-deactivation-date="true"]');
+        var value = (phoneField.value || '').trim();
+        var mode = form.dataset.formMode || 'edit';
+
+        if (!lookupUrl || !activationField || !deactivationField) {
+            return;
+        }
+
+        if (value === '') {
+            if (mode === 'create') {
+                clearLinkedSimData(form, phoneField);
+            }
+            validateRequiredAndFormat(phoneField);
+            return;
+        }
+
+        if (!isDigits(value)) {
+            if (mode === 'create') {
+                clearLinkedSimData(form, phoneField);
+            }
+            validateRequiredAndFormat(phoneField);
+            return;
+        }
+
+        fetch(lookupUrl + '&mode=' + encodeURIComponent(mode) + '&numero=' + encodeURIComponent(value), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || !payload.exists || (mode === 'create' && !payload.hasActiveSim)) {
+                    if (mode === 'create') {
+                        clearLinkedSimData(form, phoneField);
+                    }
+                    setFieldError(phoneField, payload && payload.message ? payload.message : 'Il numero indicato non risulta utilizzabile per questa operazione.');
+                    return;
+                }
+
+                clearFieldError(phoneField);
+                if (mode === 'create') {
+                    setCrudDependentFieldsState(form, false);
+                    applyLinkedSimData(form, payload);
+                } else {
+                    deactivationField.setAttribute('min', activationField.value || '');
+                    deactivationField.setAttribute('max', payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10));
+                    validateDeactivationDate(deactivationField);
+                }
+            })
+            .catch(function () {
+                setFieldError(phoneField, 'Non Ã¨ stato possibile controllare il numero indicato. Riprovare.');
+            });
+    }
+
+    function initSimCrudForms(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-sim-crud-form="true"]:not([data-sim-crud-ready="true"])').forEach(function (form) {
+            form.dataset.simCrudReady = 'true';
+            form.setAttribute('novalidate', 'novalidate');
+
+            form.querySelectorAll('input, select, textarea').forEach(function (field) {
+                if (field.type === 'hidden') {
+                    return;
+                }
+
+                field.addEventListener('blur', function () {
+                    field.dataset.touched = 'true';
+                    validateSimCrudField(field);
+                    if (field.matches('[data-sim-code-lookup="true"]')) {
+                        updateFromSimCode(form, field);
+                    }
+                    if (field.matches('[data-phone-lookup="true"]')) {
+                        updateActivationFromNumber(form, field);
+                    }
+                });
+
+                field.addEventListener('change', function () {
+                    validateSimCrudField(field);
+                    if (field.matches('[data-sim-code-lookup="true"]')) {
+                        updateFromSimCode(form, field);
+                    }
+                    if (field.matches('[data-phone-lookup="true"]')) {
+                        updateActivationFromNumber(form, field);
+                    }
+                });
+
+                field.addEventListener('input', function () {
+                    if (field.dataset.touched === 'true' || field.matches('[data-validation="digits"]')) {
+                        validateRequiredAndFormat(field);
+                    }
+                    if (field.matches('[data-sim-code-lookup="true"]')) {
+                        setCrudDependentFieldsState(form, false);
+                        clearLinkedSimData(form, field);
+                    }
+                    if (field.matches('[data-phone-lookup="true"]') && form.dataset.formMode === 'create') {
+                        clearLinkedSimData(form, field);
+                    }
+                    if (field.matches('[data-phone-lookup="true"]') && form.dataset.formMode !== 'create') {
+                        var activationField = form.querySelector('[data-auto-activation-date="true"]');
+                        var deactivationField = form.querySelector('[data-deactivation-date="true"]');
+                        if (deactivationField && activationField) {
+                            deactivationField.setAttribute('min', activationField.value || '');
+                        }
+                    }
+                });
+            });
+
+            var codeField = form.querySelector('[data-sim-code-lookup="true"]');
+            var phoneField = form.querySelector('[data-phone-lookup="true"]');
+
+            if (form.dataset.crudBlocked === 'true') {
+                setCrudDependentFieldsState(form, true);
+            }
+
+            if (form.dataset.formMode === 'create') {
+                if (codeField && codeField.value) {
+                    updateFromSimCode(form, codeField);
+                } else if (phoneField && phoneField.value) {
+                    updateActivationFromNumber(form, phoneField);
+                }
+            } else if (phoneField && phoneField.value) {
+                updateActivationFromNumber(form, phoneField);
+            }
+        });
+    }
+
+    function isCardModalExcluded(target) {
+        return Boolean(target.closest('a, button, input, select, textarea, label, .card-detail-link, [data-card-modal-exclude="true"]'));
+    }
+
+    var cardModalPreviousFocus = null;
+    var cardModalHistory = [];
+
+    function getFocusableElements(container) {
+        if (!container) {
+            return [];
+        }
+        var selector = [
+            'a[href]',
+            'button:not([disabled])',
+            'input:not([disabled])',
+            'select:not([disabled])',
+            'textarea:not([disabled])',
+            '[tabindex]:not([tabindex="-1"])'
+        ].join(',');
+
+        return Array.prototype.filter.call(container.querySelectorAll(selector), function (element) {
+            return element.offsetParent !== null || element === document.activeElement;
+        });
+    }
+
+    function setBackgroundInert(active, overlay) {
+        Array.prototype.forEach.call(document.body.children, function (child) {
+            if (child === overlay) {
+                return;
+            }
+
+            if (active) {
+                if (child.dataset.cardModalInertApplied === 'true') {
+                    return;
+                }
+
+                child.dataset.cardModalInertApplied = 'true';
+                if (child.hasAttribute('inert')) {
+                    child.dataset.cardModalHadInert = 'true';
+                }
+                if (child.hasAttribute('aria-hidden')) {
+                    child.dataset.cardModalPreviousAriaHidden = child.getAttribute('aria-hidden') || '';
+                }
+
+                child.setAttribute('inert', '');
+                child.setAttribute('aria-hidden', 'true');
+                return;
+            }
+
+            if (child.dataset.cardModalInertApplied !== 'true') {
+                return;
+            }
+
+            if (child.dataset.cardModalHadInert !== 'true') {
+                child.removeAttribute('inert');
+            }
+            if (Object.prototype.hasOwnProperty.call(child.dataset, 'cardModalPreviousAriaHidden')) {
+                child.setAttribute('aria-hidden', child.dataset.cardModalPreviousAriaHidden);
+            } else {
+                child.removeAttribute('aria-hidden');
+            }
+
+            delete child.dataset.cardModalInertApplied;
+            delete child.dataset.cardModalHadInert;
+            delete child.dataset.cardModalPreviousAriaHidden;
+        });
+    }
+
+    function trapCardModalFocus(event) {
+        if (event.key !== 'Tab') {
+            return;
+        }
+
+        var overlay = document.querySelector('[data-card-modal="true"].is-visible');
+        if (!overlay) {
+            return;
+        }
+
+        var dialog = overlay.querySelector('.card-modal-dialog');
+        var focusableElements = getFocusableElements(dialog);
+        if (focusableElements.length === 0) {
+            event.preventDefault();
+            return;
+        }
+
+        var first = focusableElements[0];
+        var last = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+            return;
+        }
+
+        if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    function ensureCardModal() {
+        var existing = document.querySelector('[data-card-modal="true"]');
+        if (existing) {
+            return existing;
+        }
+
+        var overlay = document.createElement('div');
+        overlay.className = 'card-modal-overlay';
+        overlay.setAttribute('data-card-modal', 'true');
+        overlay.setAttribute('aria-hidden', 'true');
+
+        var dialog = document.createElement('div');
+        dialog.className = 'card-modal-dialog';
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-label', 'Dettaglio scheda');
+
+        var content = document.createElement('div');
+        content.className = 'card-modal-content';
+        content.setAttribute('data-card-modal-content', 'true');
+
+        var footer = document.createElement('div');
+        footer.className = 'card-modal-footer';
+
+        var backButton = document.createElement('button');
+        backButton.type = 'button';
+        backButton.className = 'btn card-modal-back';
+        backButton.setAttribute('data-card-modal-close', 'true');
+        backButton.textContent = 'Indietro';
+
+        footer.appendChild(backButton);
+        dialog.appendChild(content);
+        dialog.appendChild(footer);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', function (event) {
+            if (event.target === overlay) {
+                closeCardModal();
+            }
+        });
+        overlay.addEventListener('keydown', trapCardModalFocus);
+
+        backButton.addEventListener('click', goBackCardModal);
+
+        return overlay;
+    }
+
+    function resetCardModalTransientState(card) {
+        if (!card) {
+            return card;
+        }
+
+        card.querySelectorAll('.is-loading').forEach(function (node) {
+            node.classList.remove('is-loading');
+        });
+        card.querySelectorAll('[aria-busy="true"]').forEach(function (node) {
+            node.setAttribute('aria-busy', 'false');
+        });
+
+        return card;
+    }
+
+    function prepareCardModalClone(card) {
+        var clone = resetCardModalTransientState(card.cloneNode(true));
+        clone.classList.add('card-modal-card');
+        clone.classList.remove('expandable-card');
+        clone.removeAttribute('data-expandable-card');
+        clone.removeAttribute('tabindex');
+        clone.removeAttribute('role');
+        clone.removeAttribute('aria-label');
+        clone.querySelectorAll('[data-card-expand-ready]').forEach(function (node) {
+            node.removeAttribute('data-card-expand-ready');
+        });
+        clone.querySelectorAll('[data-clickable-tile-ready]').forEach(function (node) {
+            node.removeAttribute('data-clickable-tile-ready');
+        });
+        clone.querySelectorAll('[data-phone-card-modal-ready]').forEach(function (node) {
+            node.removeAttribute('data-phone-card-modal-ready');
+        });
+        clone.querySelectorAll('[data-sim-card-modal-ready]').forEach(function (node) {
+            node.removeAttribute('data-sim-card-modal-ready');
+        });
+        clone.querySelectorAll('[data-table-row-modal-ready]').forEach(function (node) {
+            node.removeAttribute('data-table-row-modal-ready');
+        });
+        return clone;
+    }
+
+
+
+    function disableDisabledSimPhoneLinkInsideModal(card) {
+        if (!card || !card.classList || !card.classList.contains('sim-card-disabled')) {
+            return;
+        }
+
+        card.querySelectorAll('.sim-phone-tile').forEach(function (tile) {
+            var link = tile.querySelector('a[data-phone-card-modal="true"], a.tile-overlay-link');
+            if (!link) {
+                return;
+            }
+
+            var replacement = document.createElement('span');
+            replacement.className = link.className.replace('tile-overlay-link', 'tile-static-label').trim();
+            replacement.textContent = link.textContent;
+            replacement.setAttribute('aria-hidden', 'true');
+            link.replaceWith(replacement);
+
+            tile.classList.remove('card-detail-link');
+            tile.classList.add('card-detail-static');
+            tile.removeAttribute('data-clickable-tile-ready');
+        });
+    }
+
+    function renderCardModalClone(overlay, clone) {
+        var content = overlay.querySelector('[data-card-modal-content="true"]');
+        if (!content) {
+            return;
+        }
+
+        var preparedClone = prepareCardModalClone(clone);
+        disableDisabledSimPhoneLinkInsideModal(preparedClone);
+        content.innerHTML = '';
+        content.appendChild(preparedClone);
+        initPhoneCardModalLinks(preparedClone);
+        initSimCardModalLinks(preparedClone);
+        initClickableDetailTiles(preparedClone);
+        initTableRowModals(preparedClone);
+    }
+
+    function closeCardModal() {
+        var overlay = document.querySelector('[data-card-modal="true"]');
+        if (!overlay) {
+            return;
+        }
+
+        cardModalHistory = [];
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('card-modal-open');
+        setBackgroundInert(false, overlay);
+
+        if (cardModalPreviousFocus && document.contains(cardModalPreviousFocus)) {
+            cardModalPreviousFocus.focus({ preventScroll: true });
+        }
+        cardModalPreviousFocus = null;
+    }
+
+    function goBackCardModal() {
+        var overlay = document.querySelector('[data-card-modal="true"]');
+        if (!overlay || !overlay.classList.contains('is-visible')) {
+            closeCardModal();
+            return;
+        }
+
+        if (cardModalHistory.length > 0) {
+            var previousCard = cardModalHistory.pop();
+            renderCardModalClone(overlay, previousCard);
+            var backButton = overlay.querySelector('[data-card-modal-close="true"]');
+            if (backButton) {
+                backButton.focus();
+            }
+            return;
+        }
+
+        closeCardModal();
+    }
+
+    function openCardModal(card) {
+        var overlay = ensureCardModal();
+        var content = overlay.querySelector('[data-card-modal-content="true"]');
+        if (!content) {
+            return;
+        }
+
+        var wasVisible = overlay.classList.contains('is-visible');
+        if (wasVisible) {
+            var currentCard = content.querySelector('.card-modal-card');
+            if (currentCard) {
+                cardModalHistory.push(resetCardModalTransientState(currentCard.cloneNode(true)));
+            }
+        } else {
+            cardModalHistory = [];
+            if (document.activeElement instanceof HTMLElement) {
+                cardModalPreviousFocus = document.activeElement;
+            }
+        }
+
+        renderCardModalClone(overlay, card);
+
+        document.body.classList.add('card-modal-open');
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.classList.add('is-visible');
+        setBackgroundInert(true, overlay);
+
+        var backButton = overlay.querySelector('[data-card-modal-close="true"]');
+        if (backButton) {
+            backButton.focus();
+        }
+    }
+
+    function shouldKeepDefaultLinkNavigation(event) {
+        return event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+    }
+
+    function setPhoneCardLinkLoading(link, isLoading) {
+        link.classList.toggle('is-loading', isLoading);
+        link.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+    }
+
+    function openPhoneCardFromCallLink(link) {
+        if (!window.fetch || !window.URL) {
+            window.location.href = link.href;
+            return;
+        }
+
+        var requestUrl = new URL(link.href, window.location.href);
+        requestUrl.searchParams.set('ajax_rows', '1');
+        requestUrl.searchParams.set('limit', '1');
+        requestUrl.searchParams.set('offset', '0');
+
+        setPhoneCardLinkLoading(link, true);
+
+        fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = payload && payload.html ? payload.html : '';
+
+                var phoneCard = wrapper.querySelector('.phone-card');
+                if (!phoneCard) {
+                    throw new Error('Numero non trovato');
+                }
+
+                openCardModal(phoneCard);
+            })
+            .catch(function () {
+                window.location.href = link.href;
+            })
+            .finally(function () {
+                setPhoneCardLinkLoading(link, false);
+            });
+    }
+
+    function openSimCardFromLink(link) {
+        if (!window.fetch || !window.URL) {
+            window.location.href = link.href;
+            return;
+        }
+
+        var requestUrl = new URL(link.href, window.location.href);
+        requestUrl.searchParams.set('ajax_rows', '1');
+        requestUrl.searchParams.set('limit', '1');
+        requestUrl.searchParams.set('offset', '0');
+        requestUrl.searchParams.set('stato', requestUrl.searchParams.get('stato') || 'disattive');
+
+        setPhoneCardLinkLoading(link, true);
+
+        fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = payload && payload.html ? payload.html : '';
+
+                var simCard = wrapper.querySelector('.sim-card');
+                if (!simCard) {
+                    throw new Error('SIM non trovata');
+                }
+
+                openCardModal(simCard);
+            })
+            .catch(function () {
+                window.location.href = link.href;
+            })
+            .finally(function () {
+                setPhoneCardLinkLoading(link, false);
+            });
+    }
+
+    function initPhoneCardModalLinks(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-phone-card-modal="true"]:not([data-phone-card-modal-ready="true"])').forEach(function (link) {
+            link.dataset.phoneCardModalReady = 'true';
+
+            link.addEventListener('click', function (event) {
+                if (shouldKeepDefaultLinkNavigation(event)) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                openPhoneCardFromCallLink(link);
+            });
+        });
+    }
+
+    function initSimCardModalLinks(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-sim-card-modal="true"]:not([data-sim-card-modal-ready="true"])').forEach(function (link) {
+            link.dataset.simCardModalReady = 'true';
+
+            link.addEventListener('click', function (event) {
+                if (shouldKeepDefaultLinkNavigation(event)) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                openSimCardFromLink(link);
+            });
+        });
+    }
+
+    function countLoadedCards(container) {
+        if (!container) {
+            return 0;
+        }
+        return container.querySelectorAll('[data-lazy-list="true"] > .data-card').length;
+    }
+
+    function initSimReturnLinks(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.action-disable-sim:not([data-sim-return-ready="true"]), .action-edit-sim:not([data-sim-return-ready="true"]), .action-delete-sim:not([data-sim-return-ready="true"])').forEach(function (link) {
+            link.dataset.simReturnReady = 'true';
+        });
+    }
+
+    function getResultListItemsAnyVisibility(list) {
+        if (!list) {
+            return [];
+        }
+        return Array.prototype.filter.call(list.children, function (child) {
+            return child.nodeType === 1;
+        });
+    }
+
+    function findCardForTableRow(row) {
+        var viewRoot = row.closest('[data-results-view-root="true"]');
+        if (!viewRoot) {
+            return null;
+        }
+
+        var tableList = row.closest('[data-lazy-list="table"]');
+        var cardList = viewRoot.querySelector('[data-view-panel="cards"] [data-lazy-list="cards"]');
+        if (!tableList || !cardList) {
+            return null;
+        }
+
+        /* La vista a schede Ã¨ nascosta quando l'utente usa la vista tabellare.
+           Per aprire comunque il dettaglio della riga, qui non possiamo usare
+           getBoundingClientRect(): le card nascoste avrebbero altezza 0 e quindi
+           non verrebbero trovate. Manteniamo l'allineamento riga-card per indice. */
+        var rows = getResultListItemsAnyVisibility(tableList);
+        var cards = getResultListItemsAnyVisibility(cardList);
+        var index = rows.indexOf(row);
+        if (index < 0 || !cards[index]) {
+            return null;
+        }
+
+        return cards[index];
+    }
+
+    function isTableRowModalAction(target) {
+        return Boolean(target.closest('button, input, select, textarea, label, .table-action-group, .action-disable-sim, .action-edit-sim, .action-delete-sim, [data-card-modal-exclude="true"]'));
+    }
+
+    function initTableRowModals(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-view-panel="table"] tbody[data-lazy-list="table"] tr:not([data-table-row-modal-ready="true"])').forEach(function (row) {
+            row.dataset.tableRowModalReady = 'true';
+            row.setAttribute('tabindex', '0');
+            row.setAttribute('role', 'button');
+            row.setAttribute('aria-label', 'Apri il dettaglio del record');
+
+            row.addEventListener('click', function (event) {
+                if (shouldKeepDefaultLinkNavigation(event) || isTableRowModalAction(event.target)) {
+                    return;
+                }
+
+                var card = findCardForTableRow(row);
+                if (!card) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                openCardModal(card);
+            }, true);
+
+            row.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                if (isTableRowModalAction(event.target)) {
+                    return;
+                }
+
+                var card = findCardForTableRow(row);
+                if (!card) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+                openCardModal(card);
+            });
+        });
+    }
+
+    function initExpandableCards(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-expandable-card="true"]:not([data-card-expand-ready="true"])').forEach(function (card) {
+            card.dataset.cardExpandReady = 'true';
+
+            card.addEventListener('click', function (event) {
+                if (isCardModalExcluded(event.target)) {
+                    return;
+                }
+                openCardModal(card);
+            });
+
+            card.addEventListener('keydown', function (event) {
+                if ((event.key !== 'Enter' && event.key !== ' ') || isCardModalExcluded(event.target)) {
+                    return;
+                }
+                event.preventDefault();
+                openCardModal(card);
+            });
+        });
+    }
+
+
+    var RESULTS_VIEW_STORAGE_KEY = 'progwebResultsView';
+
+    function getStoredResultsView(root) {
+        if (!window.localStorage) {
+            return 'cards';
+        }
+        try {
+            var globalView = window.localStorage.getItem(RESULTS_VIEW_STORAGE_KEY);
+            if (globalView === 'table' || globalView === 'cards') {
+                return globalView;
+            }
+
+            /* Migrazione morbida dalle prime versioni, dove la preferenza era salvata
+               separatamente per ogni pagina. */
+            var oldKey = root && root.dataset.viewKey ? 'progwebResultsView:' + root.dataset.viewKey : '';
+            var oldView = oldKey ? window.localStorage.getItem(oldKey) : '';
+            return oldView === 'table' ? 'table' : 'cards';
+        } catch (error) {
+            return 'cards';
+        }
+    }
+
+    function storeResultsView(view) {
+        if (!window.localStorage) {
+            return;
+        }
+        try {
+            window.localStorage.setItem(RESULTS_VIEW_STORAGE_KEY, view === 'table' ? 'table' : 'cards');
+        } catch (error) {
+            // Preferenza non persistibile: il cambio vista resta comunque valido nella pagina corrente.
+        }
+    }
+
+
+    function getResultsScrollContainer(root) {
+        return root ? root.querySelector('[data-lazy-container="true"]') : null;
+    }
+
+    function getActiveResultsList(root, view) {
+        if (!root) {
+            return null;
+        }
+        var normalizedView = view === 'table' ? 'table' : 'cards';
+        var panel = root.querySelector('[data-view-panel="' + normalizedView + '"]');
+        return panel ? panel.querySelector('[data-lazy-list]') : null;
+    }
+
+    function getTableHeaderHeightForRoot(root) {
+        if (!root) {
+            return 0;
+        }
+        var tablePanel = root.querySelector('[data-view-panel="table"]');
+        var header = tablePanel ? tablePanel.querySelector('table.data-table thead') : null;
+        if (!header) {
+            return 0;
+        }
+        var rect = header.getBoundingClientRect();
+        return rect && rect.height ? Math.ceil(rect.height) : 0;
+    }
+
+    function getResultListItems(list) {
+        if (!list) {
+            return [];
+        }
+        return Array.prototype.filter.call(list.children, function (child) {
+            return child.nodeType === 1 && child.getBoundingClientRect().height > 0;
+        });
+    }
+
+    function captureResultsScrollPosition(root) {
+        var container = getResultsScrollContainer(root);
+        if (!container) {
+            return null;
+        }
+
+        var currentView = root.dataset.currentView === 'table' ? 'table' : 'cards';
+        var list = getActiveResultsList(root, currentView);
+        var items = getResultListItems(list);
+        var maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+        var anchor = {
+            view: currentView,
+            sourceTableHeaderHeight: currentView === 'table' ? getTableHeaderHeightForRoot(root) : 0,
+            ratio: maxScroll > 0 ? container.scrollTop / maxScroll : 0,
+            scrollTop: container.scrollTop,
+            itemIndex: null,
+            itemDelta: 0
+        };
+
+        if (items.length === 0) {
+            return anchor;
+        }
+
+        var containerRect = container.getBoundingClientRect();
+        var referenceTop = containerRect.top + 12;
+        for (var i = 0; i < items.length; i += 1) {
+            var rect = items[i].getBoundingClientRect();
+            if (rect.bottom >= referenceTop) {
+                anchor.itemIndex = i;
+                anchor.itemDelta = rect.top - containerRect.top;
+                break;
+            }
+        }
+
+        return anchor;
+    }
+
+    function restoreResultsScrollPosition(root, anchor) {
+        if (!anchor) {
+            return;
+        }
+
+        var container = getResultsScrollContainer(root);
+        if (!container) {
+            return;
+        }
+
+        function applyRestore() {
+            var currentView = root.dataset.currentView === 'table' ? 'table' : 'cards';
+            var list = getActiveResultsList(root, currentView);
+            var items = getResultListItems(list);
+            var maxScroll = Math.max(0, container.scrollHeight - container.clientHeight);
+
+            if (anchor.itemIndex !== null && items[anchor.itemIndex]) {
+                var containerRect = container.getBoundingClientRect();
+                var itemRect = items[anchor.itemIndex].getBoundingClientRect();
+                var desiredDelta = anchor.itemDelta;
+
+                /* Quando si passa da schede a tabella, le righe hanno sopra l'intestazione
+                   della tabella. Se non la consideriamo, il ripristino porta la prima riga
+                   troppo in alto e l'header risulta coperto/tagliato. */
+                if (anchor.view === 'cards' && currentView === 'table') {
+                    desiredDelta += getTableHeaderHeightForRoot(root);
+                } else if (anchor.view === 'table' && currentView === 'cards') {
+                    desiredDelta -= (anchor.sourceTableHeaderHeight || 0);
+                }
+                desiredDelta = Math.max(8, desiredDelta);
+
+                var delta = (itemRect.top - containerRect.top) - desiredDelta;
+                container.scrollTop += delta;
+                return;
+            }
+
+            if (maxScroll > 0) {
+                container.scrollTop = Math.min(maxScroll, Math.max(0, anchor.ratio * maxScroll));
+            } else {
+                container.scrollTop = 0;
+            }
+        }
+
+        window.requestAnimationFrame(applyRestore);
+        window.setTimeout(applyRestore, 80);
+    }
+
+    function applyResultsView(root, view, persist) {
+        var normalizedView = view === 'table' ? 'table' : 'cards';
+        var toggle = root.querySelector('[data-view-toggle="true"]');
+        var label = toggle ? toggle.querySelector('[data-view-toggle-text]') : null;
+        var icon = toggle ? toggle.querySelector('.view-toggle-icon') : null;
+
+        root.dataset.currentView = normalizedView;
+
+        if (toggle) {
+            toggle.setAttribute('aria-pressed', normalizedView === 'table' ? 'true' : 'false');
+            toggle.setAttribute('title', normalizedView === 'table' ? 'Mostra i risultati come schede' : 'Mostra i risultati come tabella');
+        }
+        if (label) {
+            label.textContent = normalizedView === 'table' ? 'Vista a schede' : 'Vista tabellare';
+        }
+        if (icon) {
+            icon.textContent = normalizedView === 'table' ? 'â–¦' : 'â–¤';
+        }
+        if (persist) {
+            storeResultsView(normalizedView);
+        }
+        updateResultsNavigation(root);
+    }
+
+    function applyResultsViewToAllRoots(view, persist) {
+        document.querySelectorAll('[data-results-view-root="true"]').forEach(function (viewRoot) {
+            applyResultsView(viewRoot, view, false);
+        });
+        if (persist) {
+            storeResultsView(view);
+        }
+    }
+
+
+    function getLoadedResultsCountForView(root) {
+        var currentView = root && root.dataset.currentView === 'table' ? 'table' : 'cards';
+        var list = getActiveResultsList(root, currentView);
+        return getResultListItems(list).length;
+    }
+
+    function updateResultsNavigation(root) {
+        if (!root) {
+            return;
+        }
+        var nav = root.querySelector('[data-results-navigation="true"]');
+        var container = getResultsScrollContainer(root);
+        if (!nav || !container) {
+            return;
+        }
+
+        var counter = nav.querySelector('[data-results-counter="true"]');
+        var prevButton = nav.querySelector('[data-results-page-prev="true"]');
+        var nextButton = nav.querySelector('[data-results-page-next="true"]');
+        var total = parseInt(container.dataset.totalCount || '0', 10);
+        var loaded = getLoadedResultsCountForView(root);
+        var prevOffset = parseInt(container.dataset.prevOffset || '0', 10);
+        var nextOffset = parseInt(container.dataset.nextOffset || String(prevOffset + loaded), 10);
+
+        if (!Number.isFinite(total) || total < 0) {
+            total = 0;
+        }
+        if (!Number.isFinite(prevOffset) || prevOffset < 0) {
+            prevOffset = 0;
+        }
+        if (!Number.isFinite(nextOffset) || nextOffset < prevOffset) {
+            nextOffset = prevOffset + loaded;
+        }
+
+        var start = total === 0 || loaded === 0 ? 0 : prevOffset + 1;
+        var end = total === 0 || loaded === 0 ? 0 : Math.min(total, nextOffset);
+
+        if (counter) {
+            if (total === 0) {
+                counter.textContent = '0 risultati';
+            } else {
+                counter.textContent = start + '-' + end + ' di ' + total + ' risultati';
+            }
+        }
+
+        var canMovePrev = container.scrollTop > 4 || container.dataset.hasPrev === '1';
+        var canMoveNext = (container.scrollTop + container.clientHeight) < (container.scrollHeight - 4) || container.dataset.hasMore === '1';
+
+        if (prevButton) {
+            prevButton.disabled = !canMovePrev;
+            prevButton.setAttribute('aria-disabled', canMovePrev ? 'false' : 'true');
+        }
+        if (nextButton) {
+            nextButton.disabled = !canMoveNext;
+            nextButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
+        }
+    }
+
+    function initResultsNavigationControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-results-view-root="true"]').forEach(function (viewRoot) {
+            var nav = viewRoot.querySelector('[data-results-navigation="true"]');
+            var container = getResultsScrollContainer(viewRoot);
+            if (!nav || !container) {
+                return;
+            }
+
+            if (!nav.dataset.resultsNavigationReady) {
+                nav.dataset.resultsNavigationReady = 'true';
+
+                var prevButton = nav.querySelector('[data-results-page-prev="true"]');
+                var nextButton = nav.querySelector('[data-results-page-next="true"]');
+
+                if (prevButton) {
+                    prevButton.addEventListener('click', function () {
+                        if (prevButton.disabled) {
+                            return;
+                        }
+                        var step = Math.max(240, Math.floor(container.clientHeight * 0.82));
+                        var loadedExtraRows = false;
+                        if (container.dataset.hasPrev === '1' && container.scrollTop < 80 && window.ProgWeb && typeof window.ProgWeb.loadMoreRows === 'function') {
+                            window.ProgWeb.loadMoreRows(container, 'prev');
+                            loadedExtraRows = true;
+                        }
+                        var move = function () {
+                            container.scrollBy({ top: -step, behavior: 'smooth' });
+                            window.setTimeout(function () { updateResultsNavigation(viewRoot); }, 220);
+                        };
+                        if (loadedExtraRows) {
+                            window.setTimeout(move, 320);
+                        } else {
+                            move();
+                        }
+                    });
+                }
+
+                if (nextButton) {
+                    nextButton.addEventListener('click', function () {
+                        if (nextButton.disabled) {
+                            return;
+                        }
+                        var step = Math.max(240, Math.floor(container.clientHeight * 0.82));
+                        var loadedExtraRows = false;
+                        if (container.dataset.hasMore === '1' && container.scrollTop + container.clientHeight >= container.scrollHeight - 120 && window.ProgWeb && typeof window.ProgWeb.loadMoreRows === 'function') {
+                            window.ProgWeb.loadMoreRows(container, 'next');
+                            loadedExtraRows = true;
+                        }
+                        var move = function () {
+                            container.scrollBy({ top: step, behavior: 'smooth' });
+                            window.setTimeout(function () { updateResultsNavigation(viewRoot); }, 220);
+                        };
+                        if (loadedExtraRows) {
+                            window.setTimeout(move, 320);
+                        } else {
+                            move();
+                        }
+                    });
+                }
+
+                container.addEventListener('scroll', function () {
+                    window.requestAnimationFrame(function () {
+                        updateResultsNavigation(viewRoot);
+                    });
+                }, { passive: true });
+            }
+
+            updateResultsNavigation(viewRoot);
+        });
+    }
+
+    function getResultsScrollTopThreshold(container) {
+        if (!container) {
+            return 0;
+        }
+        return Math.max(420, Math.floor(container.clientHeight * 0.65));
+    }
+
+    function updateResultsScrollTopControl(viewRoot) {
+        if (!viewRoot) {
+            return;
+        }
+
+        var container = getResultsScrollContainer(viewRoot);
+        var button = viewRoot.querySelector('[data-results-scroll-top="true"]');
+        if (!container || !button) {
+            return;
+        }
+
+        var canScroll = container.scrollHeight > container.clientHeight + 24;
+        var loadedResults = getLoadedResultsCountForView(viewRoot);
+        var shouldShow = canScroll && loadedResults >= 15 && container.scrollTop > getResultsScrollTopThreshold(container);
+        button.classList.toggle('is-visible', shouldShow);
+        button.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+        button.tabIndex = shouldShow ? 0 : -1;
+    }
+
+    function initResultsScrollTopControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-results-view-root="true"]').forEach(function (viewRoot) {
+            var container = getResultsScrollContainer(viewRoot);
+            if (!container) {
+                return;
+            }
+
+            var button = viewRoot.querySelector('[data-results-scroll-top="true"]');
+            if (!button) {
+                button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'results-scroll-top-button';
+                button.setAttribute('data-results-scroll-top', 'true');
+                button.setAttribute('aria-label', "Torna all'inizio dei risultati");
+                button.setAttribute('title', "Torna all'inizio dei risultati");
+                button.setAttribute('aria-hidden', 'true');
+                button.tabIndex = -1;
+                button.innerHTML = '<img src="assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">';
+                viewRoot.appendChild(button);
+            }
+
+            if (!button.querySelector('.results-scroll-top-icon')) {
+                button.textContent = '';
+                button.insertAdjacentHTML('beforeend', '<img src="assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">');
+            }
+
+            if (button.dataset.resultsScrollTopReady !== 'true') {
+                button.dataset.resultsScrollTopReady = 'true';
+                button.addEventListener('click', function () {
+                    if (container.dataset.returningTop === 'true') {
+                        return;
+                    }
+
+                    container.dataset.returningTop = 'true';
+                    button.disabled = true;
+                    button.classList.add('is-working');
+
+                    var needsFirstBlock = container.dataset.hasPrev === '1' || parseInt(container.dataset.prevOffset || '0', 10) > 0;
+                    var delay = container.scrollTop > 8 ? 460 : 120;
+
+                    container.scrollTo({ top: 0, behavior: 'smooth' });
+
+                    window.setTimeout(function () {
+                        var resetPromise = Promise.resolve(false);
+                        if (needsFirstBlock && window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function') {
+                            resetPromise = window.ProgWeb.resetResultsToFirstBlock(container);
+                        }
+
+                        resetPromise.finally(function () {
+                            container.scrollTo({ top: 0, behavior: 'smooth' });
+                            window.setTimeout(function () {
+                                delete container.dataset.returningTop;
+                                button.disabled = false;
+                                button.classList.remove('is-working');
+                                updateResultsNavigation(viewRoot);
+                                updateResultsScrollTopControl(viewRoot);
+                            }, 260);
+                        });
+                    }, delay);
+                });
+            }
+
+            if (container.dataset.resultsScrollTopReady !== 'true') {
+                container.dataset.resultsScrollTopReady = 'true';
+                container.addEventListener('scroll', function () {
+                    window.requestAnimationFrame(function () {
+                        updateResultsScrollTopControl(viewRoot);
+                    });
+                }, { passive: true });
+            }
+
+            updateResultsScrollTopControl(viewRoot);
+        });
+    }
+
+
+    function initResultsBoundaryScrollChaining(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-lazy-container="true"]:not([data-boundary-scroll-ready="true"])').forEach(function (container) {
+            container.dataset.boundaryScrollReady = 'true';
+
+            container.addEventListener('wheel', function (event) {
+                if (event.ctrlKey || event.deltaY === 0 || container.dataset.loadingRows === 'true') {
+                    return;
+                }
+
+                var maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+                if (maxScrollTop <= 1) {
+                    return;
+                }
+
+                var atTop = container.scrollTop <= 1;
+                var atBottom = container.scrollTop >= maxScrollTop - 1;
+                var goingUp = event.deltaY < 0;
+                var goingDown = event.deltaY > 0;
+
+                if (goingUp && atTop) {
+                    if (container.dataset.hasPrev === '1' && window.ProgWeb && typeof window.ProgWeb.loadMoreRows === 'function') {
+                        event.preventDefault();
+                        window.ProgWeb.loadMoreRows(container, 'prev');
+                        return;
+                    }
+                    event.preventDefault();
+                    window.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' });
+                    return;
+                }
+
+                if (goingDown && atBottom) {
+                    if (container.dataset.hasMore === '1' && window.ProgWeb && typeof window.ProgWeb.loadMoreRows === 'function') {
+                        event.preventDefault();
+                        window.ProgWeb.loadMoreRows(container, 'next');
+                        return;
+                    }
+                    event.preventDefault();
+                    window.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' });
+                }
+            }, { passive: false });
+        });
+    }
+
+    function initResultsViewControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-results-view-root="true"]:not([data-results-view-ready="true"])').forEach(function (viewRoot) {
+            var initialView = getStoredResultsView(viewRoot);
+            viewRoot.dataset.resultsViewReady = 'true';
+            applyResultsView(viewRoot, initialView, false);
+
+            var toggle = viewRoot.querySelector('[data-view-toggle="true"]');
+            if (!toggle) {
+                return;
+            }
+
+            toggle.addEventListener('click', function () {
+                var scrollAnchor = captureResultsScrollPosition(viewRoot);
+                var nextView = viewRoot.dataset.currentView === 'table' ? 'cards' : 'table';
+                applyResultsViewToAllRoots(nextView, true);
+                restoreResultsScrollPosition(viewRoot, scrollAnchor);
+            });
+        });
+    }
+
+    function initSingleResultGrids(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.result-grid').forEach(function (grid) {
+            var directCards = Array.prototype.filter.call(grid.children, function (child) {
+                return child.classList && child.classList.contains('data-card');
+            });
+            var isSingle = directCards.length === 1;
+            grid.classList.toggle('is-single-result-grid', isSingle);
+
+            var scrollContainer = grid.closest('.cards-container');
+            if (scrollContainer) {
+                scrollContainer.classList.toggle('is-single-result-container', isSingle);
+            }
+        });
+    }
+
+    function activateTileLink(tile, event) {
+        var link = tile.querySelector('a[href]');
+        if (!link || shouldKeepDefaultLinkNavigation(event)) {
+            return;
+        }
+
+        if (event.target.closest('button, input, select, textarea, label')) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (link.matches('[data-sim-card-modal="true"]')) {
+            openSimCardFromLink(link);
+            return;
+        }
+
+        if (link.matches('[data-phone-card-modal="true"]')) {
+            openPhoneCardFromCallLink(link);
+            return;
+        }
+
+        window.location.href = link.href;
+    }
+
+    function initClickableDetailTiles(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.card-detail-link:not([data-clickable-tile-ready="true"])').forEach(function (tile) {
+            var link = tile.querySelector('a[href]');
+            if (!link) {
+                return;
+            }
+
+            tile.dataset.clickableTileReady = 'true';
+            tile.setAttribute('role', 'link');
+            tile.setAttribute('tabindex', '0');
+            if (link.getAttribute('title')) {
+                tile.setAttribute('title', link.getAttribute('title'));
+            }
+
+            tile.addEventListener('click', function (event) {
+                activateTileLink(tile, event);
+            });
+
+            tile.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter' && event.key !== ' ') {
+                    return;
+                }
+                if (event.target.closest('button, input, select, textarea, label')) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+
+                if (link.matches('[data-sim-card-modal="true"]')) {
+                    openSimCardFromLink(link);
+                    return;
+                }
+
+                if (link.matches('[data-phone-card-modal="true"]')) {
+                    openPhoneCardFromCallLink(link);
+                    return;
+                }
+
+                window.location.href = link.href;
+            });
+        });
+    }
+
+    function initDynamicBehaviors(root) {
+        var scope = root || document;
+        initAlerts(scope);
+        initSimStateControls(scope);
+        initClearableInputs(scope);
+        initSimCrudForms(scope);
+        initPhoneCardModalLinks(scope);
+        initSimCardModalLinks(scope);
+        initSimReturnLinks(scope);
+        initResultsViewControls(scope);
+        initClickableDetailTiles(scope);
+        initTableRowModals(scope);
+        initExpandableCards(scope);
+        initPageAutoFocus(scope);
+        initSingleResultGrids(scope);
+        initResultsNavigationControls(scope);
+        initResultsScrollTopControls(scope);
+        initResultsBoundaryScrollChaining(scope);
+        updateStickyLayout();
+        if (window.ProgWeb && typeof window.ProgWeb.initLazyTables === 'function') {
+            window.ProgWeb.initLazyTables(scope);
+        }
+    }
+
+    window.ProgWeb = window.ProgWeb || {};
+    window.ProgWeb.initDynamicBehaviors = initDynamicBehaviors;
+    window.ProgWeb.updateResultsNavigation = updateResultsNavigation;
+    window.ProgWeb.updateResultsScrollTopControl = updateResultsScrollTopControl;
+
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.matches('form[data-sim-crud-form="true"]')) {
+            return;
+        }
+        form.querySelectorAll('input, select, textarea').forEach(function (field) {
+            if (field.type !== 'hidden') {
+                field.dataset.touched = 'true';
+            }
+        });
+        if (!validateSimCrudForm(form)) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            var firstInvalid = form.querySelector('.input-invalid');
+            if (firstInvalid) {
+                firstInvalid.focus();
+            }
+        }
+    }, true);
+
+    document.addEventListener('DOMContentLoaded', function () {
+        initDynamicBehaviors(document);
+        window.addEventListener('resize', updateStickyLayout);
+        window.addEventListener('load', updateStickyLayout);
+        window.setTimeout(updateStickyLayout, 100);
+        window.setTimeout(updateStickyLayout, 350);
+        window.setTimeout(updateStickyLayout, 800);
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeCardModal();
+            }
+        });
+    });
+}());

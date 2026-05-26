@@ -1,73 +1,171 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestione SIM</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-</head>
-<body>
-    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
-        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
-        <div>
-            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
-            <a href="{% url 'home' %}" style="color: #f3f0ec; text-decoration: none; font-size: 14px;">&larr; Torna alla Panoramica</a>
+
+{% block content %}
+<h2>Gestione SIM</h2>
+
+<div class="sticky-data-panel">
+    <div class="search-filter">
+        <form id="sim-filter" method="GET" action="{% url 'gestione_sim' %}">
+            <input type="hidden" id="sim-stato" name="stato" value="{{ stato }}">
+
+            <div class="state-tabs" role="group" aria-label="Stato della SIM da visualizzare">
+                <button type="submit" onclick="document.getElementById('sim-stato').value='attive';" class="state-tab-button {% if stato == 'attive' %}active{% endif %}">
+                    <strong>SIM in uso</strong>
+                    <span>Associate a un numero attivo</span>
+                </button>
+                <button type="submit" onclick="document.getElementById('sim-stato').value='disponibili';" class="state-tab-button {% if stato == 'disponibili' %}active{% endif %}">
+                    <strong>SIM disponibili</strong>
+                    <span>Pronte per un nuovo numero</span>
+                </button>
+                <button type="submit" onclick="document.getElementById('sim-stato').value='disattive';" class="state-tab-button {% if stato == 'disattive' %}active{% endif %}">
+                    <strong>SIM disattivate</strong>
+                    <span>Storico delle SIM non più attive</span>
+                </button>
+            </div>
+
+            <div class="form-group">
+                <label for="codice">Codice SIM anche parziale:</label>
+                <input type="text" id="codice" name="codice" value="{{ request.GET.codice }}" placeholder="Es. 8939">
+            </div>
+            <div class="form-group">
+                <label for="tipoSIM">Formato SIM:</label>
+                <select id="tipoSIM" name="tipoSIM">
+                    <option value="">Mostra tutti</option>
+                    <option value="Nano" {% if request.GET.tipoSIM == 'Nano' %}selected{% endif %}>Nano SIM</option>
+                    <option value="Micro" {% if request.GET.tipoSIM == 'Micro' %}selected{% endif %}>Micro SIM</option>
+                    <option value="Standard" {% if request.GET.tipoSIM == 'Standard' %}selected{% endif %}>Standard SIM</option>
+                    <option value="eSIM" {% if request.GET.tipoSIM == 'eSIM' %}selected{% endif %}>Virtuale eSIM</option>
+                </select>
+            </div>
+
+            <div class="form-group {% if stato != 'attive' %}is-hidden{% endif %}">
+                <label for="numero_attivo">Numero di telefono associato:</label>
+                <input type="text" id="numero_attivo" name="numero" value="{% if stato == 'attive' %}{{ request.GET.numero }}{% endif %}" placeholder="Es. 340" {% if stato != 'attive' %}disabled{% endif %}>
+            </div>
+            <div class="form-group {% if stato != 'disattive' %}is-hidden{% endif %}">
+                <label for="numero_disattivo">Numero precedentemente associato:</label>
+                <input type="text" id="numero_disattivo" name="numero" value="{% if stato == 'disattive' %}{{ request.GET.numero }}{% endif %}" placeholder="Es. 340" {% if stato != 'disattive' %}disabled{% endif %}>
+            </div>
+            <div class="form-group {% if stato != 'attive' %}is-hidden{% endif %}">
+                <label for="data_da_attiva">Attivata dal:</label>
+                <input type="date" id="data_da_attiva" name="data_da" value="{% if stato == 'attive' %}{{ request.GET.data_da }}{% endif %}" {% if stato != 'attive' %}disabled{% endif %}>
+            </div>
+            <div class="form-group {% if stato != 'attive' %}is-hidden{% endif %}">
+                <label for="data_a_attiva">Attivata fino al:</label>
+                <input type="date" id="data_a_attiva" name="data_a" value="{% if stato == 'attive' %}{{ request.GET.data_a }}{% endif %}" {% if stato != 'attive' %}disabled{% endif %}>
+            </div>
+
+            <button type="submit" class="btn">Cerca SIM</button>
+            <a href="{% url 'gestione_sim' %}?stato={{ stato }}" class="btn" style="background:transparent; color:#6e6157; margin-top:10px; text-align:center;">Resetta</a>
+        </form>
+    </div>
+
+    <div id="sim-results" class="results-view-root" data-current-view="cards">
+        <div class="sim-toolbar results-actions-row">
+            <div class="sim-toolbar-left">
+                <div class="sim-toolbar-title">
+                    {% if stato == 'attive' %}SIM in uso{% elif stato == 'disponibili' %}SIM disponibili{% else %}SIM disattivate{% endif %}
+                </div>
+            </div>
+            <div class="results-tools sim-results-tools">
+                <button type="button" class="btn btn-view-toggle">
+                    <span class="view-toggle-icon" aria-hidden="true">▤</span>
+                    <span>Vista tabellare</span>
+                </button>
+                <button type="button" class="btn btn-export">Esporta in .CSV</button>
+            </div>
         </div>
-    </header>
 
-    <main style="padding: 30px; max-width: 1200px; margin: auto;">
-        <h2>Gestione SIM</h2>
-
-        <div style="margin-bottom: 20px;">
-            <a href="?stato=attive" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'attive' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'attive' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px; margin-right: 10px;">SIM in uso</a>
-            
-            <a href="?stato=disponibili" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'disponibili' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'disponibili' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px; margin-right: 10px;">SIM disponibili</a>
-            
-            <a href="?stato=disattive" style="display:inline-block; padding: 10px 20px; background-color: {% if stato == 'disattive' %}#6e6157{% else %}#eadecf{% endif %}; color: {% if stato == 'disattive' %}white{% else %}black{% endif %}; text-decoration: none; border-radius: 5px;">SIM disattivate</a>
-        </div>
-
-        <div class="table-container">
+        <div class="cards-container results-data-container">
             {% if sim_list %}
-                <table class="data-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #eadecf; text-align: left;">
-                            <th style="padding: 12px;">Codice SIM (ICCID)</th>
-                            <th style="padding: 12px;">Formato</th>
+                <div class="view-panel view-panel-cards">
+                    <div class="result-grid sim-card-grid">
+                        {% for sim in sim_list %}
                             
                             {% if stato == 'attive' %}
-                                <th style="padding: 12px;">Data Attivazione</th>
-                                <th style="padding: 12px;">Numero Associato</th>
-                            {% elif stato == 'disattive' %}
-                                <th style="padding: 12px;">Era associata a</th>
-                                <th style="padding: 12px;">Data Attivazione</th>
-                                <th style="padding: 12px;">Data Disattivazione</th>
+                            <article class="data-card sim-card sim-card-active">
+                                <div class="data-card-header">
+                                    <div>
+                                        <span class="card-kicker">SIM in uso</span>
+                                        <h3 class="card-title card-title-mono">{{ sim.codice }}</h3>
+                                    </div>
+                                    <span class="status-pill status-pill-active">In uso</span>
+                                </div>
+                                <dl class="card-detail-grid">
+                                    <div class="card-detail-tile card-detail-link sim-phone-tile">
+                                        <dt><a href="{% url 'lista_contratti' %}?numero={{ sim.associataA.numero }}" class="tile-overlay-link">Numero associato</a></dt>
+                                        <dd>{{ sim.associataA.numero }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Data attivazione</dt>
+                                        <dd>{{ sim.dataAttivazione|date:"d/m/Y" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Formato SIM</dt>
+                                        <dd>{{ sim.get_tipoSIM_display|default:sim.tipoSIM }}</dd>
+                                    </div>
+                                </dl>
+                            </article>
+                            
+                            {% elif stato == 'disponibili' %}
+                            <article class="data-card sim-card sim-card-available">
+                                <div class="data-card-header">
+                                    <div>
+                                        <span class="card-kicker">SIM disponibile</span>
+                                        <h3 class="card-title card-title-mono">{{ sim.codice }}</h3>
+                                    </div>
+                                    <span class="status-pill status-pill-available">Disponibile</span>
+                                </div>
+                                <dl class="card-detail-grid card-detail-grid-compact">
+                                    <div>
+                                        <dt>Formato SIM</dt>
+                                        <dd>{{ sim.get_tipoSIM_display|default:sim.tipoSIM }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Stato operativo</dt>
+                                        <dd>Non associata a un numero</dd>
+                                    </div>
+                                </dl>
+                            </article>
+                            
+                            {% else %}
+                            <article class="data-card sim-card sim-card-disabled">
+                                <div class="data-card-header">
+                                    <div>
+                                        <span class="card-kicker">SIM disattivata</span>
+                                        <h3 class="card-title card-title-mono">{{ sim.codice }}</h3>
+                                    </div>
+                                    <span class="status-pill status-pill-disabled">Storico</span>
+                                </div>
+                                <dl class="card-detail-grid">
+                                    <div class="card-detail-tile card-detail-link sim-phone-tile">
+                                        <dt><a href="{% url 'lista_contratti' %}?numero={{ sim.eraAssociataA }}" class="tile-overlay-link">Numero precedente</a></dt>
+                                        <dd>{{ sim.eraAssociataA }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Data attivazione</dt>
+                                        <dd>{{ sim.dataAttivazione|date:"d/m/Y" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Data disattivazione</dt>
+                                        <dd>{{ sim.dataDisattivazione|date:"d/m/Y" }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Formato SIM</dt>
+                                        <dd>{{ sim.get_tipoSIM_display|default:sim.tipoSIM }}</dd>
+                                    </div>
+                                </dl>
+                            </article>
                             {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for sim in sim_list %}
-                            <tr style="border-bottom: 1px solid #eadecf;">
-                                <td style="padding: 12px; font-weight: bold;">{{ sim.codice }}</td>
-                                <td style="padding: 12px;">{{ sim.get_tipoSIM_display }}</td>
-                                
-                                {% if stato == 'attive' %}
-                                    <td style="padding: 12px;">{{ sim.dataAttivazione|date:"d/m/Y" }}</td>
-                                    <td style="padding: 12px; color: #6e6157; font-weight: bold;">{{ sim.associataA.numero }}</td>
-                                {% elif stato == 'disattive' %}
-                                    <td style="padding: 12px;">{{ sim.eraAssociataA }}</td>
-                                    <td style="padding: 12px;">{{ sim.dataAttivazione|date:"d/m/Y" }}</td>
-                                    <td style="padding: 12px;">{{ sim.dataDisattivazione|date:"d/m/Y" }}</td>
-                                {% endif %}
-                            </tr>
+                            
                         {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <div style="background-color: #f2dede; color: #a94442; padding: 15px; border-radius: 4px;">
-                    Nessuna SIM presente in questa categoria.
+                    </div>
                 </div>
+            {% else %}
+                <div class="alert alert-error">Nessuna SIM trovata in questa categoria.</div>
             {% endif %}
         </div>
-    </main>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

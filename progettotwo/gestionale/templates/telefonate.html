@@ -1,66 +1,145 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Consulta Chiamate</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-</head>
-<body>
-    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
-        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
-        <div>
-            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
-            <a href="{% url 'home' %}" style="color: #f3f0ec; text-decoration: none; font-size: 14px;">&larr; Torna alla Panoramica</a>
-        </div>
-    </header>
 
-    <main style="padding: 30px; max-width: 1200px; margin: auto;">
-        <h2>Consulta chiamate</h2>
+{% block content %}
+<h2>Ricerca chiamate effettuate</h2>
 
-        <form method="GET" action="{% url 'lista_telefonate' %}" style="background: #fcfbf9; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eadecf;">
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
-                <div>
-                    <label for="contratto" style="display:block; margin-bottom:5px; font-weight:bold;">Numero (contiene):</label>
-                    <input type="text" id="contratto" name="contratto" value="{{ request.GET.contratto }}" placeholder="Es. 340...">
-                </div>
-                <button type="submit" style="background-color: #6e6157; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Filtra Risultati</button>
-                <a href="{% url 'lista_telefonate' %}" style="padding: 10px; color: #6e6157;">Resetta</a>
+<div class="sticky-data-panel">
+    <div class="search-filter">
+        <form id="telefonate-filter" method="GET" action="{% url 'lista_telefonate' %}">
+            <div class="form-group">
+                <label for="contratto">Numero chiamante:</label>
+                <input type="text" id="contratto" name="contratto" value="{{ request.GET.contratto }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
-        </form>
-
-        <div class="table-container">
-            {% if chiamate %}
-                <table class="data-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #eadecf; text-align: left;">
-                            <th style="padding: 12px;">📅 Data</th>
-                            <th style="padding: 12px;">📱 Numero chiamante</th>
-                            <th style="padding: 12px;">🕒 Ora</th>
-                            <th style="padding: 12px;">🧾 Piano</th>
-                            <th style="padding: 12px;">⏱️ Durata (sec)</th>
-                            <th style="padding: 12px;">💳 Addebito</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for chiamata in chiamate %}
-                            <tr style="border-bottom: 1px solid #eadecf;">
-                                <td style="padding: 12px;">{{ chiamata.data|date:"d/m/Y" }}</td>
-                                <td style="padding: 12px; font-weight: bold;">{{ chiamata.effettuataDa.numero }}</td>
-                                <td style="padding: 12px;">{{ chiamata.ora|time:"H:i" }}</td>
-                                <td style="padding: 12px;">{{ chiamata.effettuataDa.get_tipo_display }}</td>
-                                <td style="padding: 12px;">{{ chiamata.durata }}</td>
-                                <td style="padding: 12px;">&euro; {{ chiamata.costo }}</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <div style="background-color: #f2dede; color: #a94442; padding: 15px; border-radius: 4px;">
-                    Nessuna chiamata trovata per i criteri selezionati.
+            <div class="form-group">
+                <label for="stato_numero">Stato del numero:</label>
+                <select id="stato_numero" name="stato_numero">
+                    <option value="">Mostra tutti</option>
+                    <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Numeri attivi</option>
+                    <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Numeri disattivati</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="data_da">Dal giorno:</label>
+                <input type="date" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
+            </div>
+            <div class="form-group">
+                <label for="data_a">Al giorno:</label>
+                <input type="date" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
+            </div>
+            <div class="form-group time-filter-group">
+                <label for="ora_da">Dalle ore:</label>
+                <input type="time" id="ora_da" name="ora_da" value="{{ request.GET.ora_da }}">
+            </div>
+            <div class="form-group time-filter-group">
+                <label for="ora_a">Alle ore:</label>
+                <input type="time" id="ora_a" name="ora_a" value="{{ request.GET.ora_a }}">
+            </div>
+            <div class="form-group duration-filter-group">
+                <label>Durata minima:</label>
+                <div class="duration-inputs">
+                    <input type="text" id="durata_min" name="durata_min" value="{{ request.GET.durata_min }}" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span>min</span>
+                    <input type="text" id="durata_sec" name="durata_sec" value="{{ request.GET.durata_sec }}" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span>sec</span>
                 </div>
+            </div>
+            <div class="form-group cost-filter-group">
+                <label for="costo_max">Addebito massimo in euro:</label>
+                <input type="text" id="costo_max" name="costo_max" value="{{ request.GET.costo_max }}" placeholder="Es. 1.50" inputmode="decimal" autocomplete="off" data-clearable="true">
+            </div>
+            
+            <button type="submit" class="btn">Filtra chiamate</button>
+        </form>
+    </div>
+
+    <div id="telefonate-results" class="results-view-root" data-results-view-root="true" data-view-key="telefonate" data-current-view="cards">
+        <div class="results-actions-row" data-card-modal-exclude="true">
+            
+            <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
+                <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+                <span class="results-counter" data-results-counter="true">{{ chiamate|length }} risultati</span>
+                <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+            </div>
+
+            <div class="results-tools" data-card-modal-exclude="true">
+                <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
+                    <span class="view-toggle-icon" aria-hidden="true">▤</span>
+                    <span data-view-toggle-text>Vista tabellare</span>
+                </button>
+                <button type="button" class="btn btn-export">Esporta in .CSV</button>
+            </div>
+        </div>
+
+        <div class="cards-container results-data-container">
+            {% if chiamate %}
+                <div class="view-panel view-panel-cards" data-view-panel="cards">
+                    <div class="result-grid call-card-grid">
+                        {% for chiamata in chiamate %}
+                        <article class="data-card call-card">
+                            <div class="call-card-date">
+                                <span>{{ chiamata.data|date:"d/m/Y" }}</span>
+                                <strong>{{ chiamata.ora|time:"H:i" }}</strong>
+                            </div>
+                            <div class="call-card-main">
+                                <a class="call-number-link" href="{% url 'lista_contratti' %}?numero={{ chiamata.effettuataDa.numero }}">
+                                    <span class="card-kicker">Numero chiamante</span>
+                                    <h3 class="card-title card-title-mono">{{ chiamata.effettuataDa.numero }}</h3>
+                                </a>
+                            </div>
+                            <dl class="card-detail-grid call-detail-grid">
+                                <div>
+                                    <dt>Durata</dt>
+                                    <dd>{{ chiamata.durata }} sec</dd>
+                                </div>
+                                <div>
+                                    <dt>Piano</dt>
+                                    <dd>{{ chiamata.effettuataDa.get_tipo_display }}</dd>
+                                </div>
+                                <div>
+                                    <dt>Addebito</dt>
+                                    <dd>&euro; {{ chiamata.costo }}</dd>
+                                </div>
+                            </dl>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="view-panel view-panel-table" data-view-panel="table" style="display:none;">
+                    <div class="table-container table-container-inner">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="identifier"><span aria-hidden="true">📱</span> Numero chiamante</th>
+                                    <th><span aria-hidden="true">🗓️</span> Data</th>
+                                    <th><span aria-hidden="true">🕒</span> Ora</th>
+                                    <th class="numeric"><span aria-hidden="true">⏱️</span> Durata</th>
+                                    <th><span aria-hidden="true">📋</span> Piano</th>
+                                    <th class="numeric"><span aria-hidden="true">💳</span> Addebito</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for chiamata in chiamate %}
+                                <tr>
+                                    <td class="identifier">
+                                        <a href="{% url 'lista_contratti' %}?numero={{ chiamata.effettuataDa.numero }}">{{ chiamata.effettuataDa.numero }}</a>
+                                    </td>
+                                    <td>{{ chiamata.data|date:"d/m/Y" }}</td>
+                                    <td>{{ chiamata.ora|time:"H:i" }}</td>
+                                    <td class="numeric duration-value">{{ chiamata.durata }} sec</td>
+                                    <td>{{ chiamata.effettuataDa.get_tipo_display }}</td>
+                                    <td class="numeric">&euro; {{ chiamata.costo }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-error">Non sono presenti chiamate per i criteri selezionati.</div>
             {% endif %}
         </div>
-    </main>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

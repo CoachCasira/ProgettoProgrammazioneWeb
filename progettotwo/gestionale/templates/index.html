@@ -1,83 +1,63 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestione Numeri Telefonici</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-</head>
-<body>
-    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
-        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
-        <div>
-            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
-            <span style="font-size: 14px;">Consultazione operativa di numeri telefonici, SIM e chiamate</span>
-        </div>
-    </header>
 
-    <main class="content" style="padding: 30px; max-width: 1200px; margin: auto;">
-        <h2>Panoramica operativa</h2>
+{% block content %}
+    <h2>Panoramica operativa</h2>
 
-        <section class="stat-grid" aria-label="Indicatori principali">
-            <article class="stat-card">
-                <span class="stat-label">Chiamate registrate</span>
-                <strong class="stat-value">{{ total_telefonate }}</strong>
-                <span class="stat-detail">Durata media: {{ durata_media }}</span>
-            </article>
-            <article class="stat-card">
-                <span class="stat-label">Numeri telefonici registrati</span>
-                <strong class="stat-value">{{ total_contratti }}</strong>
-                <span class="stat-detail">{{ contratti_ricarica }} con credito, {{ contratti_consumo }} a consumo</span>
-            </article>
-            <article class="stat-card">
-                <span class="stat-label">Addebiti chiamate</span>
-                <strong class="stat-value">&euro; {{ costo_totale }}</strong>
-                <span class="stat-detail">Totale dei costi registrati</span>
-            </article>
-            <article class="stat-card stat-card-wide">
-                <span class="stat-label">SIM gestite</span>
-                <strong class="stat-value">{{ total_sim_gestite }}</strong>
-                <div class="sim-summary" aria-label="Dettaglio stato SIM">
-                    <span>{{ total_sim_attive }} in uso</span>
-                    <span>{{ total_sim_non_attive }} disponibili</span>
-                    <span>{{ total_sim_disattive }} disattivate</span>
-                </div>
-            </article>
-        </section>
+    <section class="stat-grid" aria-label="Indicatori principali">
+        <article class="stat-card">
+            <span class="stat-label">Chiamate registrate</span>
+            <strong class="stat-value">{{ total_telefonate }}</strong>
+            <span class="stat-detail">Durata media: {{ durata_media }}</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Numeri telefonici registrati</span>
+            <strong class="stat-value">{{ total_contratti }}</strong>
+            <span class="stat-detail">{{ contratti_ricarica }} con credito, {{ contratti_consumo }} a consumo</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Addebiti chiamate</span>
+            <strong class="stat-value">&euro; {{ costo_totale }}</strong>
+            <span class="stat-detail">Totale dei costi registrati</span>
+        </article>
+        <article class="stat-card stat-card-wide">
+            <span class="stat-label">SIM gestite</span>
+            <strong class="stat-value">{{ total_sim_gestite }}</strong>
+            <div class="sim-summary" aria-label="Dettaglio stato SIM">
+                <span>{{ total_sim_attive }} in uso</span>
+                <span>{{ total_sim_non_attive }} disponibili</span>
+                <span>{{ total_sim_disattive }} disattivate</span>
+            </div>
+        </article>
+    </section>
 
-        <section class="action-grid" aria-label="Accessi rapidi">
-            
-            <a class="action-card" href="{% url 'lista_contratti' %}">
-                <span class="action-card-icon" aria-hidden="true">
-                    <img src="{% static 'icons/numeri-telefonici.svg' %}" alt="Icona numeri telefonici" class="quick-card-icon">
-                </span>
-                <span class="action-card-text">
-                    <strong>Consulta numeri telefonici</strong>
-                    <span>Filtra numeri per telefono, piano e periodo di attivazione.</span>
-                </span>
-            </a>
-            
-            <a class="action-card" href="{% url 'lista_telefonate' %}">
-                <span class="action-card-icon" aria-hidden="true">
-                    <img src="{% static 'icons/chiamate.svg' %}" alt="Icona chiamate" class="quick-card-icon">
-                </span>
-                <span class="action-card-text">
-                    <strong>Consulta chiamate</strong>
-                    <span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span>
-                </span>
-            </a>
-            
-            <a class="action-card" href="{% url 'gestione_sim' %}">
-                <span class="action-card-icon" aria-hidden="true">
-                    <img src="{% static 'icons/sim.svg' %}" alt="Icona SIM" class="quick-card-icon">
-                </span>
-                <span class="action-card-text">
-                    <strong>Gestisci SIM</strong>
-                    <span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span>
-                </span>
-            </a>
-            
-        </section>
-    </main>
-</body>
-</html>
+    <section class="action-grid" aria-label="Accessi rapidi">
+        <a class="action-card" href="{% url 'lista_contratti' %}">
+            <span class="action-card-icon" aria-hidden="true">
+                <img src="{% static 'icons/numeri-telefonici.svg' %}" alt="Icona numeri telefonici" class="quick-card-icon">
+            </span>
+            <span class="action-card-text">
+                <strong>Consulta numeri telefonici</strong>
+                <span>Filtra numeri per telefono, piano e periodo di attivazione.</span>
+            </span>
+        </a>
+        <a class="action-card" href="{% url 'lista_telefonate' %}">
+            <span class="action-card-icon" aria-hidden="true">
+                <img src="{% static 'icons/chiamate.svg' %}" alt="Icona chiamate" class="quick-card-icon">
+            </span>
+            <span class="action-card-text">
+                <strong>Consulta chiamate</strong>
+                <span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span>
+            </span>
+        </a>
+        <a class="action-card" href="{% url 'gestione_sim' %}">
+            <span class="action-card-icon" aria-hidden="true">
+                <img src="{% static 'icons/sim.svg' %}" alt="Icona SIM" class="quick-card-icon">
+            </span>
+            <span class="action-card-text">
+                <strong>Gestisci SIM</strong>
+                <span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span>
+            </span>
+        </a>
+    </section>
+{% endblock %}

@@ -1,75 +1,139 @@
+{% extends 'base.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Consulta Numeri Telefonici</title>
-    <link rel="stylesheet" href="{% static 'style.css' %}">
-</head>
-<body>
-    <header style="background-color: #6e6157; color: white; padding: 20px; display: flex; align-items: center; gap: 20px;">
-        <img src="{% static 'logo.png' %}" alt="Logo" style="height: 60px; background: white; padding: 5px; border-radius: 10px;">
-        <div>
-            <h1 style="margin: 0; font-size: 24px;">Gestione Numeri Telefonici</h1>
-            <a href="{% url 'home' %}" style="color: #f3f0ec; text-decoration: none; font-size: 14px;">&larr; Torna alla Panoramica</a>
-        </div>
-    </header>
 
-    <main style="padding: 30px; max-width: 1200px; margin: auto;">
-        <h2>Consulta numeri telefonici</h2>
+{% block content %}
+<h2>Ricerca numeri telefonici</h2>
 
-        <form method="GET" action="{% url 'lista_contratti' %}" style="background: #fcfbf9; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #eadecf;">
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;">
-                
-                <div>
-                    <label for="numero" style="display:block; margin-bottom:5px; font-weight:bold;">Numero di telefono:</label>
-                    <input type="text" id="numero" name="numero" value="{{ request.GET.numero }}" placeholder="Es. 345...">
-                </div>
-
-                <div>
-                    <label for="tipo" style="display:block; margin-bottom:5px; font-weight:bold;">Piano tariffario:</label>
-                    <select id="tipo" name="tipo">
-                        <option value="">Tutti i piani</option>
-                        <option value="consumo" {% if request.GET.tipo == 'consumo' %}selected{% endif %}>A consumo</option>
-                        <option value="ricarica" {% if request.GET.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
-                    </select>
-                </div>
-
-                <button type="submit" style="background-color: #6e6157; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer;">Filtra Risultati</button>
-                <a href="{% url 'lista_contratti' %}" style="padding: 10px; color: #6e6157;">Resetta</a>
+<div class="sticky-data-panel">
+    <div class="search-filter">
+        <form id="contratti-filter" method="GET" action="{% url 'lista_contratti' %}" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
+            <div class="form-group">
+                <label for="numero">Numero di telefono:</label>
+                <input type="text" id="numero" name="numero" value="{{ request.GET.numero }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
+            <div class="form-group">
+                <label for="tipo">Piano del numero:</label>
+                <select id="tipo" name="tipo">
+                    <option value="">Mostra tutti</option>
+                    <option value="consumo" {% if request.GET.tipo == 'consumo' %}selected{% endif %}>A consumo</option>
+                    <option value="ricarica" {% if request.GET.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="stato_numero">Stato del numero:</label>
+                <select id="stato_numero" name="stato_numero">
+                    <option value="">Mostra tutti</option>
+                    <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Numeri attivi</option>
+                    <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Numeri disattivati</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="data_da">Attivata dal:</label>
+                <input type="date" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
+            </div>
+            <div class="form-group">
+                <label for="data_a">Attivata fino al:</label>
+                <input type="date" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
+            </div>
+            <button type="submit" class="btn">Cerca</button>
         </form>
+    </div>
 
-        <div class="table-container">
+    <div id="contratti-results" class="results-view-root" data-results-view-root="true" data-view-key="contratti" data-current-view="cards">
+        <div class="results-actions-row" data-card-modal-exclude="true">
+            <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
+                <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+                <span class="results-counter" data-results-counter="true">{{ contratti|length }} risultati</span>
+                <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+            </div>
+
+            <div class="results-tools" data-card-modal-exclude="true">
+                <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
+                    <span data-view-toggle-text>Vista tabellare</span>
+                </button>
+                <button type="button" class="btn btn-export">Esporta in .CSV</button>
+            </div>
+        </div>
+
+        <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#contratti-filter" data-total-count="{{ contratti|length }}">
             {% if contratti %}
-                <table class="data-table" style="width: 100%; border-collapse: collapse;">
-                    <thead>
-                        <tr style="background-color: #eadecf; text-align: left;">
-                            <th style="padding: 12px;">📱 Numero di telefono</th>
-                            <th style="padding: 12px;">📅 Data attivazione</th>
-                            <th style="padding: 12px;">🧾 Piano</th>
-                            <th style="padding: 12px;">⏱️ Tempo residuo (min)</th>
-                            <th style="padding: 12px;">💳 Credito residuo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+                <div class="view-panel view-panel-cards" data-view-panel="cards">
+                    <div class="result-grid phone-card-grid" data-lazy-list="cards">
                         {% for contratto in contratti %}
-                            <tr style="border-bottom: 1px solid #eadecf;">
-                                <td style="padding: 12px; font-weight: bold;">{{ contratto.numero }}</td>
-                                <td style="padding: 12px;">{{ contratto.dataAttivazione|date:"d/m/Y" }}</td>
-                                <td style="padding: 12px;">{{ contratto.get_tipo_display }}</td>
-                                <td style="padding: 12px;">{{ contratto.minutiResidui }}</td>
-                                <td style="padding: 12px;">&euro; {{ contratto.creditoResiduo }}</td>
-                            </tr>
+                        <article class="data-card phone-card phone-card-active-number expandable-card" data-expandable-card="true" tabindex="0" role="button">
+                            <div class="data-card-header phone-card-header">
+                                <div>
+                                    <span class="card-kicker">Numero telefonico</span>
+                                    <h3 class="card-title card-title-mono">{{ contratto.numero }}</h3>
+                                </div>
+                                <span class="status-pill status-pill-number-active">Numero attivo</span>
+                            </div>
+
+                            <div class="phone-plan-banner">
+                                <span>Piano tariffario</span>
+                                <strong>{{ contratto.get_tipo_display }}</strong>
+                            </div>
+
+                            <div class="card-primary-metric">
+                                <span>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</span>
+                                <strong>
+                                    {% if contratto.tipo == 'consumo' %}
+                                        {{ contratto.minutiResidui }} min
+                                    {% else %}
+                                        &euro; {{ contratto.creditoResiduo }}
+                                    {% endif %}
+                                </strong>
+                            </div>
+
+                            <dl class="card-detail-grid phone-detail-grid">
+                                <div class="card-detail-tile">
+                                    <dt>Data attivazione</dt>
+                                    <dd>{{ contratto.dataAttivazione|date:"d/m/Y" }}</dd>
+                                </div>
+                                <div class="card-detail-tile card-detail-link phone-calls-tile">
+                                    <dt>
+                                        <a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="tile-overlay-link">Chiamate registrate</a>
+                                    </dt>
+                                    <dd>Vedi storico</dd>
+                                </div>
+                            </dl>
+                        </article>
                         {% endfor %}
-                    </tbody>
-                </table>
-            {% else %}
-                <div style="background-color: #f2dede; color: #a94442; padding: 15px; border-radius: 4px;">
-                    Nessun numero telefonico corrisponde ai filtri selezionati o il database è vuoto.
+                    </div>
                 </div>
+
+                <div class="view-panel view-panel-table" data-view-panel="table" style="display:none;">
+                    <div class="table-container table-container-inner">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th class="identifier">Numero di telefono</th>
+                                    <th>Stato</th>
+                                    <th>Data attivazione</th>
+                                    <th>Piano</th>
+                                    <th class="numeric">Tempo residuo</th>
+                                    <th class="numeric">Credito residuo</th>
+                                </tr>
+                            </thead>
+                            <tbody data-lazy-list="table">
+                                {% for contratto in contratti %}
+                                <tr>
+                                    <td class="identifier">{{ contratto.numero }}</td>
+                                    <td><span class="status-pill status-pill-number-active">Attivo</span></td>
+                                    <td>{{ contratto.dataAttivazione|date:"d/m/Y" }}</td>
+                                    <td>{{ contratto.get_tipo_display }}</td>
+                                    <td class="numeric duration-value">{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui }} min{% else %}-{% endif %}</td>
+                                    <td class="numeric">{% if contratto.tipo == 'ricarica' %}&euro; {{ contratto.creditoResiduo }}{% else %}-{% endif %}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-error">Nessun risultato trovato.</div>
             {% endif %}
         </div>
-    </main>
-</body>
-</html>
+    </div>
+</div>
+{% endblock %}

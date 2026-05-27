@@ -6,65 +6,82 @@
 
 <div class="sticky-data-panel">
     <div class="search-filter">
-        <form id="telefonate-filter" method="GET" action="{% url 'lista_telefonate' %}">
-            <div class="form-group">
-                <label for="contratto">Numero chiamante:</label>
-                <input type="text" id="contratto" name="contratto" value="{{ request.GET.contratto }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
+        <form id="telefonate-filter" class="row g-2 align-items-end" method="GET" action="{% url 'lista_telefonate' %}">
+            
+            <div class="form-group col-md-2">
+                <label for="contratto" class="form-label">Numero chiamante:</label>
+                <input type="text" class="form-control" id="contratto" name="contratto" value="{{ request.GET.contratto }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
-            <div class="form-group">
-                <label for="stato_numero">Stato del numero:</label>
-                <select id="stato_numero" name="stato_numero">
+            
+            <div class="form-group col-md-2">
+                <label for="stato_numero" class="form-label">Stato del numero:</label>
+                <select id="stato_numero" class="form-select" name="stato_numero">
                     <option value="">Mostra tutti</option>
                     <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Numeri attivi</option>
                     <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Numeri disattivati</option>
                 </select>
             </div>
-            <div class="form-group">
-                <label for="data_da">Dal giorno:</label>
-                <input type="date" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
-            </div>
-            <div class="form-group">
-                <label for="data_a">Al giorno:</label>
-                <input type="date" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
-            </div>
-            <div class="form-group time-filter-group">
-                <label for="ora_da">Dalle ore:</label>
-                <input type="time" id="ora_da" name="ora_da" value="{{ request.GET.ora_da }}">
-            </div>
-            <div class="form-group time-filter-group">
-                <label for="ora_a">Alle ore:</label>
-                <input type="time" id="ora_a" name="ora_a" value="{{ request.GET.ora_a }}">
-            </div>
-            <div class="form-group duration-filter-group">
-                <label>Durata minima:</label>
-                <div class="duration-inputs">
-                    <input type="text" id="durata_min" name="durata_min" value="{{ request.GET.durata_min }}" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
-                    <span>min</span>
-                    <input type="text" id="durata_sec" name="durata_sec" value="{{ request.GET.durata_sec }}" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
-                    <span>sec</span>
-                </div>
-            </div>
-            <div class="form-group cost-filter-group">
-                <label for="costo_max">Addebito massimo in euro:</label>
-                <input type="text" id="costo_max" name="costo_max" value="{{ request.GET.costo_max }}" placeholder="Es. 1.50" inputmode="decimal" autocomplete="off" data-clearable="true">
+            
+            <div class="form-group col-md-2">
+                <label for="data_da" class="form-label">Dal giorno:</label>
+                <input type="date" class="form-control" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
             </div>
             
-            <button type="submit" class="btn">Filtra chiamate</button>
+            <div class="form-group col-md-2">
+                <label for="data_a" class="form-label">Al giorno:</label>
+                <input type="date" class="form-control" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
+            </div>
+            
+            <div class="form-group time-filter-group col-md-1">
+                <label for="ora_da" class="form-label">Dalle ore:</label>
+                <input type="time" class="form-control" id="ora_da" name="ora_da" value="{{ request.GET.ora_da }}">
+            </div>
+            
+            <div class="form-group time-filter-group col-md-1">
+                <label for="ora_a" class="form-label">Alle ore:</label>
+                <input type="time" class="form-control" id="ora_a" name="ora_a" value="{{ request.GET.ora_a }}">
+            </div>
+            
+            <div class="form-group duration-filter-group col-md-2">
+                <label class="form-label">Durata minima:</label>
+                <div class="duration-inputs input-group input-group-sm">
+                    <input type="text" class="form-control" id="durata_min" name="durata_min" value="{{ request.GET.durata_min }}" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span class="input-group-text px-1 bg-transparent border-0 small text-muted">min</span>
+                    <input type="text" class="form-control" id="durata_sec" name="durata_sec" value="{{ request.GET.durata_sec }}" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span class="input-group-text px-1 bg-transparent border-0 small text-muted">sec</span>
+                </div>
+            </div>
+            
+            <div class="form-group cost-filter-group col-md-2">
+                <label for="costo_max" class="form-label">Addebito massimo (€):</label>
+                <input type="text" class="form-control" id="costo_max" name="costo_max" value="{{ request.GET.costo_max }}" placeholder="Es. 1.50" inputmode="decimal" autocomplete="off" data-clearable="true">
+            </div>
+            
+            <div class="col-md-2 ms-auto text-end">
+                <button type="submit" class="btn w-100">Filtra chiamate</button>
+            </div>
         </form>
     </div>
 
     <div id="telefonate-results" class="results-view-root" data-results-view-root="true" data-view-key="telefonate" data-current-view="cards">
-        <div class="results-actions-row" data-card-modal-exclude="true">
+        <div class="results-actions-row d-flex justify-content-between align-items-center" data-card-modal-exclude="true">
             
-            <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
-                <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
-                <span class="results-counter" data-results-counter="true">{{ chiamate|length }} risultati</span>
-                <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+            <div class="results-navigation d-flex align-items-center" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
+                <button type="button" class="results-page-button btn btn-sm" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+                
+                <span class="results-counter mx-2 fw-bold" data-results-counter="true">
+                    {% if chiamate|length > 0 %}
+                        1-{% if chiamate|length > 12 %}12{% else %}{{ chiamate|length }}{% endif %} di {{ chiamate|length }} risultati
+                    {% else %}
+                        0 risultati
+                    {% endif %}
+                </span>
+
+                <button type="button" class="results-page-button btn btn-sm" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
             </div>
 
-            <div class="results-tools" data-card-modal-exclude="true">
-                <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
-                    <span class="view-toggle-icon" aria-hidden="true">▤</span>
+            <div class="results-tools d-flex gap-2" data-card-modal-exclude="true">
+                <button type="button" class="btn btn-view-toggle d-flex align-items-center" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
                     <span data-view-toggle-text>Vista tabellare</span>
                 </button>
                 <button type="button" class="btn btn-export">Esporta in .CSV</button>
@@ -74,61 +91,63 @@
         <div class="cards-container results-data-container">
             {% if chiamate %}
                 <div class="view-panel view-panel-cards" data-view-panel="cards">
-                    <div class="result-grid call-card-grid">
-                        {% for chiamata in chiamate %}
-                        <article class="data-card call-card">
-                            <div class="call-card-date">
-                                <span>{{ chiamata.data|date:"d/m/Y" }}</span>
-                                <strong>{{ chiamata.ora|time:"H:i" }}</strong>
-                            </div>
-                            <div class="call-card-main">
-                                <a class="call-number-link" href="{% url 'lista_contratti' %}?numero={{ chiamata.effettuataDa.numero }}">
-                                    <span class="card-kicker">Numero chiamante</span>
-                                    <h3 class="card-title card-title-mono">{{ chiamata.effettuataDa.numero }}</h3>
-                                </a>
-                            </div>
-                            <dl class="card-detail-grid call-detail-grid">
-                                <div>
-                                    <dt>Durata</dt>
-                                    <dd>{{ chiamata.durata }} sec</dd>
+                    <div class="result-grid call-card-grid row row-cols-1 row-cols-md-3 g-3 m-0">
+                        {% for llamada in chiamate %}
+                        <div class="col p-1">
+                            <article class="data-card call-card card h-100">
+                                <div class="call-card-date card-header border-0 bg-transparent p-0 d-flex justify-content-between align-items-center">
+                                    <span>{{ llamada.data|date:"d/m/Y" }}</span>
+                                    <strong>{{ llamada.ora|time:"H:i" }}</strong>
                                 </div>
-                                <div>
-                                    <dt>Piano</dt>
-                                    <dd>{{ chiamata.effettuataDa.get_tipo_display }}</dd>
+                                <div class="call-card-main">
+                                    <a class="call-number-link text-decoration-none" href="{% url 'lista_contratti' %}?numero={{ llamada.effettuataDa.numero }}">
+                                        <span class="card-kicker">Numero chiamante</span>
+                                        <h3 class="card-title card-title-mono">{{ llamada.effettuataDa.numero }}</h3>
+                                    </a>
                                 </div>
-                                <div>
-                                    <dt>Addebito</dt>
-                                    <dd>&euro; {{ chiamata.costo }}</dd>
-                                </div>
-                            </dl>
-                        </article>
+                                <dl class="card-detail-grid call-detail-grid">
+                                    <div>
+                                        <dt>Durata</dt>
+                                        <dd>{{ llamada.durata }} sec</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Piano</dt>
+                                        <dd>{{ llamada.effettuataDa.get_tipo_display }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>Addebito</dt>
+                                        <dd>&euro; {{ llamada.costo }}</dd>
+                                    </div>
+                                </dl>
+                            </article>
+                        </div>
                         {% endfor %}
                     </div>
                 </div>
                 
                 <div class="view-panel view-panel-table" data-view-panel="table" style="display:none;">
-                    <div class="table-container table-container-inner">
-                        <table class="data-table">
+                    <div class="table-container table-container-inner table-responsive">
+                        <table class="data-table table table-striped table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th class="identifier"><span aria-hidden="true">📱</span> Numero chiamante</th>
-                                    <th><span aria-hidden="true">🗓️</span> Data</th>
-                                    <th><span aria-hidden="true">🕒</span> Ora</th>
-                                    <th class="numeric"><span aria-hidden="true">⏱️</span> Durata</th>
-                                    <th><span aria-hidden="true">📋</span> Piano</th>
-                                    <th class="numeric"><span aria-hidden="true">💳</span> Addebito</th>
+                                    <th class="identifier">Numero chiamante</th>
+                                    <th>Data</th>
+                                    <th>Ora</th>
+                                    <th class="numeric">Durata</th>
+                                    <th>Piano</th>
+                                    <th class="numeric">Addebito</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for chiamata in chiamate %}
+                                {% for llamada in chiamate %}
                                 <tr>
                                     <td class="identifier">
-                                        <a href="{% url 'lista_contratti' %}?numero={{ chiamata.effettuataDa.numero }}">{{ chiamata.effettuataDa.numero }}</a>
+                                        <a href="{% url 'lista_contratti' %}?numero={{ llamada.effettuataDa.numero }}">{{ llamada.effettuataDa.numero }}</a>
                                     </td>
-                                    <td>{{ chiamata.data|date:"d/m/Y" }}</td>
-                                    <td>{{ chiamata.ora|time:"H:i" }}</td>
+                                    <td>{{ llamada.data|date:"d/m/Y" }}</td>
+                                    <td>{{ llamada.ora|time:"H:i" }}</td>
                                     <td class="numeric duration-value">{{ chiamata.durata }} sec</td>
-                                    <td>{{ chiamata.effettuataDa.get_tipo_display }}</td>
+                                    <td>{{ llamada.effettuataDa.get_tipo_display }}</td>
                                     <td class="numeric">&euro; {{ chiamata.costo }}</td>
                                 </tr>
                                 {% endfor %}

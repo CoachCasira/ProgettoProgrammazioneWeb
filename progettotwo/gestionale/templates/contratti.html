@@ -6,12 +6,14 @@
 
 <div class="sticky-data-panel">
     <div class="search-filter">
-        <form id="contratti-filter" method="GET" action="{% url 'lista_contratti' %}" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
-            <div class="form-group">
+        <form id="contratti-filter" class="d-flex flex-wrap align-items-end gap-3" method="GET" action="{% url 'lista_contratti' %}" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
+            
+            <div class="form-group mb-0">
                 <label for="numero">Numero di telefono:</label>
                 <input type="text" id="numero" name="numero" value="{{ request.GET.numero }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
-            <div class="form-group">
+            
+            <div class="form-group mb-0">
                 <label for="tipo">Piano del numero:</label>
                 <select id="tipo" name="tipo">
                     <option value="">Mostra tutti</option>
@@ -19,92 +21,99 @@
                     <option value="ricarica" {% if request.GET.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
                 </select>
             </div>
-            <div class="form-group">
+            
+            <div class="form-group mb-0">
                 <label for="stato_numero">Stato del numero:</label>
                 <select id="stato_numero" name="stato_numero">
                     <option value="">Mostra tutti</option>
-                    <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Numeri attivi</option>
-                    <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Numeri disattivati</option>
+                    <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Attivi</option>
+                    <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Disattivati</option>
                 </select>
             </div>
-            <div class="form-group">
+            
+            <div class="form-group mb-0">
                 <label for="data_da">Attivata dal:</label>
                 <input type="date" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
             </div>
-            <div class="form-group">
+            
+            <div class="form-group mb-0">
                 <label for="data_a">Attivata fino al:</label>
                 <input type="date" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
             </div>
-            <button type="submit" class="btn">Cerca</button>
+            
+            <div class="mb-0 ms-auto">
+                <button type="submit" class="btn">Cerca</button>
+            </div>
         </form>
     </div>
 
     <div id="contratti-results" class="results-view-root" data-results-view-root="true" data-view-key="contratti" data-current-view="cards">
-        <div class="results-actions-row" data-card-modal-exclude="true">
-            <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
-                <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
-                <span class="results-counter" data-results-counter="true">{{ contratti|length }} risultati</span>
-                <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+        <div class="results-actions-row d-flex justify-content-between align-items-center" data-card-modal-exclude="true">
+            
+            <div class="results-navigation d-flex align-items-center" aria-label="Navigazione risultati">
+                <button type="button" class="results-page-button btn btn-sm" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+                
+                <span class="results-counter mx-2 fw-bold">
+                    {% if contratti|length > 0 %}
+                        1-{% if contratti|length > 12 %}12{% else %}{{ contratti|length }}{% endif %} di {{ contratti|length }} risultati
+                    {% else %}
+                        0 risultati
+                    {% endif %}
+                </span>
+                
+                <button type="button" class="results-page-button btn btn-sm" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
             </div>
 
-            <div class="results-tools" data-card-modal-exclude="true">
-                <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
+            <div class="results-tools d-flex gap-2" data-card-modal-exclude="true">
+                <button type="button" class="btn btn-view-toggle d-flex align-items-center" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
                     <span data-view-toggle-text>Vista tabellare</span>
                 </button>
                 <button type="button" class="btn btn-export">Esporta in .CSV</button>
             </div>
         </div>
 
-        <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#contratti-filter" data-total-count="{{ contratti|length }}">
+        <div class="cards-container results-data-container">
             {% if contratti %}
                 <div class="view-panel view-panel-cards" data-view-panel="cards">
-                    <div class="result-grid phone-card-grid" data-lazy-list="cards">
+                    <div class="result-grid phone-card-grid row row-cols-1 row-cols-md-3 g-3 m-0">
                         {% for contratto in contratti %}
-                        <article class="data-card phone-card phone-card-active-number expandable-card" data-expandable-card="true" tabindex="0" role="button">
-                            <div class="data-card-header phone-card-header">
-                                <div>
+                        <div class="col p-1">
+                            <article class="data-card phone-card card h-100">
+                                <div class="card-header border-0 bg-transparent p-0 d-flex justify-content-between align-items-center">
                                     <span class="card-kicker">Numero telefonico</span>
+                                    <span class="status-pill status-pill-number-active">Attivo</span>
+                                </div>
+                                <div class="card-main">
                                     <h3 class="card-title card-title-mono">{{ contratto.numero }}</h3>
                                 </div>
-                                <span class="status-pill status-pill-number-active">Numero attivo</span>
-                            </div>
-
-                            <div class="phone-plan-banner">
-                                <span>Piano tariffario</span>
-                                <strong>{{ contratto.get_tipo_display }}</strong>
-                            </div>
-
-                            <div class="card-primary-metric">
-                                <span>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</span>
-                                <strong>
-                                    {% if contratto.tipo == 'consumo' %}
-                                        {{ contratto.minutiResidui }} min
-                                    {% else %}
-                                        &euro; {{ contratto.creditoResiduo }}
-                                    {% endif %}
-                                </strong>
-                            </div>
-
-                            <dl class="card-detail-grid phone-detail-grid">
-                                <div class="card-detail-tile">
-                                    <dt>Data attivazione</dt>
-                                    <dd>{{ contratto.dataAttivazione|date:"d/m/Y" }}</dd>
+                                <dl class="card-detail-grid phone-detail-grid">
+                                    <div>
+                                        <dt>Piano</dt>
+                                        <dd>{{ contratto.get_tipo_display }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</dt>
+                                        <dd>
+                                            {% if contratto.tipo == 'consumo' %}
+                                                {{ contratto.minutiResidui }} min
+                                            {% else %}
+                                                &euro; {{ contratto.creditoResiduo }}
+                                            {% endif %}
+                                        </dd>
+                                    </div>
+                                </dl>
+                                <div class="card-footer-actions mt-auto text-end">
+                                    <a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="btn btn-sm text-decoration-none">Storico</a>
                                 </div>
-                                <div class="card-detail-tile card-detail-link phone-calls-tile">
-                                    <dt>
-                                        <a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="tile-overlay-link">Chiamate registrate</a>
-                                    </dt>
-                                    <dd>Vedi storico</dd>
-                                </div>
-                            </dl>
-                        </article>
+                            </article>
+                        </div>
                         {% endfor %}
                     </div>
                 </div>
-
+                
                 <div class="view-panel view-panel-table" data-view-panel="table" style="display:none;">
-                    <div class="table-container table-container-inner">
-                        <table class="data-table">
+                    <div class="table-container table-container-inner table-responsive">
+                        <table class="data-table table table-striped table-hover align-middle">
                             <thead>
                                 <tr>
                                     <th class="identifier">Numero di telefono</th>

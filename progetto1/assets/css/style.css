@@ -3641,3 +3641,210 @@ table.data-table td.sim-code-cell {
         right: 2.2rem;
     }
 }
+
+/* Override finale filtri: layout pulito, menu corti e range compatti */
+select[data-scroll-select="true"] {
+    display: none !important;
+}
+
+.custom-select-menu,
+.multi-select-menu {
+    max-height: 4.75rem !important;
+    overflow-y: scroll !important;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+.custom-select-option,
+.multi-select-option {
+    min-height: 2.35rem !important;
+    display: flex;
+    align-items: center;
+}
+
+.compact-range-pair {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 0.55rem !important;
+}
+
+.compact-range-pair input {
+    width: 100%;
+    min-width: 0;
+}
+
+.range-separator {
+    color: var(--primary-color);
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+}
+
+.contratti-filter-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.contratti-filter-form .form-group {
+    grid-column: span 1 !important;
+}
+
+.contratti-filter-form .phone-date-filter-group {
+    grid-column: span 2 !important;
+}
+
+.contratti-filter-form > .btn {
+    grid-column: span 1 !important;
+    justify-self: stretch;
+}
+
+.telefonate-filter-form {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+}
+
+.telefonate-filter-form .call-number-filter-group,
+.telefonate-filter-form .call-state-filter-group,
+.telefonate-filter-form .duration-filter-group,
+.telefonate-filter-form .cost-filter-group {
+    grid-column: span 3 !important;
+}
+
+.telefonate-filter-form .period-filter-group {
+    grid-column: span 5 !important;
+}
+
+.telefonate-filter-form .time-filter-group {
+    grid-column: span 4 !important;
+}
+
+.telefonate-filter-form > .btn {
+    grid-column: span 3 !important;
+    justify-self: stretch;
+}
+
+.telefonate-filter-form .duration-inputs {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto !important;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.telefonate-filter-form .duration-inputs input {
+    min-width: 0;
+}
+
+.sim-filter-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.sim-filter-form .sim-state-filter-group,
+.sim-filter-form .sim-code-filter-group,
+.sim-filter-form .sim-type-filter-group,
+.sim-filter-form .sim-phone-filter-group {
+    grid-column: span 1 !important;
+}
+
+.sim-filter-form .sim-date-filter-group {
+    grid-column: 1 / span 3 !important;
+}
+
+.sim-filter-form > .btn {
+    grid-column: 4 / span 1 !important;
+    justify-self: stretch;
+}
+
+.multi-select-filter {
+    position: relative;
+}
+
+.multi-select-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    z-index: 45;
+    display: none;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-color);
+    box-shadow: 0 10px 22px rgba(50, 39, 32, 0.14);
+}
+
+.multi-select-filter.is-open .multi-select-menu {
+    display: block;
+}
+
+.multi-select-option {
+    padding: 0.58rem 0.75rem;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-weight: 700;
+}
+
+.multi-select-option:hover,
+.multi-select-option:focus-within,
+.multi-select-option:has(input:checked) {
+    background: var(--primary-color);
+    color: var(--light-text);
+}
+
+.multi-select-option input {
+    width: auto !important;
+    min-height: auto !important;
+    margin: 0;
+    padding: 0;
+    flex: 0 0 auto;
+    accent-color: var(--primary-color);
+}
+
+.multi-select-option:has(input:checked) input {
+    accent-color: var(--accent-color);
+}
+
+@media (max-width: 1180px) {
+    .contratti-filter-form,
+    .sim-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .telefonate-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .form-group,
+    .contratti-filter-form .phone-date-filter-group,
+    .contratti-filter-form > .btn,
+    .telefonate-filter-form .call-number-filter-group,
+    .telefonate-filter-form .call-state-filter-group,
+    .telefonate-filter-form .duration-filter-group,
+    .telefonate-filter-form .cost-filter-group,
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .telefonate-filter-form > .btn,
+    .sim-filter-form .sim-state-filter-group,
+    .sim-filter-form .sim-code-filter-group,
+    .sim-filter-form .sim-type-filter-group,
+    .sim-filter-form .sim-phone-filter-group,
+    .sim-filter-form .sim-date-filter-group,
+    .sim-filter-form > .btn {
+        grid-column: span 1 !important;
+    }
+}
+
+@media (max-width: 760px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        grid-template-columns: 1fr !important;
+    }
+
+    .compact-range-pair {
+        grid-template-columns: 1fr auto 1fr !important;
+    }
+}
+
+.custom-select-option,
+.multi-select-option {
+    height: 2.35rem !important;
+    box-sizing: border-box;
+}

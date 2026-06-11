@@ -369,7 +369,7 @@ if ($ajax_rows) {
     ]);
     exit;
 }
-$phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
+$phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato:' : 'Attivato:';
 ?>
 <?php include 'includes/header.php'; ?>
 
@@ -423,10 +423,11 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </select>
         </div>
         <div class="form-group phone-date-filter-group range-filter-group">
-            <label><?= htmlspecialchars($phone_date_filter_label) ?></label>
-            <div class="range-pair date-range-pair">
-                <label class="range-field" for="data_da"><span>Dal</span><input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Data inizio"></label>
-                <label class="range-field" for="data_a"><span>Al</span><input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine"></label>
+            <label data-phone-date-label><?= htmlspecialchars($phone_date_filter_label) ?></label>
+            <div class="range-pair compact-range-pair date-range-pair">
+                <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Data inizio">
+                <span class="range-separator" aria-hidden="true">–</span>
+                <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine">
             </div>
         </div>
         <button type="submit" class="btn">Cerca</button>

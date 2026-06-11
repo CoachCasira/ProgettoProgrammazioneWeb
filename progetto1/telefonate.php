@@ -266,16 +266,18 @@ if ($ajax_rows) {
         </div>
         <div class="form-group period-filter-group range-filter-group">
             <label>Periodo:</label>
-            <div class="range-pair date-range-pair">
-                <label class="range-field" for="data_da"><span>Dal</span><input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Dal giorno"></label>
-                <label class="range-field" for="data_a"><span>Al</span><input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Al giorno"></label>
+            <div class="range-pair compact-range-pair date-range-pair">
+                <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Dal giorno">
+                <span class="range-separator" aria-hidden="true">–</span>
+                <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Al giorno">
             </div>
         </div>
         <div class="form-group time-filter-group range-filter-group">
             <label>Fascia oraria:</label>
-            <div class="range-pair time-range-pair">
-                <label class="range-field" for="ora_da"><span>Dalle</span><input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Dalle ore"></label>
-                <label class="range-field" for="ora_a"><span>Alle</span><input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Alle ore"></label>
+            <div class="range-pair compact-range-pair time-range-pair">
+                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Dalle ore">
+                <span class="range-separator" aria-hidden="true">–</span>
+                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Alle ore">
             </div>
         </div>
         <button type="submit" class="btn">Filtra chiamate</button>

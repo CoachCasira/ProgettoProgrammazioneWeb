@@ -115,12 +115,19 @@
         var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
         var label = form.querySelector('[data-sim-multi-select-label]');
         var hiddenState = form.querySelector('[data-sim-state-hidden]');
+        var allCheckbox = form.querySelector('[data-sim-state-all]');
+        var explicitSelectedCount = Array.prototype.slice.call(form.querySelectorAll('[data-sim-state-checkbox]')).filter(function (checkbox) {
+            return checkbox.checked;
+        }).length;
 
         if (label) {
             label.textContent = simStatesLabel(selectedStates);
         }
         if (hiddenState) {
             hiddenState.value = simStatesKey(selectedStates);
+        }
+        if (allCheckbox) {
+            allCheckbox.checked = explicitSelectedCount === 0 || explicitSelectedCount === 3;
         }
     }
 
@@ -212,6 +219,19 @@
                 return;
             }
 
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.addEventListener('change', function () {
+                    checkboxes.forEach(function (checkbox) {
+                        checkbox.checked = true;
+                    });
+                    applySimState(form, ['attive', 'disponibili', 'disattive']);
+
+                    var submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                });
+            }
+
             checkboxes.forEach(function (checkbox) {
                 checkbox.addEventListener('change', function () {
                     var selectedStates = getSelectedSimStates(form);
@@ -254,6 +274,29 @@
             select.addEventListener('change', function () {
                 toggleCustomThreshold(select);
             });
+        });
+    }
+
+    function updatePhoneDateLabel(form) {
+        var label = form ? form.querySelector('[data-phone-date-label]') : null;
+        var status = form ? form.querySelector('#stato_numero') : null;
+        if (!label || !status) {
+            return;
+        }
+        label.textContent = status.value === 'disattivato' ? 'Disattivato:' : 'Attivato:';
+    }
+
+    function initPhoneDateLabelControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form.contratti-filter-form:not([data-phone-date-label-ready="true"])').forEach(function (form) {
+            form.dataset.phoneDateLabelReady = 'true';
+            updatePhoneDateLabel(form);
+            var status = form.querySelector('#stato_numero');
+            if (status) {
+                status.addEventListener('change', function () {
+                    updatePhoneDateLabel(form);
+                });
+            }
         });
     }
 
@@ -1962,6 +2005,7 @@
         initAlerts(scope);
         initScrollableSelects(scope);
         initTrafficThresholdControls(scope);
+        initPhoneDateLabelControls(scope);
         initSimStateControls(scope);
         initClearableInputs(scope);
         initSimCrudForms(scope);

@@ -65,6 +65,27 @@ function sim_states_title(array $states): string
     return 'SIM ' . implode(' e ', $ordered);
 }
 
+function sim_states_filter_label(array $states): string
+{
+    $ordered = [];
+    $labels = [
+        'attive' => 'SIM in uso',
+        'disponibili' => 'SIM disponibili',
+        'disattive' => 'SIM disattivate'
+    ];
+
+    foreach (['attive', 'disponibili', 'disattive'] as $state) {
+        if (in_array($state, $states, true)) {
+            $ordered[] = $labels[$state];
+        }
+    }
+
+    if (count($ordered) === 0 || count($ordered) === 3) {
+        return 'Mostra tutte';
+    }
+    return implode(' e ', $ordered);
+}
+
 function sim_states_for_sql(mysqli $conn, array $states): string
 {
     $safe_states = array_map(static function ($state) use ($conn) {
@@ -978,10 +999,14 @@ if ($ajax_rows) {
                 <input type="hidden" name="stato" value="<?= htmlspecialchars($state) ?>" data-sim-state-hidden>
                 <div class="multi-select-filter sim-state-multi-select" data-sim-multi-select>
                     <button type="button" id="sim-state-button" class="custom-select-button multi-select-button" aria-haspopup="listbox" aria-expanded="false">
-                        <span class="custom-select-current" data-sim-multi-select-label><?= htmlspecialchars(sim_states_title($selected_states)) ?></span>
+                        <span class="custom-select-current" data-sim-multi-select-label><?= htmlspecialchars(sim_states_filter_label($selected_states)) ?></span>
                         <span class="custom-select-arrow" aria-hidden="true">⌄</span>
                     </button>
                     <div class="custom-select-menu multi-select-menu" role="listbox" aria-label="Seleziona stati SIM">
+                        <label class="custom-select-option multi-select-option multi-select-all-option">
+                            <input type="checkbox" value="tutte" data-sim-state-all <?= count($selected_states) === 3 ? 'checked' : '' ?>>
+                            <span>Mostra tutte</span>
+                        </label>
                         <label class="custom-select-option multi-select-option">
                             <input type="checkbox" name="sim_states[]" value="attive" data-sim-state-checkbox <?= in_array('attive', $selected_states, true) ? 'checked' : '' ?>>
                             <span>SIM in uso</span>
@@ -1018,9 +1043,10 @@ if ($ajax_rows) {
             </div>
             <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
                 <label>Periodo:</label>
-                <div class="range-pair date-range-pair">
-                    <label class="range-field" for="data_da_sim"><span>Dal</span><input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>></label>
-                    <label class="range-field" for="data_a_sim"><span>Al</span><input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>></label>
+                <div class="range-pair compact-range-pair date-range-pair">
+                    <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+                    <span class="range-separator" aria-hidden="true">–</span>
+                    <input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
                 </div>
             </div>
             <button type="submit" class="btn">Cerca SIM</button>

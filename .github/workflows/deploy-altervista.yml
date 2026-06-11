@@ -14,6 +14,53 @@ jobs:
       - name: Scarica codice dalla repository
         uses: actions/checkout@v4
 
+      - name: Genera config.php per AlterVista
+        env:
+          DB_SERVERNAME: ${{ secrets.DB_SERVERNAME }}
+          DB_USERNAME: ${{ secrets.DB_USERNAME }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+        run: |
+          python3 <<'PY'
+          import os
+          from pathlib import Path
+
+          def php_string(value: str) -> str:
+              return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'"
+
+          config_path = Path("progetto1/includes/config.php")
+          config_path.parent.mkdir(parents=True, exist_ok=True)
+
+          content = f"""<?php
+          $servername = {php_string(os.environ["DB_SERVERNAME"])};
+          $username = {php_string(os.environ["DB_USERNAME"])};
+          $password = {php_string(os.environ["DB_PASSWORD"])};
+          $dbname = {php_string(os.environ["DB_NAME"])};
+
+          /*
+           * Disattivo la visualizzazione automatica degli errori mysqli: in questo modo,
+           * se la connessione non fosse disponibile, l'utente vede solo un messaggio pulito
+           * e non warning/notice tecnici del server.
+           */
+          mysqli_report(MYSQLI_REPORT_OFF);
+
+          $conn = @new mysqli($servername, $username, $password, $dbname);
+
+          if ($conn->connect_errno) {{
+              http_response_code(503);
+              exit("<div class='system-error'>Connessione al sistema momentaneamente non disponibile. Riprovare più tardi.</div>");
+          }}
+
+          if (!$conn->set_charset("utf8mb4")) {{
+              http_response_code(503);
+              exit("<div class='system-error'>Configurazione del sistema momentaneamente non disponibile. Riprovare più tardi.</div>");
+          }}
+          ?>
+          """
+
+          config_path.write_text(content, encoding="utf-8")
+          PY
+
       - name: Deploy via FTP su AlterVista
         uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:

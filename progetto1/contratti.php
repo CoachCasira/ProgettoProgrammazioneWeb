@@ -222,16 +222,13 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
     $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
 }
-if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom === '') {
-    $search_errors[] = 'Inserire il numero minimo di chiamate da usare come filtro personalizzato.';
-}
 if (!in_array($search_ordine, ['automatico', 'recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
 }
 if (empty($search_errors)) {
-    if ($search_min_chiamate === 'custom') {
+    if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom !== '') {
         $effective_min_chiamate = (int)$search_min_chiamate_custom;
-    } elseif ($search_min_chiamate !== '') {
+    } elseif ($search_min_chiamate !== '' && $search_min_chiamate !== 'custom') {
         $effective_min_chiamate = (int)$search_min_chiamate;
     }
 }
@@ -293,13 +290,14 @@ if (empty($search_errors)) {
     if ($effective_min_chiamate > 0) {
         $sql_base .= " AND COALESCE(tf.num_telefonate, 0) >= $effective_min_chiamate";
     }
+    $date_filter_column = $search_stato_numero === 'disattivato' ? 'sd.dataDisattivazione' : 'c.dataAttivazione';
     if ($search_data_da !== '') {
         $data_da = $conn->real_escape_string($search_data_da);
-        $sql_base .= " AND c.dataAttivazione >= '$data_da'";
+        $sql_base .= " AND $date_filter_column >= '$data_da'";
     }
     if ($search_data_a !== '') {
         $data_a = $conn->real_escape_string($search_data_a);
-        $sql_base .= " AND c.dataAttivazione <= '$data_a'";
+        $sql_base .= " AND $date_filter_column <= '$data_a'";
     }
 
     // Mostriamo solo numeri con una SIM attiva oppure con almeno una SIM disattivata nello storico.
@@ -315,7 +313,8 @@ if (empty($search_errors)) {
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
     } elseif ($search_ordine === 'automatico' && ($search_data_da !== '' || $search_data_a !== '')) {
-        $sql_base .= " ORDER BY c.dataAttivazione ASC, c.numero ASC";
+        $order_date_column = $search_stato_numero === 'disattivato' ? 'sd.dataDisattivazione' : 'c.dataAttivazione';
+        $sql_base .= " ORDER BY $order_date_column ASC, c.numero ASC";
     } else {
         $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
     }
@@ -370,6 +369,7 @@ if ($ajax_rows) {
     ]);
     exit;
 }
+$phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
 ?>
 <?php include 'includes/header.php'; ?>
 
@@ -408,14 +408,13 @@ if ($ajax_rows) {
                 <option value="custom" <?= $search_min_chiamate == 'custom' ? 'selected' : '' ?>>Soglia personalizzata</option>
             </select>
             <div class="custom-threshold-inline <?= $search_min_chiamate == 'custom' ? '' : 'is-hidden' ?>" data-custom-threshold-container>
-                <label for="min_chiamate_custom" class="inline-field-label">Numero minimo:</label>
-                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Es. 75" inputmode="numeric" autocomplete="off" data-clearable="true" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
+                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Inserisci soglia" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
             </div>
         </div>
         <div class="form-group order-filter-group">
             <label for="ordine">Mostra prima:</label>
             <select id="ordine" name="ordine" data-scroll-select="true">
-                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Criterio consigliato</option>
+                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Nessun criterio specifico</option>
                 <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
                 <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
                 <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>
@@ -423,13 +422,12 @@ if ($ajax_rows) {
                 <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Maggiore spesa totale</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="data_da">Attivata dal:</label>
-            <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>">
-        </div>
-        <div class="form-group">
-            <label for="data_a">Attivata fino al:</label>
-            <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>">
+        <div class="form-group phone-date-filter-group range-filter-group">
+            <label><?= htmlspecialchars($phone_date_filter_label) ?></label>
+            <div class="range-pair date-range-pair">
+                <label class="range-field" for="data_da"><span>Dal</span><input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Data inizio"></label>
+                <label class="range-field" for="data_a"><span>Al</span><input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine"></label>
+            </div>
         </div>
         <button type="submit" class="btn">Cerca</button>
     </form>

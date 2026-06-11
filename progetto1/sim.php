@@ -814,9 +814,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'list') {
+    $raw_sim_states = $_POST['sim_states'] ?? $_GET['sim_states'] ?? null;
     $state = normalize_sim_state($_POST['stato'] ?? $_GET['stato'] ?? $state);
-    $selected_states = normalize_sim_states($state);
-    $has_associated_state_filter = $state !== 'disponibili';
+    $selected_states = normalize_sim_states($raw_sim_states ?? $state);
+    $state = sim_states_key($selected_states);
+    $has_associated_state_filter = count(array_intersect($selected_states, ['attive', 'disattive'])) > 0;
 }
 
 $is_filter_request = $_SERVER['REQUEST_METHOD'] !== 'POST' || (($_POST['action'] ?? '') === '');
@@ -972,13 +974,28 @@ if ($ajax_rows) {
     <div class="search-filter">
         <form id="sim-filter" class="compact-filter-form sim-filter-form" method="POST" action="sim.php" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" data-sim-state-filter="true">
             <div class="form-group sim-state-filter-group">
-                <label for="sim-stato">Stato SIM:</label>
-                <select id="sim-stato" name="stato" data-sim-state-select data-scroll-select="true">
-                    <option value="tutte" <?= $state === 'tutte' ? 'selected' : '' ?>>Mostra tutte</option>
-                    <option value="attive" <?= $state === 'attive' ? 'selected' : '' ?>>SIM in uso</option>
-                    <option value="disponibili" <?= $state === 'disponibili' ? 'selected' : '' ?>>SIM disponibili</option>
-                    <option value="disattive" <?= $state === 'disattive' ? 'selected' : '' ?>>SIM disattivate</option>
-                </select>
+                <label for="sim-state-button">Stato SIM:</label>
+                <input type="hidden" name="stato" value="<?= htmlspecialchars($state) ?>" data-sim-state-hidden>
+                <div class="multi-select-filter sim-state-multi-select" data-sim-multi-select>
+                    <button type="button" id="sim-state-button" class="custom-select-button multi-select-button" aria-haspopup="listbox" aria-expanded="false">
+                        <span class="custom-select-current" data-sim-multi-select-label><?= htmlspecialchars(sim_states_title($selected_states)) ?></span>
+                        <span class="custom-select-arrow" aria-hidden="true">⌄</span>
+                    </button>
+                    <div class="custom-select-menu multi-select-menu" role="listbox" aria-label="Seleziona stati SIM">
+                        <label class="custom-select-option multi-select-option">
+                            <input type="checkbox" name="sim_states[]" value="attive" data-sim-state-checkbox <?= in_array('attive', $selected_states, true) ? 'checked' : '' ?>>
+                            <span>SIM in uso</span>
+                        </label>
+                        <label class="custom-select-option multi-select-option">
+                            <input type="checkbox" name="sim_states[]" value="disponibili" data-sim-state-checkbox <?= in_array('disponibili', $selected_states, true) ? 'checked' : '' ?>>
+                            <span>SIM disponibili</span>
+                        </label>
+                        <label class="custom-select-option multi-select-option">
+                            <input type="checkbox" name="sim_states[]" value="disattive" data-sim-state-checkbox <?= in_array('disattive', $selected_states, true) ? 'checked' : '' ?>>
+                            <span>SIM disattivate</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <div class="form-group sim-code-filter-group">

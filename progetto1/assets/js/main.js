@@ -84,12 +84,7 @@
         });
 
         if (selected.length === 0 && checkboxes.length > 0) {
-            checkboxes.forEach(function (checkbox) {
-                checkbox.checked = true;
-            });
-            selected = checkboxes.map(function (checkbox) {
-                return checkbox.value;
-            });
+            return ['attive', 'disponibili', 'disattive'];
         }
 
         return selected;
@@ -102,12 +97,41 @@
         return states[0] || 'tutte';
     }
 
+    function simStatesLabel(states) {
+        var labels = {
+            attive: 'SIM in uso',
+            disponibili: 'SIM disponibili',
+            disattive: 'SIM disattivate'
+        };
+        if (!Array.isArray(states) || states.length === 0 || states.length === 3) {
+            return 'Mostra tutte';
+        }
+        return states.map(function (state) {
+            return labels[state] || '';
+        }).filter(Boolean).join(' e ');
+    }
+
+    function updateSimMultiSelect(form, states) {
+        var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
+        var label = form.querySelector('[data-sim-multi-select-label]');
+        var hiddenState = form.querySelector('[data-sim-state-hidden]');
+
+        if (label) {
+            label.textContent = simStatesLabel(selectedStates);
+        }
+        if (hiddenState) {
+            hiddenState.value = simStatesKey(selectedStates);
+        }
+    }
+
     function applySimState(form, states) {
         var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
         var select = form.querySelector('[data-sim-state-select]');
         if (select && select.value === '') {
             select.value = 'tutte';
         }
+
+        updateSimMultiSelect(form, selectedStates);
 
         form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
             var chip = checkbox.closest('.checkbox-chip');
@@ -138,6 +162,39 @@
         updateStickyLayout();
     }
 
+    function closeSimMultiSelect(wrapper) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-open');
+        var button = wrapper.querySelector('.multi-select-button');
+        if (button) {
+            button.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function initSimMultiSelect(form) {
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        if (!wrapper || wrapper.dataset.multiSelectReady === 'true') {
+            return;
+        }
+        wrapper.dataset.multiSelectReady = 'true';
+        var button = wrapper.querySelector('.multi-select-button');
+        if (button) {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
+                wrapper.classList.toggle('is-open', shouldOpen);
+                button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+        }
+        wrapper.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
+    }
+
     function initSimStateControls(root) {
         var scope = root || document;
         scope.querySelectorAll('form[data-sim-state-filter="true"]:not([data-sim-state-ready="true"])').forEach(function (form) {
@@ -145,6 +202,7 @@
             var select = form.querySelector('[data-sim-state-select]');
             var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
 
+            initSimMultiSelect(form);
             applySimState(form, getSelectedSimStates(form));
 
             if (select) {
@@ -292,10 +350,11 @@
     }
 
     document.addEventListener('click', function (event) {
-        if (!event.target.closest || event.target.closest('.custom-select')) {
+        if (event.target.closest && (event.target.closest('.custom-select') || event.target.closest('[data-sim-multi-select]'))) {
             return;
         }
         document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+        document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
     });
 
 

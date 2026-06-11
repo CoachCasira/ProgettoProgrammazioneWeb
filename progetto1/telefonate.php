@@ -239,17 +239,30 @@ if ($ajax_rows) {
 <div class="sticky-data-panel">
 <div class="search-filter">
     <form id="telefonate-filter" class="compact-filter-form telefonate-filter-form" method="POST" action="telefonate.php" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results">
-        <div class="form-group">
+        <div class="form-group call-number-filter-group">
             <label for="contratto">Numero chiamante:</label>
             <input type="text" id="contratto" name="contratto" value="<?= htmlspecialchars($search_contratto) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
         </div>
-        <div class="form-group">
+        <div class="form-group call-state-filter-group">
             <label for="stato_numero">Stato del numero:</label>
             <select id="stato_numero" name="stato_numero">
                 <option value="">Mostra tutti</option>
                 <option value="attivo" <?= $search_stato_numero == 'attivo' ? 'selected' : '' ?>>Numeri attivi</option>
                 <option value="disattivato" <?= $search_stato_numero == 'disattivato' ? 'selected' : '' ?>>Numeri disattivati</option>
             </select>
+        </div>
+        <div class="form-group duration-filter-group">
+            <label>Durata minima:</label>
+            <div class="duration-inputs">
+                <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
+                <span>min</span>
+                <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
+                <span>sec</span>
+            </div>
+        </div>
+        <div class="form-group cost-filter-group">
+            <label for="costo_max">Addebito max (€):</label>
+            <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1,50" inputmode="decimal" autocomplete="off" data-clearable="true">
         </div>
         <div class="form-group period-filter-group range-filter-group">
             <label>Periodo:</label>
@@ -264,19 +277,6 @@ if ($ajax_rows) {
                 <label class="range-field" for="ora_da"><span>Dalle</span><input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Dalle ore"></label>
                 <label class="range-field" for="ora_a"><span>Alle</span><input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Alle ore"></label>
             </div>
-        </div>
-        <div class="form-group duration-filter-group">
-            <label>Durata minima:</label>
-            <div class="duration-inputs">
-                <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
-                <span>min</span>
-                <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
-                <span>sec</span>
-            </div>
-        </div>
-        <div class="form-group cost-filter-group">
-            <label for="costo_max">Addebito max (€):</label>
-            <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1,50" inputmode="decimal" autocomplete="off" data-clearable="true">
         </div>
         <button type="submit" class="btn">Filtra chiamate</button>
     </form>

@@ -202,9 +202,6 @@ $search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '
 $search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
 $search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'automatico');
 $effective_min_chiamate = 0;
-if ($search_min_chiamate_custom !== '') {
-    $search_min_chiamate = 'custom';
-}
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
@@ -223,10 +220,10 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
     $search_errors[] = 'Selezionare una soglia di chiamate valida.';
 }
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
-    $search_errors[] = 'Il campo “Chiamate minime” deve contenere un numero intero positivo o pari a zero.';
+    $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
 }
 if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom === '') {
-    $search_errors[] = 'Inserire il numero minimo di chiamate da usare come soglia personalizzata.';
+    $search_errors[] = 'Inserire il numero minimo di chiamate da usare come filtro personalizzato.';
 }
 if (!in_array($search_ordine, ['automatico', 'recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
@@ -317,6 +314,8 @@ if (empty($search_errors)) {
         $sql_base .= " ORDER BY durata_totale DESC, num_telefonate DESC, c.numero ASC";
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
+    } elseif ($search_ordine === 'automatico' && ($search_data_da !== '' || $search_data_a !== '')) {
+        $sql_base .= " ORDER BY c.dataAttivazione ASC, c.numero ASC";
     } else {
         $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
     }
@@ -400,28 +399,28 @@ if ($ajax_rows) {
             </select>
         </div>
         <div class="form-group traffic-filter-group">
-            <label for="min_chiamate">Traffico minimo:</label>
-            <select id="min_chiamate" name="min_chiamate">
-                <option value="">Nessuna soglia</option>
-                <option value="1" <?= $search_min_chiamate == '1' ? 'selected' : '' ?>>Almeno 1 chiamata</option>
-                <option value="50" <?= $search_min_chiamate == '50' ? 'selected' : '' ?>>Almeno 50 chiamate</option>
-                <option value="100" <?= $search_min_chiamate == '100' ? 'selected' : '' ?>>Almeno 100 chiamate</option>
+            <label for="min_chiamate">Filtro chiamate:</label>
+            <select id="min_chiamate" name="min_chiamate" data-scroll-select="true" data-custom-threshold-select>
+                <option value="">Mostra tutti i numeri</option>
+                <option value="1" <?= $search_min_chiamate == '1' ? 'selected' : '' ?>>Con almeno 1 chiamata</option>
+                <option value="50" <?= $search_min_chiamate == '50' ? 'selected' : '' ?>>Con almeno 50 chiamate</option>
+                <option value="100" <?= $search_min_chiamate == '100' ? 'selected' : '' ?>>Con almeno 100 chiamate</option>
                 <option value="custom" <?= $search_min_chiamate == 'custom' ? 'selected' : '' ?>>Soglia personalizzata</option>
             </select>
-        </div>
-        <div class="form-group manual-threshold-group">
-            <label for="min_chiamate_custom">Chiamate minime:</label>
-            <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate_custom) ?>" placeholder="Es. 75" inputmode="numeric" autocomplete="off" data-clearable="true">
+            <div class="custom-threshold-inline <?= $search_min_chiamate == 'custom' ? '' : 'is-hidden' ?>" data-custom-threshold-container>
+                <label for="min_chiamate_custom" class="inline-field-label">Numero minimo:</label>
+                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Es. 75" inputmode="numeric" autocomplete="off" data-clearable="true" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
+            </div>
         </div>
         <div class="form-group order-filter-group">
-            <label for="ordine">Ordina risultati per:</label>
-            <select id="ordine" name="ordine">
-                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Automatico</option>
-                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Attivazione: più recenti prima</option>
-                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Chiamate: dalla soglia in su</option>
-                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Chiamate: più numerose prima</option>
-                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Durata totale: maggiore prima</option>
-                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Spesa totale: maggiore prima</option>
+            <label for="ordine">Mostra prima:</label>
+            <select id="ordine" name="ordine" data-scroll-select="true">
+                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Criterio consigliato</option>
+                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
+                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
+                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>
+                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Maggiore durata totale</option>
+                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Maggiore spesa totale</option>
             </select>
         </div>
         <div class="form-group">

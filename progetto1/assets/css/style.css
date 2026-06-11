@@ -3206,3 +3206,206 @@ table.data-table td.sim-code-cell {
     box-shadow: none;
     flex: 0 0 auto;
 }
+
+/* Rifinitura filtri: dropdown compatti, soglia chiamate integrata, SIM come filtro unico */
+.native-select-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.custom-select {
+    position: relative;
+    width: 100%;
+}
+
+.custom-select-button {
+    width: 100%;
+    min-height: 2.74rem;
+    padding: 0.62rem 0.78rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    cursor: pointer;
+}
+
+.custom-select-button:focus {
+    outline: 2px solid var(--accent-color);
+    border-color: var(--primary-color);
+}
+
+.custom-select-current {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.custom-select-arrow {
+    flex: 0 0 auto;
+    color: var(--primary-color);
+    font-weight: 700;
+}
+
+.custom-select-menu {
+    position: absolute;
+    top: calc(100% + 0.25rem);
+    left: 0;
+    right: 0;
+    z-index: 30;
+    display: none;
+    max-height: 6.3rem;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-color);
+    box-shadow: 0 10px 22px rgba(50, 39, 32, 0.14);
+}
+
+.custom-select.is-open .custom-select-menu {
+    display: block;
+}
+
+.custom-select-option {
+    width: 100%;
+    padding: 0.58rem 0.75rem;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.96rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.custom-select-option:hover,
+.custom-select-option:focus,
+.custom-select-option.is-selected {
+    background: var(--primary-color);
+    color: var(--light-text);
+    outline: none;
+}
+
+.custom-threshold-inline {
+    margin-top: 0.45rem;
+    display: grid;
+    grid-template-columns: auto minmax(5.5rem, 1fr);
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.custom-threshold-inline.is-hidden {
+    display: none !important;
+}
+
+.inline-field-label {
+    margin: 0 !important;
+    font-size: 0.86rem !important;
+    white-space: nowrap;
+}
+
+.custom-threshold-inline input {
+    min-width: 0;
+    width: 100%;
+}
+
+.range-pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    align-items: end;
+}
+
+.range-field {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0 !important;
+    color: var(--primary-color);
+    font-size: 0.86rem !important;
+    font-weight: 700;
+}
+
+.range-field span {
+    white-space: nowrap;
+}
+
+.range-field input {
+    width: 100%;
+    min-width: 0;
+}
+
+.telefonate-filter-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.telefonate-filter-form .period-filter-group,
+.telefonate-filter-form .time-filter-group,
+.telefonate-filter-form .duration-filter-group,
+.telefonate-filter-form .cost-filter-group {
+    grid-column: span 2;
+}
+
+.telefonate-filter-form .cost-filter-group input {
+    width: 100%;
+}
+
+.sim-filter-form .sim-state-filter-group,
+.sim-filter-form .sim-code-filter-group,
+.sim-filter-form .sim-type-filter-group,
+.sim-filter-form .sim-phone-filter-group {
+    grid-column: span 2;
+}
+
+.sim-filter-form .sim-date-filter-group {
+    grid-column: span 2;
+}
+
+@media (max-width: 1180px) {
+    .telefonate-filter-form,
+    .sim-filter-form,
+    .contratti-filter-form {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .telefonate-filter-form .duration-filter-group,
+    .telefonate-filter-form .cost-filter-group,
+    .sim-filter-form .sim-state-filter-group,
+    .sim-filter-form .sim-code-filter-group,
+    .sim-filter-form .sim-type-filter-group,
+    .sim-filter-form .sim-phone-filter-group,
+    .sim-filter-form .sim-date-filter-group,
+    .contratti-filter-form .order-filter-group {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 760px) {
+    .range-pair {
+        grid-template-columns: 1fr;
+    }
+
+    .range-field {
+        grid-template-columns: 4rem minmax(0, 1fr);
+    }
+
+    .custom-threshold-inline {
+        grid-template-columns: 1fr;
+    }
+}

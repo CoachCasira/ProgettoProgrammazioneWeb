@@ -68,6 +68,14 @@
     }
 
     function getSelectedSimStates(form) {
+        var select = form.querySelector('[data-sim-state-select]');
+        if (select) {
+            if (select.value === 'attive' || select.value === 'disponibili' || select.value === 'disattive') {
+                return [select.value];
+            }
+            return ['attive', 'disponibili', 'disattive'];
+        }
+
         var checkboxes = Array.prototype.slice.call(form.querySelectorAll('[data-sim-state-checkbox]'));
         var selected = checkboxes.filter(function (checkbox) {
             return checkbox.checked;
@@ -96,9 +104,9 @@
 
     function applySimState(form, states) {
         var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
-        var summaryInput = form.querySelector('[data-sim-state-summary]');
-        if (summaryInput) {
-            summaryInput.value = simStatesKey(selectedStates);
+        var select = form.querySelector('[data-sim-state-select]');
+        if (select && select.value === '') {
+            select.value = 'tutte';
         }
 
         form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
@@ -119,6 +127,7 @@
                 field.disabled = !shouldShow;
                 if (!shouldShow) {
                     field.value = '';
+                    field.dispatchEvent(new Event('change', { bubbles: false }));
                 }
                 if (field.matches && field.matches('input[data-clearable="true"]')) {
                     updateClearButton(field);
@@ -133,12 +142,17 @@
         var scope = root || document;
         scope.querySelectorAll('form[data-sim-state-filter="true"]:not([data-sim-state-ready="true"])').forEach(function (form) {
             form.dataset.simStateReady = 'true';
+            var select = form.querySelector('[data-sim-state-select]');
             var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
-            if (checkboxes.length === 0) {
-                return;
-            }
 
             applySimState(form, getSelectedSimStates(form));
+
+            if (select) {
+                select.addEventListener('change', function () {
+                    applySimState(form, getSelectedSimStates(form));
+                });
+                return;
+            }
 
             checkboxes.forEach(function (checkbox) {
                 checkbox.addEventListener('change', function () {
@@ -151,6 +165,138 @@
             });
         });
     }
+
+    function toggleCustomThreshold(select) {
+        if (!select) {
+            return;
+        }
+        var formGroup = select.closest('.traffic-filter-group');
+        var container = formGroup ? formGroup.querySelector('[data-custom-threshold-container]') : null;
+        var input = formGroup ? formGroup.querySelector('[data-custom-threshold-input]') : null;
+        var shouldShow = select.value === 'custom';
+
+        if (container) {
+            container.classList.toggle('is-hidden', !shouldShow);
+        }
+        if (input) {
+            input.disabled = !shouldShow;
+            if (!shouldShow) {
+                input.value = '';
+            }
+            updateClearButton(input);
+        }
+        updateStickyLayout();
+    }
+
+    function initTrafficThresholdControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-custom-threshold-select]:not([data-threshold-ready="true"])').forEach(function (select) {
+            select.dataset.thresholdReady = 'true';
+            toggleCustomThreshold(select);
+            select.addEventListener('change', function () {
+                toggleCustomThreshold(select);
+            });
+        });
+    }
+
+    function closeCustomSelect(wrapper) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-open');
+        var button = wrapper.querySelector('.custom-select-button');
+        if (button) {
+            button.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function updateCustomSelect(select) {
+        var wrapper = select.nextElementSibling;
+        if (!wrapper || !wrapper.classList.contains('custom-select')) {
+            return;
+        }
+        var buttonText = wrapper.querySelector('.custom-select-current');
+        var selectedOption = select.options[select.selectedIndex];
+        if (buttonText && selectedOption) {
+            buttonText.textContent = selectedOption.textContent;
+        }
+        wrapper.querySelectorAll('.custom-select-option').forEach(function (optionButton) {
+            var isSelected = optionButton.dataset.value === select.value;
+            optionButton.classList.toggle('is-selected', isSelected);
+            optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+        });
+    }
+
+    function initScrollableSelects(root) {
+        var scope = root || document;
+        scope.querySelectorAll('select[data-scroll-select="true"]:not([data-scroll-select-ready="true"])').forEach(function (select) {
+            select.dataset.scrollSelectReady = 'true';
+            select.classList.add('native-select-hidden');
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'custom-select';
+
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'custom-select-button';
+            button.setAttribute('aria-haspopup', 'listbox');
+            button.setAttribute('aria-expanded', 'false');
+
+            var current = document.createElement('span');
+            current.className = 'custom-select-current';
+            button.appendChild(current);
+
+            var arrow = document.createElement('span');
+            arrow.className = 'custom-select-arrow';
+            arrow.setAttribute('aria-hidden', 'true');
+            arrow.textContent = '⌄';
+            button.appendChild(arrow);
+
+            var menu = document.createElement('div');
+            menu.className = 'custom-select-menu';
+            menu.setAttribute('role', 'listbox');
+
+            Array.prototype.slice.call(select.options).forEach(function (option) {
+                var optionButton = document.createElement('button');
+                optionButton.type = 'button';
+                optionButton.className = 'custom-select-option';
+                optionButton.dataset.value = option.value;
+                optionButton.textContent = option.textContent;
+                optionButton.setAttribute('role', 'option');
+                optionButton.addEventListener('click', function () {
+                    select.value = option.value;
+                    updateCustomSelect(select);
+                    closeCustomSelect(wrapper);
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                menu.appendChild(optionButton);
+            });
+
+            wrapper.appendChild(button);
+            wrapper.appendChild(menu);
+            select.insertAdjacentElement('afterend', wrapper);
+            updateCustomSelect(select);
+
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                wrapper.classList.toggle('is-open', shouldOpen);
+                button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+
+            select.addEventListener('change', function () {
+                updateCustomSelect(select);
+            });
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        if (!event.target.closest || event.target.closest('.custom-select')) {
+            return;
+        }
+        document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+    });
 
 
     function updateClearButton(input) {
@@ -1755,6 +1901,8 @@
     function initDynamicBehaviors(root) {
         var scope = root || document;
         initAlerts(scope);
+        initScrollableSelects(scope);
+        initTrafficThresholdControls(scope);
         initSimStateControls(scope);
         initClearableInputs(scope);
         initSimCrudForms(scope);

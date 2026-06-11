@@ -814,10 +814,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 if ($action === 'list') {
-    $raw_sim_states = $_POST['sim_states'] ?? $_GET['sim_states'] ?? $state;
-    $selected_states = normalize_sim_states($raw_sim_states);
-    $state = sim_states_key($selected_states);
-    $has_associated_state_filter = count(array_intersect($selected_states, ['attive', 'disattive'])) > 0;
+    $state = normalize_sim_state($_POST['stato'] ?? $_GET['stato'] ?? $state);
+    $selected_states = normalize_sim_states($state);
+    $has_associated_state_filter = $state !== 'disponibili';
 }
 
 $is_filter_request = $_SERVER['REQUEST_METHOD'] !== 'POST' || (($_POST['action'] ?? '') === '');
@@ -972,24 +971,14 @@ if ($ajax_rows) {
     <div class="sticky-data-panel">
     <div class="search-filter">
         <form id="sim-filter" class="compact-filter-form sim-filter-form" method="POST" action="sim.php" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" data-sim-state-filter="true">
-            <input type="hidden" id="sim-stato" name="stato" value="<?= htmlspecialchars($state) ?>" data-sim-state-summary>
-
             <div class="form-group sim-state-filter-group">
-                <label>Stato SIM:</label>
-                <div class="checkbox-chip-group sim-status-options" role="group" aria-label="Seleziona gli stati delle SIM da visualizzare">
-                    <label class="checkbox-chip">
-                        <input type="checkbox" name="sim_states[]" value="attive" data-sim-state-checkbox <?= in_array('attive', $selected_states, true) ? 'checked' : '' ?>>
-                        <span>In uso</span>
-                    </label>
-                    <label class="checkbox-chip">
-                        <input type="checkbox" name="sim_states[]" value="disponibili" data-sim-state-checkbox <?= in_array('disponibili', $selected_states, true) ? 'checked' : '' ?>>
-                        <span>Disponibili</span>
-                    </label>
-                    <label class="checkbox-chip">
-                        <input type="checkbox" name="sim_states[]" value="disattive" data-sim-state-checkbox <?= in_array('disattive', $selected_states, true) ? 'checked' : '' ?>>
-                        <span>Disattivate</span>
-                    </label>
-                </div>
+                <label for="sim-stato">Stato SIM:</label>
+                <select id="sim-stato" name="stato" data-sim-state-select data-scroll-select="true">
+                    <option value="tutte" <?= $state === 'tutte' ? 'selected' : '' ?>>Mostra tutte</option>
+                    <option value="attive" <?= $state === 'attive' ? 'selected' : '' ?>>SIM in uso</option>
+                    <option value="disponibili" <?= $state === 'disponibili' ? 'selected' : '' ?>>SIM disponibili</option>
+                    <option value="disattive" <?= $state === 'disattive' ? 'selected' : '' ?>>SIM disattivate</option>
+                </select>
             </div>
 
             <div class="form-group sim-code-filter-group">
@@ -998,7 +987,7 @@ if ($ajax_rows) {
             </div>
             <div class="form-group sim-type-filter-group">
                 <label for="tipoSIM">Formato SIM:</label>
-                <select id="tipoSIM" name="tipoSIM">
+                <select id="tipoSIM" name="tipoSIM" data-scroll-select="true">
                     <option value="">Mostra tutti</option>
                     <option value="Nano" <?= $search_tipo == 'Nano' ? 'selected' : '' ?>>Nano SIM</option>
                     <option value="Micro" <?= $search_tipo == 'Micro' ? 'selected' : '' ?>>Micro SIM</option>
@@ -1012,11 +1001,9 @@ if ($ajax_rows) {
             </div>
             <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
                 <label>Periodo:</label>
-                <div class="range-inputs date-range-inputs">
-                    <span>dal</span>
-                    <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
-                    <span>al</span>
-                    <input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+                <div class="range-pair date-range-pair">
+                    <label class="range-field" for="data_da_sim"><span>Dal</span><input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>></label>
+                    <label class="range-field" for="data_a_sim"><span>Al</span><input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>></label>
                 </div>
             </div>
             <button type="submit" class="btn">Cerca SIM</button>

@@ -1,0 +1,38 @@
+name: Deploy su AlterVista
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Carica file su AlterVista
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Scarica codice dalla repository
+        uses: actions/checkout@v4
+
+      - name: Deploy via FTP su AlterVista
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.github/**
+            **/README.md
+            **/node_modules/**
+            **/.env
+            **/*.sql
+            **/*.zip
+            **/database/**
+            **/db/**
+            **/docs/**

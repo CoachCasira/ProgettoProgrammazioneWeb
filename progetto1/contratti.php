@@ -73,6 +73,8 @@ function render_contratti_cards(array $rows): string
         $resource_label = $is_consumo ? 'Tempo residuo' : 'Credito residuo';
         $resource_value = $is_consumo ? format_minutes_remaining($row['minutiResidui']) : format_euro($row['creditoResiduo']);
         $num_telefonate = (int) $row['num_telefonate'];
+        $durata_totale = (int)($row['durata_totale'] ?? 0);
+        $costo_totale = (float)($row['costo_totale'] ?? 0);
         $is_currently_disabled = contratto_is_currently_disabled($row);
         ?>
         <article class="data-card phone-card<?= $is_currently_disabled ? ' phone-card-disabled-number' : ' phone-card-active-number' ?> expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio del numero <?= htmlspecialchars($row['numero']) ?>">
@@ -118,6 +120,14 @@ function render_contratti_cards(array $rows): string
                         <dd>Nessun traffico</dd>
                     </div>
                 <?php endif; ?>
+                <div class="card-detail-tile">
+                    <dt>Durata totale chiamate</dt>
+                    <dd><?= htmlspecialchars(format_duration_seconds($durata_totale)) ?></dd>
+                </div>
+                <div class="card-detail-tile">
+                    <dt>Addebiti totali</dt>
+                    <dd><?= htmlspecialchars(format_euro($costo_totale)) ?></dd>
+                </div>
                 <?= render_disabled_sim_tile($row) ?>
             </dl>
         </article>
@@ -134,6 +144,8 @@ function render_contratti_table_rows(array $rows): string
         $tempo = $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '-';
         $credito = $is_consumo ? '-' : format_euro($row['creditoResiduo']);
         $num_telefonate = (int) $row['num_telefonate'];
+        $durata_totale = (int)($row['durata_totale'] ?? 0);
+        $costo_totale = (float)($row['costo_totale'] ?? 0);
         $is_currently_disabled = contratto_is_currently_disabled($row);
         ?>
         <tr class="<?= $is_currently_disabled ? 'number-disabled-row' : '' ?>">
@@ -158,6 +170,8 @@ function render_contratti_table_rows(array $rows): string
                     Nessun traffico
                 <?php endif; ?>
             </td>
+            <td class="numeric duration-value"><?= htmlspecialchars(format_duration_seconds($durata_totale)) ?></td>
+            <td class="numeric"><?= htmlspecialchars(format_euro($costo_totale)) ?></td>
         </tr>
     <?php endforeach;
     return ob_get_clean();
@@ -184,6 +198,13 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
 $search_numero = trim($_POST['numero'] ?? $_GET['numero'] ?? '');
 $search_tipo = trim($_POST['tipo'] ?? $_GET['tipo'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
+$search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '');
+$search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
+$search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'automatico');
+$effective_min_chiamate = 0;
+if ($search_min_chiamate_custom !== '') {
+    $search_min_chiamate = 'custom';
+}
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
@@ -198,6 +219,25 @@ if (!is_digits_or_empty($search_numero)) {
 if ($search_stato_numero !== '' && !in_array($search_stato_numero, ['attivo', 'disattivato'], true)) {
     $search_errors[] = 'Selezionare uno stato del numero valido.';
 }
+if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '100', 'custom'], true)) {
+    $search_errors[] = 'Selezionare una soglia di chiamate valida.';
+}
+if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
+    $search_errors[] = 'Il campo “Chiamate minime” deve contenere un numero intero positivo o pari a zero.';
+}
+if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom === '') {
+    $search_errors[] = 'Inserire il numero minimo di chiamate da usare come soglia personalizzata.';
+}
+if (!in_array($search_ordine, ['automatico', 'recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
+    $search_errors[] = 'Selezionare un ordinamento valido.';
+}
+if (empty($search_errors)) {
+    if ($search_min_chiamate === 'custom') {
+        $effective_min_chiamate = (int)$search_min_chiamate_custom;
+    } elseif ($search_min_chiamate !== '') {
+        $effective_min_chiamate = (int)$search_min_chiamate;
+    }
+}
 
 $rows = [];
 $has_more = false;
@@ -207,6 +247,8 @@ $sql_base = '';
 if (empty($search_errors)) {
     $sql_base = "SELECT c.*,
                    COALESCE(tf.num_telefonate, 0) AS num_telefonate,
+                   COALESCE(tf.durata_totale, 0) AS durata_totale,
+                   COALESCE(tf.costo_totale, 0) AS costo_totale,
                    sa.codice AS simAttivaCodice,
                    sd.codice AS simDisattivaCodice,
                    sd.tipoSIM AS simDisattivaTipoSIM,
@@ -215,7 +257,7 @@ if (empty($search_errors)) {
                    COALESCE(sdc.simDisattivaCount, 0) AS simDisattivaCount
             FROM ContrattoTelefonico c
             LEFT JOIN (
-                SELECT effettuataDa, COUNT(*) AS num_telefonate
+                SELECT effettuataDa, COUNT(*) AS num_telefonate, COALESCE(SUM(durata), 0) AS durata_totale, COALESCE(SUM(costo), 0) AS costo_totale
                 FROM Telefonata
                 GROUP BY effettuataDa
             ) tf ON c.numero = tf.effettuataDa
@@ -251,6 +293,9 @@ if (empty($search_errors)) {
     } elseif ($search_stato_numero === 'disattivato') {
         $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
     }
+    if ($effective_min_chiamate > 0) {
+        $sql_base .= " AND COALESCE(tf.num_telefonate, 0) >= $effective_min_chiamate";
+    }
     if ($search_data_da !== '') {
         $data_da = $conn->real_escape_string($search_data_da);
         $sql_base .= " AND c.dataAttivazione >= '$data_da'";
@@ -264,7 +309,17 @@ if (empty($search_errors)) {
     // I contratti senza alcuna SIM associata non sono utili per la consultazione operativa dell'utente.
     $sql_base .= " AND (sa.codice IS NOT NULL OR COALESCE(sdc.simDisattivaCount, 0) > 0)";
 
-    $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
+    if ($search_ordine === 'chiamate_crescenti' || ($search_ordine === 'automatico' && $effective_min_chiamate > 0)) {
+        $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'piu_chiamate') {
+        $sql_base .= " ORDER BY num_telefonate DESC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'maggiore_durata') {
+        $sql_base .= " ORDER BY durata_totale DESC, num_telefonate DESC, c.numero ASC";
+    } elseif ($search_ordine === 'maggiore_spesa') {
+        $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
+    } else {
+        $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
+    }
     $total_count = query_total_count($conn, $sql_base);
 
     if ($export_csv) {
@@ -283,11 +338,13 @@ if (empty($search_errors)) {
                     $is_consumo ? 'A consumo' : 'Ricaricabile',
                     $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
                     $is_consumo ? '' : format_euro($row['creditoResiduo']),
-                    (string)(int)$row['num_telefonate']
+                    (string)(int)$row['num_telefonate'],
+                    format_duration_seconds($row['durata_totale'] ?? 0),
+                    format_euro($row['costo_totale'] ?? 0)
                 ];
             }
         }
-        output_csv_response('numeri_telefonici.csv', ['Numero di telefono', 'Stato numero', 'SIM disattivata collegata', 'Data disattivazione SIM', 'Data attivazione', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate registrate'], $csv_rows);
+        output_csv_response('numeri_telefonici.csv', ['Numero di telefono', 'Stato numero', 'SIM disattivata collegata', 'Data disattivazione SIM', 'Data attivazione', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate registrate', 'Durata totale chiamate', 'Addebiti totali'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
@@ -321,7 +378,7 @@ if ($ajax_rows) {
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="contratti-filter" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
+    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
         <div class="form-group">
             <label for="numero">Numero di telefono:</label>
             <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -340,6 +397,31 @@ if ($ajax_rows) {
                 <option value="">Mostra tutti</option>
                 <option value="attivo" <?= $search_stato_numero == 'attivo' ? 'selected' : '' ?>>Numeri attivi</option>
                 <option value="disattivato" <?= $search_stato_numero == 'disattivato' ? 'selected' : '' ?>>Numeri disattivati</option>
+            </select>
+        </div>
+        <div class="form-group traffic-filter-group">
+            <label for="min_chiamate">Traffico minimo:</label>
+            <select id="min_chiamate" name="min_chiamate">
+                <option value="">Nessuna soglia</option>
+                <option value="1" <?= $search_min_chiamate == '1' ? 'selected' : '' ?>>Almeno 1 chiamata</option>
+                <option value="50" <?= $search_min_chiamate == '50' ? 'selected' : '' ?>>Almeno 50 chiamate</option>
+                <option value="100" <?= $search_min_chiamate == '100' ? 'selected' : '' ?>>Almeno 100 chiamate</option>
+                <option value="custom" <?= $search_min_chiamate == 'custom' ? 'selected' : '' ?>>Soglia personalizzata</option>
+            </select>
+        </div>
+        <div class="form-group manual-threshold-group">
+            <label for="min_chiamate_custom">Chiamate minime:</label>
+            <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate_custom) ?>" placeholder="Es. 75" inputmode="numeric" autocomplete="off" data-clearable="true">
+        </div>
+        <div class="form-group order-filter-group">
+            <label for="ordine">Ordina risultati per:</label>
+            <select id="ordine" name="ordine">
+                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Automatico</option>
+                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Attivazione: più recenti prima</option>
+                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Chiamate: dalla soglia in su</option>
+                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Chiamate: più numerose prima</option>
+                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Durata totale: maggiore prima</option>
+                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Spesa totale: maggiore prima</option>
             </select>
         </div>
         <div class="form-group">
@@ -392,6 +474,8 @@ if ($ajax_rows) {
                                 <th class="numeric"><span aria-hidden="true">⏱️</span> Tempo residuo</th>
                                 <th class="numeric"><span aria-hidden="true">💳</span> Credito residuo</th>
                                 <th class="numeric"><span aria-hidden="true">📞</span> Chiamate registrate</th>
+                                <th class="numeric"><span aria-hidden="true">⏱️</span> Durata totale</th>
+                                <th class="numeric"><span aria-hidden="true">💶</span> Addebiti totali</th>
                             </tr>
                         </thead>
                         <tbody data-lazy-list="table">

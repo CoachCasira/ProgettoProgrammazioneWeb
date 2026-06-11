@@ -67,20 +67,59 @@
         });
     }
 
-    function applySimState(form, state) {
-        form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
-            var isActive = button.dataset.simStateValue === state;
-            button.classList.toggle('active', isActive);
-            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    function getSelectedSimStates(form) {
+        var checkboxes = Array.prototype.slice.call(form.querySelectorAll('[data-sim-state-checkbox]'));
+        var selected = checkboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).map(function (checkbox) {
+            return checkbox.value;
+        });
+
+        if (selected.length === 0 && checkboxes.length > 0) {
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = true;
+            });
+            selected = checkboxes.map(function (checkbox) {
+                return checkbox.value;
+            });
+        }
+
+        return selected;
+    }
+
+    function simStatesKey(states) {
+        if (!Array.isArray(states) || states.length !== 1) {
+            return 'tutte';
+        }
+        return states[0] || 'tutte';
+    }
+
+    function applySimState(form, states) {
+        var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
+        var summaryInput = form.querySelector('[data-sim-state-summary]');
+        if (summaryInput) {
+            summaryInput.value = simStatesKey(selectedStates);
+        }
+
+        form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
+            var chip = checkbox.closest('.checkbox-chip');
+            if (chip) {
+                chip.classList.toggle('is-selected', checkbox.checked);
+            }
         });
 
         form.querySelectorAll('[data-state-field]').forEach(function (fieldGroup) {
-            var allowedStates = (fieldGroup.dataset.stateField || '').split(',');
-            var shouldShow = allowedStates.indexOf(state) !== -1;
+            var allowedStates = (fieldGroup.dataset.stateField || '').split(',').filter(Boolean);
+            var shouldShow = selectedStates.some(function (state) {
+                return allowedStates.indexOf(state) !== -1;
+            });
             fieldGroup.classList.toggle('is-hidden', !shouldShow);
 
             fieldGroup.querySelectorAll('input, select, textarea').forEach(function (field) {
                 field.disabled = !shouldShow;
+                if (!shouldShow) {
+                    field.value = '';
+                }
                 if (field.matches && field.matches('input[data-clearable="true"]')) {
                     updateClearButton(field);
                 }
@@ -94,25 +133,17 @@
         var scope = root || document;
         scope.querySelectorAll('form[data-sim-state-filter="true"]:not([data-sim-state-ready="true"])').forEach(function (form) {
             form.dataset.simStateReady = 'true';
-            var stateInput = form.querySelector('input[name="stato"]');
-            if (!stateInput) {
+            var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
+            if (checkboxes.length === 0) {
                 return;
             }
 
-            applySimState(form, stateInput.value || 'attive');
+            applySimState(form, getSelectedSimStates(form));
 
-            form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    var newState = button.dataset.simStateValue;
-                    if (!newState || stateInput.value === newState) {
-                        return;
-                    }
-
-                    stateInput.value = newState;
-                    form.querySelectorAll('[data-state-dependent-input]').forEach(function (field) {
-                        field.value = '';
-                    });
-                    applySimState(form, newState);
+            checkboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    var selectedStates = getSelectedSimStates(form);
+                    applySimState(form, selectedStates);
 
                     var submitEvent = new Event('submit', { bubbles: true, cancelable: true });
                     form.dispatchEvent(submitEvent);
@@ -159,7 +190,7 @@
             button.className = 'clear-input-button';
             button.setAttribute('aria-label', 'Svuota campo');
             button.setAttribute('title', 'Svuota campo');
-            button.textContent = 'Ã—';
+            button.textContent = '×';
             wrapper.appendChild(button);
 
             input.addEventListener('input', function () {
@@ -234,7 +265,7 @@
 
         var value = (field.value || '').trim();
         var requiredMessage = field.dataset.requiredMessage || 'Compilare questo campo.';
-        var formatMessage = field.dataset.formatMessage || 'Il valore inserito non Ã¨ valido.';
+        var formatMessage = field.dataset.formatMessage || 'Il valore inserito non è valido.';
 
         if (field.hasAttribute('required') && value === '') {
             setFieldError(field, requiredMessage);
@@ -263,12 +294,12 @@
         var max = field.getAttribute('max');
 
         if (min && field.value < min) {
-            setFieldError(field, 'La data di disattivazione non puÃ² essere precedente a ' + formatItalianDate(min) + '.');
+            setFieldError(field, 'La data di disattivazione non può essere precedente a ' + formatItalianDate(min) + '.');
             return false;
         }
 
         if (max && field.value > max) {
-            setFieldError(field, 'La data di disattivazione non puÃ² essere successiva a ' + formatItalianDate(max) + '.');
+            setFieldError(field, 'La data di disattivazione non può essere successiva a ' + formatItalianDate(max) + '.');
             return false;
         }
 
@@ -399,7 +430,7 @@
 
     function setCrudDependentFieldsState(form, disabled) {
         /* La presenza di una SIM non utilizzabile viene comunicata con un messaggio
-           sotto il campo codice. Gli altri campi restano compilabili: l'utente puÃ²
+           sotto il campo codice. Gli altri campi restano compilabili: l'utente può
            correggere il codice o completare il form senza trovare controlli bloccati. */
         form.dataset.crudBlocked = 'false';
         form.classList.remove('crud-form-blocked');
@@ -462,7 +493,7 @@
                 applyLinkedSimData(form, payload);
             })
             .catch(function () {
-                setFieldError(codeField, 'Non Ã¨ stato possibile controllare la SIM indicata. Riprovare.');
+                setFieldError(codeField, 'Non è stato possibile controllare la SIM indicata. Riprovare.');
             });
     }
 
@@ -524,7 +555,7 @@
                 }
             })
             .catch(function () {
-                setFieldError(phoneField, 'Non Ã¨ stato possibile controllare il numero indicato. Riprovare.');
+                setFieldError(phoneField, 'Non è stato possibile controllare il numero indicato. Riprovare.');
             });
     }
 
@@ -1066,7 +1097,7 @@
             return null;
         }
 
-        /* La vista a schede Ã¨ nascosta quando l'utente usa la vista tabellare.
+        /* La vista a schede è nascosta quando l'utente usa la vista tabellare.
            Per aprire comunque il dettaglio della riga, qui non possiamo usare
            getBoundingClientRect(): le card nascoste avrebbero altezza 0 e quindi
            non verrebbero trovate. Manteniamo l'allineamento riga-card per indice. */
@@ -1319,7 +1350,7 @@
             label.textContent = normalizedView === 'table' ? 'Vista a schede' : 'Vista tabellare';
         }
         if (icon) {
-            icon.textContent = normalizedView === 'table' ? 'â–¦' : 'â–¤';
+            icon.textContent = normalizedView === 'table' ? '▦' : '▤';
         }
         if (persist) {
             storeResultsView(normalizedView);

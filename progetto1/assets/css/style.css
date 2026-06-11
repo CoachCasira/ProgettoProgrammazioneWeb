@@ -827,7 +827,7 @@ footer p.disclaimer {
 
 .state-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
     width: 100%;
     flex: 0 0 100%;
@@ -938,7 +938,7 @@ footer p.disclaimer {
 }
 
 /* Pulsante interno per svuotare rapidamente i campi numerici.
-   Ãˆ applicato solo agli input marcati con data-clearable="true". */
+   È applicato solo agli input marcati con data-clearable="true". */
 .clearable-input {
     position: relative;
     display: block;
@@ -1037,7 +1037,7 @@ button:disabled:hover,
     color: var(--light-text);
 }
 
-/* Rifinitura della X interna ai campi: il simbolo Ã¨ centrato nel pulsante e
+/* Rifinitura della X interna ai campi: il simbolo è centrato nel pulsante e
    mantiene colori coerenti con la palette tortora. */
 .clear-input-button,
 .clear-input-button:hover,
@@ -1053,7 +1053,7 @@ button:disabled:hover,
 }
 
 .clear-input-button::before {
-    content: "Ã—";
+    content: "×";
     display: block;
     font-size: 1rem;
     line-height: 1;
@@ -1715,7 +1715,7 @@ table.data-table a.action-disable-sim:focus {
 /* =========================================================
    PROTOTIPO VISUALIZZAZIONE A SCHEDE
    Le pagine di consultazione mostrano i risultati come schede operative:
-   piÃ¹ leggibili per un utente che vuole riconoscere subito numero, stato,
+   più leggibili per un utente che vuole riconoscere subito numero, stato,
    piano e azioni principali senza leggere righe tabellari dense.
    ========================================================= */
 .cards-container {
@@ -2063,7 +2063,7 @@ table.data-table a.action-disable-sim:focus {
 
 /* =========================================================
    PROTOTIPO A SCHEDE - RIFINITURA UX v61
-   Le schede restano dentro un contenitore scrollabile, cosÃ¬ la pagina non
+   Le schede restano dentro un contenitore scrollabile, così la pagina non
    si allarga e il caricamento progressivo continua ad attivarsi sullo scroll.
    ========================================================= */
 .cards-container {
@@ -2246,7 +2246,7 @@ table.data-table a.action-disable-sim:focus {
 
 
 /* Quando la ricerca dei numeri restituisce una sola scheda, la card viene centrata
-   nella vista a schede: Ã¨ piÃ¹ naturale per l'utente, soprattutto quando arriva
+   nella vista a schede: è più naturale per l'utente, soprattutto quando arriva
    dal dettaglio di una SIM o da un filtro preciso. */
 .phone-card-grid.is-single-result-grid {
     width: min(100%, 390px);
@@ -2470,7 +2470,7 @@ body.card-modal-open {
 
 
 /* Rientro contestuale SIM e apertura form: gli elementi target hanno un margine
-   di scroll coerente con la navbar sticky, cosÃ¬ non restano coperti in alto. */
+   di scroll coerente con la navbar sticky, così non restano coperti in alto. */
 .crud-form,
 .cards-container {
     scroll-margin-top: calc(var(--nav-sticky-height, 0px) + 1rem);
@@ -2666,7 +2666,7 @@ table.data-table td.sim-code-cell {
     background-color: #F3EEE9;
 }
 
-/* Quando la ricerca produce una sola card, il contenitore non blocca piÃ¹ la rotella:
+/* Quando la ricerca produce una sola card, il contenitore non blocca più la rotella:
    lo scroll torna alla pagina, evitando l'effetto "gabbia" su un risultato unico. */
 .cards-container.is-single-result-container {
     max-height: none;
@@ -2945,7 +2945,7 @@ table.data-table td.sim-code-cell {
     cursor: auto;
 }
 
-/* Frecce verticali: la navigazione dei risultati scorre su/giÃ¹ nel contenitore. */
+/* Frecce verticali: la navigazione dei risultati scorre su/giù nel contenitore. */
 .results-page-button {
     font-weight: 900;
 }
@@ -3025,4 +3025,184 @@ table.data-table td.sim-code-cell {
         width: 2.75rem;
         height: 2.75rem;
     }
+}
+/* Filtri compatti aggiornati: numeri, chiamate e SIM */
+.compact-filter-form {
+    display: grid !important;
+    gap: 0.8rem;
+    align-items: end;
+}
+
+.compact-filter-form .form-group {
+    min-width: 0;
+    width: auto;
+    flex: none;
+}
+
+.compact-filter-form .btn {
+    align-self: end;
+    white-space: nowrap;
+}
+
+.contratti-filter-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.contratti-filter-form .order-filter-group {
+    grid-column: span 2;
+}
+
+.telefonate-filter-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.telefonate-filter-form .period-filter-group,
+.telefonate-filter-form .time-filter-group,
+.telefonate-filter-form .duration-filter-group,
+.telefonate-filter-form .cost-filter-group {
+    grid-column: span 2;
+}
+
+.range-inputs {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.range-inputs span {
+    color: var(--primary-color);
+    font-size: 0.88rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.range-inputs input {
+    min-width: 0;
+    width: 100%;
+}
+
+.time-range-inputs input {
+    max-width: 8.5rem;
+}
+
+.duration-filter-group .duration-inputs,
+.cost-filter-group input {
+    width: 100%;
+}
+
+.sim-filter-form {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.sim-filter-form .sim-state-filter-group {
+    grid-column: 1 / -1;
+}
+
+.sim-filter-form .sim-code-filter-group,
+.sim-filter-form .sim-type-filter-group,
+.sim-filter-form .sim-phone-filter-group {
+    grid-column: span 2;
+}
+
+.sim-filter-form .sim-date-filter-group {
+    grid-column: span 3;
+}
+
+.checkbox-chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.checkbox-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.55rem;
+    padding: 0.55rem 0.85rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background-color: var(--surface-color);
+    color: var(--primary-color);
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.checkbox-chip input {
+    width: auto;
+    margin: 0;
+    accent-color: var(--primary-color);
+}
+
+.checkbox-chip.is-selected {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: var(--light-text);
+}
+
+.checkbox-chip.is-selected input {
+    accent-color: var(--accent-color);
+}
+
+.checkbox-chip:hover,
+.checkbox-chip:focus-within {
+    border-color: var(--primary-color);
+}
+
+.sim-status-options {
+    padding-top: 0.05rem;
+}
+
+@media (max-width: 1180px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .contratti-filter-form .order-filter-group,
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .telefonate-filter-form .duration-filter-group,
+    .telefonate-filter-form .cost-filter-group,
+    .sim-filter-form .sim-code-filter-group,
+    .sim-filter-form .sim-type-filter-group,
+    .sim-filter-form .sim-phone-filter-group,
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: span 1;
+    }
+}
+
+@media (max-width: 760px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        grid-template-columns: 1fr;
+    }
+
+    .range-inputs {
+        flex-wrap: wrap;
+    }
+
+    .range-inputs input,
+    .time-range-inputs input {
+        max-width: none;
+        flex: 1 1 8rem;
+    }
+
+    .checkbox-chip-group {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+}
+
+.checkbox-chip input[type="checkbox"] {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    flex: 0 0 auto;
 }

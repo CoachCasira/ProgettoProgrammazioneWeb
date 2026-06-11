@@ -238,7 +238,7 @@ if ($ajax_rows) {
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="telefonate-filter" method="POST" action="telefonate.php" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results">
+    <form id="telefonate-filter" class="compact-filter-form telefonate-filter-form" method="POST" action="telefonate.php" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results">
         <div class="form-group">
             <label for="contratto">Numero chiamante:</label>
             <input type="text" id="contratto" name="contratto" value="<?= htmlspecialchars($search_contratto) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -251,21 +251,23 @@ if ($ajax_rows) {
                 <option value="disattivato" <?= $search_stato_numero == 'disattivato' ? 'selected' : '' ?>>Numeri disattivati</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="data_da">Dal giorno:</label>
-            <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>">
+        <div class="form-group period-filter-group range-filter-group">
+            <label>Periodo:</label>
+            <div class="range-inputs date-range-inputs">
+                <span>dal</span>
+                <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Dal giorno">
+                <span>al</span>
+                <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Al giorno">
+            </div>
         </div>
-        <div class="form-group">
-            <label for="data_a">Al giorno:</label>
-            <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>">
-        </div>
-        <div class="form-group time-filter-group">
-            <label for="ora_da">Dalle ore:</label>
-            <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>">
-        </div>
-        <div class="form-group time-filter-group">
-            <label for="ora_a">Alle ore:</label>
-            <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>">
+        <div class="form-group time-filter-group range-filter-group">
+            <label>Fascia oraria:</label>
+            <div class="range-inputs time-range-inputs">
+                <span>dalle</span>
+                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Dalle ore">
+                <span>alle</span>
+                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Alle ore">
+            </div>
         </div>
         <div class="form-group duration-filter-group">
             <label>Durata minima:</label>
@@ -277,8 +279,8 @@ if ($ajax_rows) {
             </div>
         </div>
         <div class="form-group cost-filter-group">
-            <label for="costo_max">Addebito massimo in euro:</label>
-            <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1.50" inputmode="decimal" autocomplete="off" data-clearable="true">
+            <label for="costo_max">Addebito max (€):</label>
+            <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1,50" inputmode="decimal" autocomplete="off" data-clearable="true">
         </div>
         <button type="submit" class="btn">Filtra chiamate</button>
     </form>

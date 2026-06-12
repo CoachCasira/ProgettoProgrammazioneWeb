@@ -254,10 +254,14 @@ if ($ajax_rows) {
         <div class="form-group duration-filter-group">
             <label>Durata minima:</label>
             <div class="duration-inputs">
-                <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
-                <span>min</span>
-                <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
-                <span>sec</span>
+                <div class="duration-value">
+                    <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span>min</span>
+                </div>
+                <div class="duration-value">
+                    <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true">
+                    <span>sec</span>
+                </div>
             </div>
         </div>
         <div class="form-group cost-filter-group">

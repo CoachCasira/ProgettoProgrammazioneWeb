@@ -345,7 +345,7 @@
 
     function initScrollableSelects(root) {
         var scope = root || document;
-        scope.querySelectorAll('select[data-scroll-select="true"]:not([data-scroll-select-ready="true"])').forEach(function (select) {
+        scope.querySelectorAll('.compact-filter-form select:not([data-scroll-select-ready="true"])').forEach(function (select) {
             select.dataset.scrollSelectReady = 'true';
             select.classList.add('native-select-hidden');
 

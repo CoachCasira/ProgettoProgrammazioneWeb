@@ -32,6 +32,26 @@ function query_total_count(mysqli $conn, string $sql): int
     return (int)($row['total_count'] ?? 0);
 }
 
+function render_active_sim_tile(array $row): string
+{
+    if (!contratto_has_active_sim($row)) {
+        return '';
+    }
+
+    $codice_raw = (string)($row['simAttivaCodice'] ?? '');
+    $codice = htmlspecialchars($codice_raw);
+    $data_attivazione = trim((string)($row['simAttivaDataAttivazione'] ?? ''));
+    $href = 'sim.php?stato=attive&amp;codice=' . urlencode($codice_raw);
+    $subvalue = $data_attivazione !== ''
+        ? '<span class="tile-subvalue">In uso dal ' . htmlspecialchars(format_date_it($data_attivazione)) . '</span>'
+        : '';
+
+    return '<div class="card-detail-tile card-detail-link active-sim-tile">'
+        . '<dt><a href="' . $href . '" class="tile-overlay-link" title="Apri il dettaglio della SIM attualmente associata" data-sim-card-modal="true" data-sim-code="' . $codice . '">SIM in uso</a></dt>'
+        . '<dd>' . $codice . $subvalue . '</dd>'
+        . '</div>';
+}
+
 function render_disabled_sim_tile(array $row): string
 {
     $disabled_count = (int)($row['simDisattivaCount'] ?? 0);
@@ -128,6 +148,7 @@ function render_contratti_cards(array $rows): string
                     <dt>Addebiti totali</dt>
                     <dd><?= htmlspecialchars(format_euro($costo_totale)) ?></dd>
                 </div>
+                <?= render_active_sim_tile($row) ?>
                 <?= render_disabled_sim_tile($row) ?>
             </dl>
         </article>
@@ -244,6 +265,7 @@ if (empty($search_errors)) {
                    COALESCE(tf.durata_totale, 0) AS durata_totale,
                    COALESCE(tf.costo_totale, 0) AS costo_totale,
                    sa.codice AS simAttivaCodice,
+                   sa.dataAttivazione AS simAttivaDataAttivazione,
                    sd.codice AS simDisattivaCodice,
                    sd.tipoSIM AS simDisattivaTipoSIM,
                    sd.dataAttivazione AS simDisattivaDataAttivazione,

@@ -1056,12 +1056,12 @@ if ($ajax_rows) {
     <div id="sim-results" class="results-view-root" data-results-view-root="true" data-view-key="sim" data-current-view="cards">
         <div class="sim-toolbar results-actions-row" data-card-modal-exclude="true">
             <div class="sim-toolbar-left">
-                <div class="sim-toolbar-title"><?= htmlspecialchars(sim_states_title($selected_states)) ?></div>
                 <div class="results-navigation" data-results-navigation="true" aria-label="Navigazione risultati">
                     <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
                     <span class="results-counter" data-results-counter="true">0 risultati</span>
                     <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
                 </div>
+                <div class="sim-toolbar-title"><?= htmlspecialchars(sim_states_title($selected_states)) ?></div>
             </div>
             <div class="results-tools sim-results-tools">
                 <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">

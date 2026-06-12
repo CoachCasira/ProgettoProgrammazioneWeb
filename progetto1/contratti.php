@@ -378,11 +378,27 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
 <div class="sticky-data-panel">
 <div class="search-filter">
     <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
-        <div class="form-group">
+        <div class="form-group phone-number-filter-group">
             <label for="numero">Numero di telefono:</label>
             <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
         </div>
-        <div class="form-group">
+        <div class="form-group phone-status-filter-group">
+            <label for="stato_numero">Stato del numero:</label>
+            <select id="stato_numero" name="stato_numero">
+                <option value="">Mostra tutti</option>
+                <option value="attivo" <?= $search_stato_numero == 'attivo' ? 'selected' : '' ?>>Numeri attivi</option>
+                <option value="disattivato" <?= $search_stato_numero == 'disattivato' ? 'selected' : '' ?>>Numeri disattivati</option>
+            </select>
+        </div>
+        <div class="form-group phone-date-filter-group range-filter-group">
+            <label data-phone-date-label><?= htmlspecialchars($phone_date_filter_label) ?></label>
+            <div class="range-pair compact-range-pair date-range-pair">
+                <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Data inizio">
+                <span class="range-separator" aria-hidden="true">–</span>
+                <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine">
+            </div>
+        </div>
+        <div class="form-group phone-plan-filter-group">
             <label for="tipo">Piano del numero:</label>
             <select id="tipo" name="tipo">
                 <option value="">Mostra tutti</option>
@@ -390,12 +406,15 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
             </select>
         </div>
-        <div class="form-group">
-            <label for="stato_numero">Stato del numero:</label>
-            <select id="stato_numero" name="stato_numero">
-                <option value="">Mostra tutti</option>
-                <option value="attivo" <?= $search_stato_numero == 'attivo' ? 'selected' : '' ?>>Numeri attivi</option>
-                <option value="disattivato" <?= $search_stato_numero == 'disattivato' ? 'selected' : '' ?>>Numeri disattivati</option>
+        <div class="form-group order-filter-group">
+            <label for="ordine">Mostra prima:</label>
+            <select id="ordine" name="ordine" data-scroll-select="true">
+                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Nessun criterio specifico</option>
+                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
+                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
+                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>
+                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Maggiore durata totale</option>
+                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Maggiore spesa totale</option>
             </select>
         </div>
         <div class="form-group traffic-filter-group">
@@ -409,25 +428,6 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </select>
             <div class="custom-threshold-inline <?= $search_min_chiamate == 'custom' ? '' : 'is-hidden' ?>" data-custom-threshold-container>
                 <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Scrivi numero minimo" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
-            </div>
-        </div>
-        <div class="form-group order-filter-group">
-            <label for="ordine">Mostra prima:</label>
-            <select id="ordine" name="ordine" data-scroll-select="true">
-                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Nessun criterio specifico</option>
-                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
-                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
-                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>
-                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Maggiore durata totale</option>
-                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Maggiore spesa totale</option>
-            </select>
-        </div>
-        <div class="form-group phone-date-filter-group range-filter-group">
-            <label data-phone-date-label><?= htmlspecialchars($phone_date_filter_label) ?></label>
-            <div class="range-pair compact-range-pair date-range-pair">
-                <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Data inizio">
-                <span class="range-separator" aria-hidden="true">–</span>
-                <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine">
             </div>
         </div>
         <button type="submit" class="btn">Cerca</button>

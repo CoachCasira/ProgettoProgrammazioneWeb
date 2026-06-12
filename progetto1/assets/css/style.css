@@ -4276,3 +4276,263 @@ select[data-scroll-select="true"].native-select-hidden {
         min-width: 0 !important;
     }
 }
+
+
+/* Rifinitura v8: ordine coerente dei filtri e controlli composti più compatti */
+
+/* Controllo composto della durata: minuti e secondi dentro un unico campo. */
+.telefonate-filter-form .duration-range-control {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr);
+    align-items: stretch;
+    min-height: 2.74rem;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--surface-color);
+}
+
+.telefonate-filter-form .duration-segment {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    min-width: 0;
+}
+
+.telefonate-filter-form .duration-segment > input,
+.telefonate-filter-form .duration-segment > .clearable-input {
+    width: 100% !important;
+    min-width: 0 !important;
+}
+
+.telefonate-filter-form .duration-segment .clearable-input input,
+.telefonate-filter-form .duration-segment > input {
+    width: 100% !important;
+    min-width: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    outline: 0 !important;
+}
+
+.telefonate-filter-form .duration-segment .clearable-input input:focus,
+.telefonate-filter-form .duration-segment > input:focus {
+    box-shadow: inset 0 0 0 2px var(--accent-color);
+}
+
+.telefonate-filter-form .duration-unit {
+    padding-right: 0.7rem;
+    color: var(--primary-color);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Separatore verticale marrone per durata e fascia oraria. */
+.telefonate-filter-form .compound-control-divider {
+    display: block;
+    align-self: stretch;
+    width: 2px;
+    min-width: 2px;
+    margin: 0.48rem 0;
+    background: var(--primary-color);
+    border-radius: 999px;
+    opacity: 0.78;
+}
+
+.telefonate-filter-form .time-range-pair {
+    grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr) !important;
+}
+
+/* Il pulsante ha la stessa altezza dei controlli della seconda riga. */
+.telefonate-filter-form > .btn,
+.sim-filter-form > .btn,
+.contratti-filter-form > .btn {
+    min-height: 2.74rem;
+    align-self: end;
+}
+
+@media (min-width: 901px) {
+    /* Numeri: numero, stato e periodo; poi piano, ordinamento e traffico. */
+    .contratti-filter-form {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 0.8rem 0.95rem !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 3 / span 2 !important;
+        grid-row: 1 !important;
+        max-width: none !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form > .btn {
+        grid-column: 4 !important;
+        grid-row: 2 !important;
+        width: 100%;
+    }
+
+    /* Chiamate: numero, stato, periodo, durata; poi fascia, addebito e azione. */
+    .telefonate-filter-form {
+        grid-template-columns:
+            minmax(180px, 1fr)
+            minmax(180px, 1fr)
+            minmax(300px, 1.45fr)
+            minmax(240px, 1.15fr) !important;
+        gap: 0.8rem 0.95rem !important;
+    }
+
+    .telefonate-filter-form .call-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .call-state-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .period-filter-group {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .duration-filter-group {
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .time-filter-group {
+        grid-column: 1 / span 2 !important;
+        grid-row: 2 !important;
+        max-width: 31rem;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form > .btn {
+        grid-column: 4 !important;
+        grid-row: 2 !important;
+        width: 100%;
+    }
+
+    /* SIM: ordine coerente con i dati mostrati; tutti i controlli su una riga. */
+    .sim-filter-form {
+        grid-template-columns:
+            minmax(0, 1fr)
+            minmax(0, 0.85fr)
+            minmax(0, 1.15fr)
+            minmax(0, 1.65fr)
+            minmax(0, 0.85fr)
+            minmax(0, 0.72fr) !important;
+        gap: 0.8rem 0.8rem !important;
+        align-items: end;
+    }
+
+    .sim-filter-form .sim-code-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-state-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-phone-filter-group {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+        max-width: none !important;
+    }
+
+    .sim-filter-form .sim-type-filter-group {
+        grid-column: 5 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form > .btn {
+        grid-column: 6 !important;
+        grid-row: 1 !important;
+        width: 100%;
+    }
+
+    /* Con sole SIM disponibili spariscono numero e periodo senza lasciare buchi. */
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) {
+        grid-template-columns:
+            minmax(220px, 1fr)
+            minmax(190px, 0.9fr)
+            minmax(220px, 1fr)
+            minmax(150px, 0.72fr) !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-code-filter-group {
+        grid-column: 1 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-state-filter-group {
+        grid-column: 2 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-type-filter-group {
+        grid-column: 3 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn {
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+    }
+}
+
+@media (max-width: 1200px) and (min-width: 901px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 3 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn { grid-column: 4 !important; grid-row: 2 !important; }
+}
+
+@media (max-width: 900px) {
+    .telefonate-filter-form .duration-range-control {
+        width: 100%;
+    }
+
+    .telefonate-filter-form .duration-unit {
+        padding-right: 0.5rem;
+    }
+}

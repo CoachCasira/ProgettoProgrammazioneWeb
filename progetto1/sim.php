@@ -994,6 +994,10 @@ if ($ajax_rows) {
     <div class="sticky-data-panel">
     <div class="search-filter">
         <form id="sim-filter" class="compact-filter-form sim-filter-form" method="POST" action="sim.php" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" data-sim-state-filter="true">
+            <div class="form-group sim-code-filter-group">
+                <label for="codice">Codice SIM:</label>
+                <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
+            </div>
             <div class="form-group sim-state-filter-group">
                 <label for="sim-state-button">Stato SIM:</label>
                 <input type="hidden" name="stato" value="<?= htmlspecialchars($state) ?>" data-sim-state-hidden>
@@ -1023,20 +1027,6 @@ if ($ajax_rows) {
                 </div>
             </div>
 
-            <div class="form-group sim-code-filter-group">
-                <label for="codice">Codice SIM:</label>
-                <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
-            </div>
-            <div class="form-group sim-type-filter-group">
-                <label for="tipoSIM">Formato SIM:</label>
-                <select id="tipoSIM" name="tipoSIM" data-scroll-select="true">
-                    <option value="">Mostra tutti</option>
-                    <option value="Nano" <?= $search_tipo == 'Nano' ? 'selected' : '' ?>>Nano SIM</option>
-                    <option value="Micro" <?= $search_tipo == 'Micro' ? 'selected' : '' ?>>Micro SIM</option>
-                    <option value="Standard" <?= $search_tipo == 'Standard' ? 'selected' : '' ?>>Standard SIM</option>
-                    <option value="eSIM" <?= $search_tipo == 'eSIM' ? 'selected' : '' ?>>Virtuale eSIM</option>
-                </select>
-            </div>
             <div class="form-group sim-phone-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
                 <label for="numero_sim">Numero associato o precedente:</label>
                 <input type="text" id="numero_sim" name="numero" value="<?= htmlspecialchars($has_associated_state_filter ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
@@ -1048,6 +1038,16 @@ if ($ajax_rows) {
                     <span class="range-separator" aria-hidden="true">–</span>
                     <input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
                 </div>
+            </div>
+            <div class="form-group sim-type-filter-group">
+                <label for="tipoSIM">Formato SIM:</label>
+                <select id="tipoSIM" name="tipoSIM" data-scroll-select="true">
+                    <option value="">Mostra tutti</option>
+                    <option value="Nano" <?= $search_tipo == 'Nano' ? 'selected' : '' ?>>Nano SIM</option>
+                    <option value="Micro" <?= $search_tipo == 'Micro' ? 'selected' : '' ?>>Micro SIM</option>
+                    <option value="Standard" <?= $search_tipo == 'Standard' ? 'selected' : '' ?>>Standard SIM</option>
+                    <option value="eSIM" <?= $search_tipo == 'eSIM' ? 'selected' : '' ?>>Virtuale eSIM</option>
+                </select>
             </div>
             <button type="submit" class="btn">Cerca SIM</button>
         </form>

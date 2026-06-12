@@ -1176,7 +1176,10 @@
         if (wasVisible) {
             var currentCard = content.querySelector('.card-modal-card');
             if (currentCard) {
-                cardModalHistory.push(resetCardModalTransientState(currentCard.cloneNode(true)));
+                /* Conserviamo soltanto la scheda immediatamente precedente.
+                   Numero e SIM possono richiamarsi a vicenda: accumulare ogni
+                   passaggio creerebbe una cronologia ciclica molto lunga. */
+                cardModalHistory = [resetCardModalTransientState(currentCard.cloneNode(true))];
             }
         } else {
             cardModalHistory = [];

@@ -91,6 +91,7 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
 $search_contratto = trim($_POST['contratto'] ?? $_GET['contratto'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_piano = trim($_POST['piano'] ?? $_GET['piano'] ?? '');
+$search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'recenti');
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $search_ora_da = trim($_POST['ora_da'] ?? $_GET['ora_da'] ?? '');
@@ -112,6 +113,9 @@ if ($search_stato_numero !== '' && !in_array($search_stato_numero, ['attivo', 'd
 }
 if ($search_piano !== '' && !in_array($search_piano, ['consumo', 'ricarica'], true)) {
     $search_errors[] = 'Selezionare un piano tariffario valido.';
+}
+if (!in_array($search_ordine, ['recenti', 'meno_recenti', 'durata_desc', 'durata_asc', 'costo_desc', 'costo_asc'], true)) {
+    $search_errors[] = 'Selezionare un criterio di ordinamento valido.';
 }
 if (!is_time_minutes_or_empty($search_ora_da)) {
     $search_errors[] = 'Il campo “Dalle ore” deve contenere un orario valido nel formato ore:minuti.';
@@ -194,7 +198,17 @@ if (empty($search_errors)) {
         $sql_base .= " AND t.costo <= $costo_max";
     }
 
-    $sql_base .= " ORDER BY t.data DESC, t.ora DESC";
+    $order_options = [
+        'recenti' => 't.data DESC, t.ora DESC, t.id DESC',
+        'meno_recenti' => 't.data ASC, t.ora ASC, t.id ASC',
+        'durata_desc' => 't.durata DESC, t.data DESC, t.ora DESC, t.id DESC',
+        'durata_asc' => 't.durata ASC, t.data DESC, t.ora DESC, t.id DESC',
+        'costo_desc' => 't.costo DESC, t.data DESC, t.ora DESC, t.id DESC',
+        'costo_asc' => 't.costo ASC, t.data DESC, t.ora DESC, t.id DESC'
+    ];
+    $order_by = $order_options[$search_ordine] ?? $order_options['recenti'];
+
+    $sql_base .= " ORDER BY $order_by";
     $total_count = query_total_count($conn, $sql_base);
 
     if ($export_csv) {
@@ -300,6 +314,17 @@ if ($ajax_rows) {
         <div class="form-group cost-filter-group">
             <label for="costo_max">Addebito max (€):</label>
             <input type="text" id="costo_max" name="costo_max" value="<?= htmlspecialchars($search_costo_max) ?>" placeholder="Es. 1,50" inputmode="decimal" autocomplete="off" data-clearable="true">
+        </div>
+        <div class="form-group call-order-filter-group">
+            <label for="ordine">Mostra prima:</label>
+            <select id="ordine" name="ordine">
+                <option value="recenti" <?= $search_ordine === 'recenti' ? 'selected' : '' ?>>Chiamate più recenti</option>
+                <option value="meno_recenti" <?= $search_ordine === 'meno_recenti' ? 'selected' : '' ?>>Chiamate meno recenti</option>
+                <option value="durata_desc" <?= $search_ordine === 'durata_desc' ? 'selected' : '' ?>>Durata maggiore</option>
+                <option value="durata_asc" <?= $search_ordine === 'durata_asc' ? 'selected' : '' ?>>Durata minore</option>
+                <option value="costo_desc" <?= $search_ordine === 'costo_desc' ? 'selected' : '' ?>>Addebito maggiore</option>
+                <option value="costo_asc" <?= $search_ordine === 'costo_asc' ? 'selected' : '' ?>>Addebito minore</option>
+            </select>
         </div>
         <button type="submit" class="btn">Filtra chiamate</button>
     </form>

@@ -4698,3 +4698,78 @@ select[data-scroll-select="true"].native-select-hidden {
         grid-row: auto !important;
     }
 }
+
+/* Rifinitura v13: griglia chiamate più regolare e orari centrati. */
+@media (min-width: 1181px) {
+    .telefonate-filter-form {
+        grid-template-columns: repeat(16, minmax(0, 1fr)) !important;
+        column-gap: 0.8rem !important;
+        row-gap: 0.8rem !important;
+    }
+
+    /* Prima riga: due campi semplici e due controlli composti bilanciati. */
+    .telefonate-filter-form .call-number-filter-group {
+        grid-column: 1 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .call-state-filter-group {
+        grid-column: 4 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .period-filter-group {
+        grid-column: 7 / span 5 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .duration-filter-group {
+        grid-column: 12 / span 5 !important;
+        grid-row: 1 !important;
+    }
+
+    /* Seconda riga: distribuzione uniforme fino al margine destro. */
+    .telefonate-filter-form .time-filter-group {
+        grid-column: 1 / span 4 !important;
+        grid-row: 2 !important;
+        max-width: none !important;
+    }
+
+    .telefonate-filter-form .call-plan-filter-group {
+        grid-column: 5 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 8 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .call-order-filter-group {
+        grid-column: 11 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form > .btn {
+        grid-column: 14 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100%;
+    }
+}
+
+/* Il testo degli orari è centrato all'interno dei due segmenti. */
+.telefonate-filter-form .time-range-pair input[type="time"] {
+    text-align: center;
+    text-align-last: center;
+}
+
+.telefonate-filter-form .time-range-pair input[type="time"]::-webkit-datetime-edit {
+    width: 100%;
+    text-align: center;
+}
+
+.telefonate-filter-form .time-range-pair input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+}

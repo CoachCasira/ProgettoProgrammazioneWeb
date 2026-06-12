@@ -408,7 +408,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <option value="custom" <?= $search_min_chiamate == 'custom' ? 'selected' : '' ?>>Soglia personalizzata</option>
             </select>
             <div class="custom-threshold-inline <?= $search_min_chiamate == 'custom' ? '' : 'is-hidden' ?>" data-custom-threshold-container>
-                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Inserisci soglia" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
+                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Scrivi numero minimo" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
             </div>
         </div>
         <div class="form-group order-filter-group">

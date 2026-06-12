@@ -3848,3 +3848,132 @@ select[data-scroll-select="true"] {
     height: 2.35rem !important;
     box-sizing: border-box;
 }
+
+/* Patch finale: tendine realmente compatte e soglia personalizzata scrivibile */
+select[data-scroll-select="true"]:not(.native-select-hidden) {
+    display: block !important;
+}
+
+select[data-scroll-select="true"].native-select-hidden {
+    display: none !important;
+}
+
+.custom-select,
+.multi-select-filter {
+    position: relative !important;
+}
+
+.custom-select-menu,
+.multi-select-menu {
+    max-height: calc(2 * 2.35rem + 2px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+    z-index: 80 !important;
+}
+
+.custom-select-menu::-webkit-scrollbar,
+.multi-select-menu::-webkit-scrollbar {
+    width: 0.45rem;
+}
+
+.custom-select-menu::-webkit-scrollbar-thumb,
+.multi-select-menu::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 999px;
+}
+
+.custom-select-menu::-webkit-scrollbar-track,
+.multi-select-menu::-webkit-scrollbar-track {
+    background: var(--row-alt);
+}
+
+.custom-select-option,
+.multi-select-option {
+    height: 2.35rem !important;
+    min-height: 2.35rem !important;
+    max-height: 2.35rem !important;
+    box-sizing: border-box;
+    overflow: hidden;
+    line-height: 1.15;
+}
+
+.custom-select .custom-select-menu,
+.multi-select-filter .multi-select-menu {
+    display: none !important;
+}
+
+.custom-select.is-open .custom-select-menu,
+.multi-select-filter.is-open .multi-select-menu {
+    display: block !important;
+}
+
+.traffic-filter-group.threshold-is-custom .custom-select-current {
+    opacity: 0;
+}
+
+.traffic-filter-group .custom-threshold-inline {
+    position: absolute !important;
+    left: 0 !important;
+    right: 2.55rem !important;
+    bottom: 0 !important;
+    z-index: 90 !important;
+    height: 2.74rem !important;
+    margin: 0 !important;
+    pointer-events: none;
+}
+
+.traffic-filter-group .custom-threshold-inline input {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 2.74rem !important;
+    padding: 0.62rem 0.78rem !important;
+    border: 1px solid var(--border-color) !important;
+    border-right: 0 !important;
+    border-radius: 5px 0 0 5px !important;
+    background: var(--surface-color) !important;
+    color: var(--text-color) !important;
+    font: inherit !important;
+    pointer-events: auto;
+}
+
+.traffic-filter-group .custom-threshold-inline.is-hidden {
+    display: none !important;
+}
+
+.multi-select-option {
+    position: relative;
+    padding-left: 2.15rem !important;
+}
+
+.multi-select-option input[type="checkbox"] {
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 1px !important;
+    height: 1px !important;
+}
+
+.multi-select-option span::before {
+    content: "";
+    position: absolute;
+    left: 0.72rem;
+    top: 50%;
+    width: 0.78rem;
+    height: 0.78rem;
+    transform: translateY(-50%);
+    border: 2px solid currentColor;
+    border-radius: 3px;
+    box-sizing: border-box;
+}
+
+.multi-select-option:has(input:checked) span::before {
+    content: "✓";
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    font-weight: 900;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.22);
+}

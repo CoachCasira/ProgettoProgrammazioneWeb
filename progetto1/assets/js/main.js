@@ -244,22 +244,37 @@
         });
     }
 
-    function toggleCustomThreshold(select) {
+    function toggleCustomThreshold(select, focusInput) {
         if (!select) {
             return;
         }
         var formGroup = select.closest('.traffic-filter-group');
         var container = formGroup ? formGroup.querySelector('[data-custom-threshold-container]') : null;
         var input = formGroup ? formGroup.querySelector('[data-custom-threshold-input]') : null;
+        var wrapper = select.nextElementSibling && select.nextElementSibling.classList && select.nextElementSibling.classList.contains('custom-select')
+            ? select.nextElementSibling
+            : null;
         var shouldShow = select.value === 'custom';
 
+        if (formGroup) {
+            formGroup.classList.toggle('threshold-is-custom', shouldShow);
+        }
+        if (wrapper) {
+            wrapper.classList.toggle('custom-select-threshold-active', shouldShow);
+        }
         if (container) {
             container.classList.toggle('is-hidden', !shouldShow);
+            container.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
         }
         if (input) {
             input.disabled = !shouldShow;
             if (!shouldShow) {
                 input.value = '';
+            } else if (focusInput) {
+                window.setTimeout(function () {
+                    input.focus();
+                    input.select();
+                }, 0);
             }
             updateClearButton(input);
         }
@@ -270,9 +285,9 @@
         var scope = root || document;
         scope.querySelectorAll('[data-custom-threshold-select]:not([data-threshold-ready="true"])').forEach(function (select) {
             select.dataset.thresholdReady = 'true';
-            toggleCustomThreshold(select);
+            toggleCustomThreshold(select, false);
             select.addEventListener('change', function () {
-                toggleCustomThreshold(select);
+                toggleCustomThreshold(select, true);
             });
         });
     }
@@ -336,6 +351,9 @@
 
             var wrapper = document.createElement('div');
             wrapper.className = 'custom-select';
+            if (select.hasAttribute('data-custom-threshold-select')) {
+                wrapper.classList.add('custom-select-threshold');
+            }
 
             var button = document.createElement('button');
             button.type = 'button';

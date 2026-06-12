@@ -141,11 +141,11 @@ function render_contratti_cards(array $rows): string
                         <dd>Nessun traffico</dd>
                     </div>
                 <?php endif; ?>
-                <div class="card-detail-tile">
+                <div class="card-detail-tile phone-duration-tile">
                     <dt>Durata totale chiamate</dt>
                     <dd><?= htmlspecialchars(format_duration_seconds($durata_totale)) ?></dd>
                 </div>
-                <div class="card-detail-tile">
+                <div class="card-detail-tile phone-charge-tile">
                     <dt>Addebiti totali</dt>
                     <dd><?= htmlspecialchars(format_euro($costo_totale)) ?></dd>
                 </div>
@@ -344,6 +344,19 @@ if (empty($search_errors)) {
 
     if ($search_ordine === 'chiamate_crescenti' || ($search_ordine === 'automatico' && $effective_min_chiamate > 0)) {
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'automatico' && $search_residuo === 'quasi_esaurito') {
+        // I risultati più urgenti vengono mostrati per primi. Il rapporto rispetto
+        // alla soglia rende confrontabili credito residuo e minuti residui.
+        $sql_base .= " ORDER BY CASE
+                              WHEN c.tipo = 'ricarica' THEN COALESCE(c.creditoResiduo, 0) / 5
+                              ELSE COALESCE(c.minutiResidui, 0) / 30
+                           END ASC,
+                           c.dataAttivazione DESC,
+                           c.numero ASC";
+    } elseif ($search_ordine === 'automatico' && $search_residuo === 'credito_basso') {
+        $sql_base .= " ORDER BY COALESCE(c.creditoResiduo, 0) ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'automatico' && $search_residuo === 'minuti_bassi') {
+        $sql_base .= " ORDER BY COALESCE(c.minutiResidui, 0) ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
         $sql_base .= " ORDER BY num_telefonate DESC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'maggiore_durata') {
@@ -445,14 +458,14 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </select>
         </div>
         <div class="form-group residual-filter-group">
-            <label for="residuo">Disponibilità residua:</label>
+            <label for="residuo">Credito o minuti residui:</label>
             <select id="residuo" name="residuo" data-scroll-select="true">
                 <option value="">Mostra tutti</option>
-                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Residuo quasi esaurito</option>
+                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Credito sotto 5 € o minuti sotto 30</option>
                 <option value="credito_basso" <?= $search_residuo === 'credito_basso' ? 'selected' : '' ?>>Credito sotto 5 €</option>
                 <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>Minuti sotto 30</option>
-                <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Credito disponibile</option>
-                <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>Minuti disponibili</option>
+                <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Credito da 5 € in su</option>
+                <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>Minuti da 30 in su</option>
             </select>
         </div>
         <div class="form-group order-filter-group">

@@ -5112,3 +5112,62 @@ select[data-scroll-select="true"].native-select-hidden {
         flex-direction: column;
     }
 }
+
+
+/* =========================================================
+   V16 - Rifiniture definitive ricerca rapida e residui
+   ========================================================= */
+
+/* La ricerca rapida resta immediata, ma non occupa inutilmente
+   l'intera larghezza della Panoramica su schermi ampi. */
+.dashboard-search-panel {
+    width: min(100%, 900px);
+    margin-right: auto;
+}
+
+.dashboard-global-search {
+    grid-template-columns: minmax(360px, 650px) 132px;
+    justify-content: start;
+}
+
+/* I dati secondari delle card dei numeri usano una tipografia appena
+   più compatta e uniforme, così durata e addebito non alterano l'altezza. */
+.phone-card .phone-detail-grid dt {
+    font-size: 0.74rem;
+    line-height: 1.28;
+}
+
+.phone-card .phone-detail-grid dd {
+    font-size: 0.92rem;
+    line-height: 1.25;
+}
+
+.phone-card .phone-duration-tile dd,
+.phone-card .phone-charge-tile dd {
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+}
+
+.phone-card .phone-duration-tile dd {
+    font-size: 0.8rem;
+}
+
+.phone-card .phone-charge-tile dd {
+    font-size: 0.88rem;
+}
+
+@media (max-width: 900px) {
+    .dashboard-search-panel {
+        width: 100%;
+    }
+
+    .dashboard-global-search {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+@media (max-width: 760px) {
+    .dashboard-global-search {
+        grid-template-columns: 1fr;
+    }
+}

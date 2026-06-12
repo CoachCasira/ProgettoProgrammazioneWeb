@@ -4536,3 +4536,54 @@ select[data-scroll-select="true"].native-select-hidden {
         padding-right: 0.5rem;
     }
 }
+
+/* Rifinitura v9: filtro piano tariffario e proporzioni più equilibrate nelle chiamate. */
+@media (min-width: 901px) {
+    .telefonate-filter-form {
+        grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+        gap: 0.8rem 0.8rem !important;
+    }
+
+    .telefonate-filter-form .call-number-filter-group {
+        grid-column: 1 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .call-state-filter-group {
+        grid-column: 4 / span 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .period-filter-group {
+        grid-column: 6 / span 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .duration-filter-group {
+        grid-column: 10 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .time-filter-group {
+        grid-column: 1 / span 3 !important;
+        grid-row: 2 !important;
+        max-width: none !important;
+    }
+
+    .telefonate-filter-form .call-plan-filter-group {
+        grid-column: 4 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 7 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form > .btn {
+        grid-column: 10 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100%;
+    }
+}
+

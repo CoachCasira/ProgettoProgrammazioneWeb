@@ -90,6 +90,7 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
 
 $search_contratto = trim($_POST['contratto'] ?? $_GET['contratto'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
+$search_piano = trim($_POST['piano'] ?? $_GET['piano'] ?? '');
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $search_ora_da = trim($_POST['ora_da'] ?? $_GET['ora_da'] ?? '');
@@ -108,6 +109,9 @@ if (!is_digits_or_empty($search_contratto)) {
 }
 if ($search_stato_numero !== '' && !in_array($search_stato_numero, ['attivo', 'disattivato'], true)) {
     $search_errors[] = 'Selezionare uno stato del numero valido.';
+}
+if ($search_piano !== '' && !in_array($search_piano, ['consumo', 'ricarica'], true)) {
+    $search_errors[] = 'Selezionare un piano tariffario valido.';
 }
 if (!is_time_minutes_or_empty($search_ora_da)) {
     $search_errors[] = 'Il campo “Dalle ore” deve contenere un orario valido nel formato ore:minuti.';
@@ -158,6 +162,10 @@ if (empty($search_errors)) {
         $sql_base .= " AND sa.codice IS NOT NULL";
     } elseif ($search_stato_numero === 'disattivato') {
         $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
+    }
+    if ($search_piano !== '') {
+        $piano = $conn->real_escape_string($search_piano);
+        $sql_base .= " AND c.tipo = '$piano'";
     }
     if ($search_data_da !== '') {
         $data_da = $conn->real_escape_string($search_data_da);
@@ -260,7 +268,7 @@ if ($ajax_rows) {
             </div>
         </div>
         <div class="form-group duration-filter-group">
-            <label>Durata minima:</label>
+            <label>Durata minima chiamata:</label>
             <div class="duration-range-control">
                 <div class="duration-segment">
                     <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata minima in minuti">
@@ -274,12 +282,20 @@ if ($ajax_rows) {
             </div>
         </div>
         <div class="form-group time-filter-group range-filter-group">
-            <label>Fascia oraria:</label>
+            <label>Ora della chiamata:</label>
             <div class="range-pair compact-range-pair time-range-pair">
-                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Dalle ore">
+                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata">
                 <span class="compound-control-divider" aria-hidden="true"></span>
-                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Alle ore">
+                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Ora finale della chiamata">
             </div>
+        </div>
+        <div class="form-group call-plan-filter-group">
+            <label for="piano">Piano tariffario:</label>
+            <select id="piano" name="piano">
+                <option value="">Mostra tutti</option>
+                <option value="consumo" <?= $search_piano === 'consumo' ? 'selected' : '' ?>>A consumo</option>
+                <option value="ricarica" <?= $search_piano === 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
+            </select>
         </div>
         <div class="form-group cost-filter-group">
             <label for="costo_max">Addebito max (€):</label>

@@ -4852,3 +4852,263 @@ select[data-scroll-select="true"].native-select-hidden {
     min-width: 0;
     white-space: nowrap;
 }
+
+/* =========================================================
+   V15 - Ricerca globale, scorciatoie e disponibilità residua
+   ========================================================= */
+.dashboard-search-panel,
+.dashboard-shortcuts {
+    margin: 1.35rem 0 1.8rem;
+    padding: 1.25rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--surface-color);
+}
+
+.dashboard-section-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-section-heading h3 {
+    margin: 0 0 0.25rem;
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.dashboard-section-heading p {
+    margin: 0;
+    color: var(--muted-text);
+}
+
+.dashboard-global-search {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.85rem;
+    align-items: end;
+}
+
+.dashboard-global-search .form-group {
+    margin: 0;
+}
+
+.dashboard-global-search .btn {
+    min-width: 132px;
+    min-height: 2.74rem;
+}
+
+.dashboard-search-feedback {
+    margin-top: 1rem;
+}
+
+.dashboard-search-results {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1.1rem;
+}
+
+.dashboard-result-group {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1rem;
+}
+
+.dashboard-result-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.65rem;
+}
+
+.dashboard-result-group-header h4 {
+    margin: 0;
+    color: var(--primary-color);
+}
+
+.dashboard-result-group-header span {
+    color: var(--muted-text);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.dashboard-result-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.7rem;
+}
+
+.dashboard-result-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+    min-width: 0;
+    padding: 0.85rem 0.95rem;
+    border: 1px solid var(--border-color);
+    border-left: 4px solid rgba(128, 112, 102, 0.42);
+    border-radius: 9px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    text-decoration: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.dashboard-result-card:hover,
+.dashboard-result-card:focus {
+    border-color: var(--primary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.09);
+}
+
+.dashboard-result-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.dashboard-result-main strong {
+    color: var(--primary-color);
+    font-size: 1.02rem;
+    overflow-wrap: anywhere;
+}
+
+.dashboard-result-main span {
+    color: var(--muted-text);
+    font-size: 0.88rem;
+    line-height: 1.35;
+}
+
+.dashboard-result-status {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(93, 145, 94, 0.14);
+    color: #4f7d50;
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.dashboard-result-status.is-disabled,
+.dashboard-result-status.sim-state-disattive {
+    background: rgba(165, 104, 75, 0.14);
+    color: #955d45;
+}
+
+.dashboard-result-status.sim-state-disponibili {
+    background: rgba(113, 137, 88, 0.14);
+    color: #627a4d;
+}
+
+.dashboard-shortcut-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.dashboard-shortcut {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-height: 100%;
+    padding: 0.95rem;
+    border: 1px solid var(--border-color);
+    border-radius: 9px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    text-decoration: none;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-shortcut:hover,
+.dashboard-shortcut:focus {
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 12px rgba(0, 0, 0, 0.09);
+}
+
+.dashboard-shortcut strong {
+    color: var(--primary-color);
+}
+
+.dashboard-shortcut span {
+    color: var(--muted-text);
+    font-size: 0.88rem;
+    line-height: 1.4;
+}
+
+@media (min-width: 1100px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 3 / span 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .residual-filter-group {
+        grid-column: 5 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 3 / span 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form > .btn {
+        grid-column: 5 !important;
+        grid-row: 2 !important;
+    }
+}
+
+@media (max-width: 1099px) {
+    .dashboard-shortcut-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .dashboard-global-search {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-global-search .btn {
+        width: 100%;
+    }
+
+    .dashboard-result-list,
+    .dashboard-shortcut-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .dashboard-result-card {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

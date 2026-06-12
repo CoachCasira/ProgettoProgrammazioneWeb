@@ -22,6 +22,27 @@ function singleValue($conn, $sql, $field, $default = 0) {
     return $default;
 }
 
+function dashboard_phone_status(array $row): string
+{
+    if (!empty($row['simAttivaCodice'])) {
+        return 'Numero attivo';
+    }
+    if ((int)($row['simDisattivaCount'] ?? 0) > 0) {
+        return 'Numero disattivato';
+    }
+    return 'Nessuna SIM associata';
+}
+
+function dashboard_sim_state_label(string $state): string
+{
+    $labels = [
+        'attive' => 'SIM in uso',
+        'disponibili' => 'SIM disponibile',
+        'disattive' => 'SIM disattivata'
+    ];
+    return $labels[$state] ?? 'SIM';
+}
+
 $total_contratti = countRows($conn, 'ContrattoTelefonico');
 $total_telefonate = countRows($conn, 'Telefonata');
 $total_sim_attive = countRows($conn, 'SIMAttiva');
@@ -32,11 +53,163 @@ $contratti_ricarica = singleValue($conn, "SELECT COUNT(*) AS totale FROM Contrat
 $contratti_consumo = singleValue($conn, "SELECT COUNT(*) AS totale FROM ContrattoTelefonico WHERE tipo='consumo'", 'totale');
 $durata_media = singleValue($conn, "SELECT ROUND(AVG(durata), 0) AS media FROM Telefonata", 'media');
 $costo_totale = singleValue($conn, "SELECT ROUND(SUM(costo), 2) AS totale FROM Telefonata", 'totale');
+
+$global_query = trim($_GET['ricerca_globale'] ?? '');
+$global_error = '';
+$global_phone_results = [];
+$global_sim_results = [];
+
+if ($global_query !== '') {
+    if (!ctype_digit($global_query)) {
+        $global_error = 'Inserire esclusivamente cifre di un numero telefonico o di un codice SIM.';
+    } else {
+        $escaped_query = $conn->real_escape_string($global_query);
+
+        $phone_sql = "SELECT c.numero,
+                             c.tipo,
+                             c.dataAttivazione,
+                             sa.codice AS simAttivaCodice,
+                             COALESCE(sdc.simDisattivaCount, 0) AS simDisattivaCount
+                      FROM ContrattoTelefonico c
+                      LEFT JOIN SIMAttiva sa ON sa.associataA = c.numero
+                      LEFT JOIN (
+                          SELECT eraAssociataA, COUNT(*) AS simDisattivaCount
+                          FROM SIMDisattiva
+                          GROUP BY eraAssociataA
+                      ) sdc ON sdc.eraAssociataA = c.numero
+                      WHERE c.numero LIKE '%$escaped_query%'
+                      ORDER BY CASE WHEN c.numero = '$escaped_query' THEN 0 ELSE 1 END,
+                               c.numero ASC
+                      LIMIT 6";
+        $phone_result = $conn->query($phone_sql);
+        if ($phone_result) {
+            while ($row = $phone_result->fetch_assoc()) {
+                $global_phone_results[] = $row;
+            }
+        }
+
+        $sim_sql = "SELECT * FROM (
+                        SELECT 'attive' AS simState,
+                               s.codice,
+                               s.tipoSIM,
+                               s.associataA AS numeroAssociato,
+                               s.dataAttivazione,
+                               NULL AS dataDisattivazione
+                        FROM SIMAttiva s
+                        UNION ALL
+                        SELECT 'disponibili' AS simState,
+                               s.codice,
+                               s.tipoSIM,
+                               NULL AS numeroAssociato,
+                               NULL AS dataAttivazione,
+                               NULL AS dataDisattivazione
+                        FROM SIMNonAttiva s
+                        UNION ALL
+                        SELECT 'disattive' AS simState,
+                               s.codice,
+                               s.tipoSIM,
+                               s.eraAssociataA AS numeroAssociato,
+                               s.dataAttivazione,
+                               s.dataDisattivazione
+                        FROM SIMDisattiva s
+                    ) AS simSearch
+                    WHERE codice LIKE '%$escaped_query%'
+                    ORDER BY CASE WHEN codice = '$escaped_query' THEN 0 ELSE 1 END,
+                             CASE simState WHEN 'attive' THEN 1 WHEN 'disponibili' THEN 2 ELSE 3 END,
+                             codice ASC
+                    LIMIT 8";
+        $sim_result = $conn->query($sim_sql);
+        if ($sim_result) {
+            while ($row = $sim_result->fetch_assoc()) {
+                $global_sim_results[] = $row;
+            }
+        }
+    }
+}
+
+$recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
 ?>
 <?php include 'includes/header.php'; ?>
 
 <h2>Panoramica operativa</h2>
 
+<section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
+    <div class="dashboard-section-heading">
+        <div>
+            <h3 id="dashboard-search-title">Ricerca rapida</h3>
+            <p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p>
+        </div>
+    </div>
+
+    <form class="dashboard-global-search" method="GET" action="index.php">
+        <div class="form-group">
+            <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
+            <input type="text" id="ricerca_globale" name="ricerca_globale" value="<?= htmlspecialchars($global_query) ?>" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
+        </div>
+        <button type="submit" class="btn">Cerca</button>
+    </form>
+
+    <?php if ($global_error !== ''): ?>
+        <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
+    <?php elseif ($global_query !== ''): ?>
+        <div class="dashboard-search-results" aria-live="polite">
+            <?php if (!empty($global_phone_results)): ?>
+                <section class="dashboard-result-group" aria-labelledby="phone-results-title">
+                    <div class="dashboard-result-group-header">
+                        <h4 id="phone-results-title">Numeri telefonici</h4>
+                        <span><?= count($global_phone_results) ?> risultat<?= count($global_phone_results) === 1 ? 'o' : 'i' ?></span>
+                    </div>
+                    <div class="dashboard-result-list">
+                        <?php foreach ($global_phone_results as $row): ?>
+                            <?php
+                            $phone_status = dashboard_phone_status($row);
+                            $phone_is_disabled = $phone_status === 'Numero disattivato';
+                            ?>
+                            <a class="dashboard-result-card" href="contratti.php?numero=<?= urlencode($row['numero']) ?>" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['numero']) ?>" title="Apri il dettaglio del numero telefonico">
+                                <span class="dashboard-result-main">
+                                    <strong><?= htmlspecialchars($row['numero']) ?></strong>
+                                    <span><?= strtolower((string)$row['tipo']) === 'consumo' ? 'A consumo' : 'Ricaricabile' ?> · attivato il <?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></span>
+                                </span>
+                                <span class="dashboard-result-status <?= $phone_is_disabled ? 'is-disabled' : '' ?>"><?= htmlspecialchars($phone_status) ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if (!empty($global_sim_results)): ?>
+                <section class="dashboard-result-group" aria-labelledby="sim-results-title">
+                    <div class="dashboard-result-group-header">
+                        <h4 id="sim-results-title">SIM</h4>
+                        <span><?= count($global_sim_results) ?> risultat<?= count($global_sim_results) === 1 ? 'o' : 'i' ?></span>
+                    </div>
+                    <div class="dashboard-result-list">
+                        <?php foreach ($global_sim_results as $row): ?>
+                            <?php
+                            $sim_state = (string)$row['simState'];
+                            $sim_subtitle = dashboard_sim_state_label($sim_state) . ' · ' . ($row['tipoSIM'] ?: 'Formato non indicato');
+                            if (!empty($row['numeroAssociato'])) {
+                                $sim_subtitle .= ' · numero ' . $row['numeroAssociato'];
+                            }
+                            ?>
+                            <a class="dashboard-result-card" href="sim.php?stato=<?= urlencode($sim_state) ?>&amp;codice=<?= urlencode($row['codice']) ?>" data-sim-card-modal="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" title="Apri il dettaglio della SIM">
+                                <span class="dashboard-result-main">
+                                    <strong><?= htmlspecialchars($row['codice']) ?></strong>
+                                    <span><?= htmlspecialchars($sim_subtitle) ?></span>
+                                </span>
+                                <span class="dashboard-result-status sim-state-<?= htmlspecialchars($sim_state) ?>"><?= htmlspecialchars(dashboard_sim_state_label($sim_state)) ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
+
+            <?php if (empty($global_phone_results) && empty($global_sim_results)): ?>
+                <div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “<?= htmlspecialchars($global_query) ?>”.</div>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+</section>
 
 <section class="stat-grid" aria-label="Indicatori principali">
     <article class="stat-card">
@@ -63,6 +236,33 @@ $costo_totale = singleValue($conn, "SELECT ROUND(SUM(costo), 2) AS totale FROM T
             <span><?= htmlspecialchars($total_sim_disattive) ?> disattivate</span>
         </div>
     </article>
+</section>
+
+<section class="dashboard-shortcuts" aria-labelledby="dashboard-shortcuts-title">
+    <div class="dashboard-section-heading">
+        <div>
+            <h3 id="dashboard-shortcuts-title">Ricerche frequenti</h3>
+            <p>Apri direttamente alcune consultazioni operative già configurate.</p>
+        </div>
+    </div>
+    <div class="dashboard-shortcut-grid">
+        <a class="dashboard-shortcut" href="sim.php?stato=disattive&amp;data_da=<?= urlencode($recent_disabled_from) ?>">
+            <strong>SIM disattivate recentemente</strong>
+            <span>Mostra le disattivazioni registrate negli ultimi 30 giorni.</span>
+        </a>
+        <a class="dashboard-shortcut" href="contratti.php?ordine=piu_chiamate">
+            <strong>Numeri con più chiamate</strong>
+            <span>Ordina i numeri partendo da quelli con maggiore attività.</span>
+        </a>
+        <a class="dashboard-shortcut" href="telefonate.php?ordine=costo_desc">
+            <strong>Chiamate più costose</strong>
+            <span>Visualizza prima le telefonate con l’addebito più elevato.</span>
+        </a>
+        <a class="dashboard-shortcut" href="contratti.php?residuo=quasi_esaurito">
+            <strong>Residui quasi esauriti</strong>
+            <span>Trova credito inferiore a 5 € o meno di 30 minuti disponibili.</span>
+        </a>
+    </div>
 </section>
 
 <section class="action-grid" aria-label="Accessi rapidi">

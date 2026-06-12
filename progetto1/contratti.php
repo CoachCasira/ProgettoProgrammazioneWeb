@@ -223,6 +223,7 @@ $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '
 $search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '');
 $search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
 $search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'automatico');
+$search_residuo = trim($_POST['residuo'] ?? $_GET['residuo'] ?? '');
 $effective_min_chiamate = 0;
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
@@ -246,6 +247,9 @@ if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($sea
 }
 if (!in_array($search_ordine, ['automatico', 'recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
+}
+if ($search_residuo !== '' && !in_array($search_residuo, ['quasi_esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
+    $search_errors[] = 'Selezionare un filtro di disponibilità residua valido.';
 }
 if (empty($search_errors)) {
     if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom !== '') {
@@ -309,6 +313,17 @@ if (empty($search_errors)) {
         $sql_base .= " AND sa.codice IS NOT NULL";
     } elseif ($search_stato_numero === 'disattivato') {
         $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
+    }
+    if ($search_residuo === 'quasi_esaurito') {
+        $sql_base .= " AND ((c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) < 5) OR (c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) < 30))";
+    } elseif ($search_residuo === 'credito_basso') {
+        $sql_base .= " AND c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) < 5";
+    } elseif ($search_residuo === 'minuti_bassi') {
+        $sql_base .= " AND c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) < 30";
+    } elseif ($search_residuo === 'credito_disponibile') {
+        $sql_base .= " AND c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) >= 5";
+    } elseif ($search_residuo === 'minuti_disponibili') {
+        $sql_base .= " AND c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) >= 30";
     }
     if ($effective_min_chiamate > 0) {
         $sql_base .= " AND COALESCE(tf.num_telefonate, 0) >= $effective_min_chiamate";
@@ -427,6 +442,17 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <option value="">Mostra tutti</option>
                 <option value="consumo" <?= $search_tipo == 'consumo' ? 'selected' : '' ?>>A consumo</option>
                 <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
+            </select>
+        </div>
+        <div class="form-group residual-filter-group">
+            <label for="residuo">Disponibilità residua:</label>
+            <select id="residuo" name="residuo" data-scroll-select="true">
+                <option value="">Mostra tutti</option>
+                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Residuo quasi esaurito</option>
+                <option value="credito_basso" <?= $search_residuo === 'credito_basso' ? 'selected' : '' ?>>Credito sotto 5 €</option>
+                <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>Minuti sotto 30</option>
+                <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Credito disponibile</option>
+                <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>Minuti disponibili</option>
             </select>
         </div>
         <div class="form-group order-filter-group">

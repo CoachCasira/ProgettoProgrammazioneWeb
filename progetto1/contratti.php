@@ -40,15 +40,14 @@ function render_active_sim_tile(array $row): string
 
     $codice_raw = (string)($row['simAttivaCodice'] ?? '');
     $codice = htmlspecialchars($codice_raw);
-    $data_attivazione = trim((string)($row['simAttivaDataAttivazione'] ?? ''));
     $href = 'sim.php?stato=attive&amp;codice=' . urlencode($codice_raw);
-    $subvalue = $data_attivazione !== ''
-        ? '<span class="tile-subvalue">In uso dal ' . htmlspecialchars(format_date_it($data_attivazione)) . '</span>'
-        : '';
+    $is_only_sim_tile = (int)($row['simDisattivaCount'] ?? 0) <= 0;
+    $tile_class = 'card-detail-tile card-detail-link active-sim-tile'
+        . ($is_only_sim_tile ? ' phone-sim-tile-single' : '');
 
-    return '<div class="card-detail-tile card-detail-link active-sim-tile">'
+    return '<div class="' . $tile_class . '">'
         . '<dt><a href="' . $href . '" class="tile-overlay-link" title="Apri il dettaglio della SIM attualmente associata" data-sim-card-modal="true" data-sim-code="' . $codice . '">SIM in uso</a></dt>'
-        . '<dd>' . $codice . $subvalue . '</dd>'
+        . '<dd>' . $codice . '</dd>'
         . '</div>';
 }
 
@@ -61,25 +60,27 @@ function render_disabled_sim_tile(array $row): string
 
     $numero = (string)($row['numero'] ?? '');
 
+    $is_only_sim_tile = !contratto_has_active_sim($row);
+    $single_tile_class = $is_only_sim_tile ? ' phone-sim-tile-single' : '';
+
     if ($disabled_count > 1) {
         $href = 'sim.php?stato=disattive&amp;numero=' . urlencode($numero);
-        return '<div class="card-detail-tile card-detail-link disabled-sim-tile disabled-sim-tile-multiple">'
+        return '<div class="card-detail-tile card-detail-link disabled-sim-tile disabled-sim-tile-multiple' . $single_tile_class . '">'
             . '<dt><a href="' . $href . '" class="tile-overlay-link" title="Visualizza tutte le SIM precedenti collegate a questo numero">SIM precedenti</a></dt>'
             . '<dd>' . htmlspecialchars((string)$disabled_count) . ' SIM disattivate nello storico</dd>'
             . '</div>';
     }
 
     $codice = htmlspecialchars($row['simDisattivaCodice']);
-    $data_disattivazione = htmlspecialchars(format_date_it($row['simDisattivaDataDisattivazione']));
     $href = 'sim.php?stato=disattive&amp;codice=' . urlencode($row['simDisattivaCodice']);
     $label = contratto_has_active_sim($row) ? 'SIM precedente' : 'SIM disattivata';
     $title = contratto_has_active_sim($row)
         ? 'Apri il dettaglio della SIM precedente collegata a questo numero'
         : 'Apri il dettaglio della SIM disattivata collegata';
 
-    return '<div class="card-detail-tile card-detail-link disabled-sim-tile">'
+    return '<div class="card-detail-tile card-detail-link disabled-sim-tile' . $single_tile_class . '">'
         . '<dt><a href="' . $href . '" class="tile-overlay-link" title="' . htmlspecialchars($title) . '" data-sim-card-modal="true" data-sim-code="' . $codice . '">' . htmlspecialchars($label) . '</a></dt>'
-        . '<dd>' . $codice . '<span class="tile-subvalue">Disattivata il ' . $data_disattivazione . '</span></dd>'
+        . '<dd>' . $codice . '</dd>'
         . '</div>';
 }
 

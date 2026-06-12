@@ -4590,11 +4590,10 @@ select[data-scroll-select="true"].native-select-hidden {
 
 /* Rifinitura v11: hover coerente delle SIM e ordinamento delle chiamate. */
 
-/* Le SIM mantengono il colore identificativo sul bordo sinistro, mentre
-   il resto del contorno è leggero come nelle card dei numeri telefonici. */
+/* Le SIM mantengono il colore identificativo, ma anche il bordo sinistro
+   resta attenuato nello stato normale, come nelle card dei numeri telefonici. */
 .sim-card-active {
     border-color: rgba(122, 106, 97, 0.28);
-    border-left-color: #7A6A61;
 }
 
 .sim-card-active:hover,
@@ -4604,7 +4603,6 @@ select[data-scroll-select="true"].native-select-hidden {
 
 .sim-card-available {
     border-color: rgba(92, 140, 97, 0.28);
-    border-left-color: #5C8C61;
 }
 
 .sim-card-available:hover,
@@ -4614,12 +4612,17 @@ select[data-scroll-select="true"].native-select-hidden {
 
 .sim-card-disabled {
     border-color: rgba(155, 106, 85, 0.30);
-    border-left-color: #9B6A55;
 }
 
 .sim-card-disabled:hover,
 .sim-card-disabled:focus-within {
     border-color: #9B6A55;
+}
+
+/* Se il numero ha una sola SIM da mostrare, il relativo riquadro usa
+   l'intera larghezza disponibile e non lascia una colonna vuota. */
+.phone-detail-grid .phone-sim-tile-single {
+    grid-column: 1 / -1;
 }
 
 @media (min-width: 901px) {

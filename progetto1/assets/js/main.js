@@ -2021,6 +2021,41 @@
         });
     }
 
+
+    function initDashboardQuickSearchReset(root) {
+        var scope = root || document;
+        var input = scope.querySelector('#ricerca_globale');
+
+        if (!input || input.dataset.dashboardResetReady === 'true') {
+            return;
+        }
+
+        input.dataset.dashboardResetReady = 'true';
+
+        function clearPreviousResultsWhenEmpty() {
+            if ((input.value || '').trim() !== '') {
+                return;
+            }
+
+            var layout = input.closest('.dashboard-search-layout');
+            if (!layout) {
+                return;
+            }
+
+            var output = layout.querySelector('.dashboard-search-output');
+            if (output) {
+                output.remove();
+            }
+
+            layout.querySelectorAll('.dashboard-search-feedback').forEach(function (feedback) {
+                feedback.remove();
+            });
+        }
+
+        input.addEventListener('input', clearPreviousResultsWhenEmpty);
+        input.addEventListener('change', clearPreviousResultsWhenEmpty);
+    }
+
     function initDynamicBehaviors(root) {
         var scope = root || document;
         initAlerts(scope);
@@ -2029,6 +2064,7 @@
         initPhoneDateLabelControls(scope);
         initSimStateControls(scope);
         initClearableInputs(scope);
+        initDashboardQuickSearchReset(scope);
         initSimCrudForms(scope);
         initPhoneCardModalLinks(scope);
         initSimCardModalLinks(scope);

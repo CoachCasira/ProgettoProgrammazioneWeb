@@ -369,14 +369,14 @@ if (empty($search_errors)) {
                     format_date_it($row['dataAttivazione']),
                     $is_consumo ? 'A consumo' : 'Ricaricabile',
                     $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
-                    $is_consumo ? '' : csv_decimal_value($row['creditoResiduo']),
+                    $is_consumo ? '' : csv_currency_value($row['creditoResiduo']),
                     (string)(int)$row['num_telefonate'],
                     format_duration_seconds($row['durata_totale'] ?? 0),
-                    csv_decimal_value($row['costo_totale'] ?? 0)
+                    csv_currency_value($row['costo_totale'] ?? 0)
                 ];
             }
         }
-        output_csv_response('numeri_telefonici.csv', ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo (€)', 'Chiamate', 'Durata totale', 'Addebiti totali (€)'], $csv_rows);
+        output_csv_response('numeri_telefonici.csv', ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate', 'Durata totale', 'Addebiti totali'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;

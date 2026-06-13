@@ -205,11 +205,11 @@ if (empty($search_errors)) {
                     format_time_minutes($row['ora']),
                     format_duration_seconds($row['durata']),
                     ucfirst((string)$row['tipoContratto']),
-                    csv_decimal_value($row['costo'])
+                    csv_currency_value($row['costo'])
                 ];
             }
         }
-        output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito (€)'], $csv_rows);
+        output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;

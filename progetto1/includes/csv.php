@@ -27,6 +27,22 @@ function csv_decimal_value($value, int $decimals = 2): string
     return number_format((float) $value, $decimals, ',', '');
 }
 
+
+/**
+ * Formatta un importo monetario con il simbolo euro visibile nella cella.
+ * Nei CSV Excel il valore viene volutamente esportato come testo leggibile,
+ * così il simbolo compare accanto a ogni importo senza dipendere dal formato
+ * valuta configurato nel programma con cui viene aperto il file.
+ */
+function csv_currency_value($value, int $decimals = 2): string
+{
+    if ($value === null || $value === '') {
+        return '';
+    }
+
+    return '€ ' . csv_decimal_value($value, $decimals);
+}
+
 /**
  * Genera una singola riga CSV in UTF-8 con una firma di fputcsv compatibile
  * anche con le versioni PHP meno recenti disponibili sugli hosting condivisi.

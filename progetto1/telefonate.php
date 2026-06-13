@@ -72,6 +72,22 @@ function query_total_count(mysqli $conn, string $sql): int
     return (int)($row['total_count'] ?? 0);
 }
 
+/**
+ * Restituisce rapidamente il totale delle telefonate del popolamento corrente.
+ * Nel progetto Telefonata e' in sola lettura e gli ID sono progressivi, senza
+ * cancellazioni: MAX(id) coincide quindi con il numero totale di righe.
+ * La query usa la chiave primaria e non scandisce milioni di record.
+ */
+function fast_unfiltered_call_count(mysqli $conn): ?int
+{
+    $result = $conn->query("SELECT MAX(id) AS max_id FROM Telefonata");
+    if (!$result || !($row = $result->fetch_assoc())) {
+        return null;
+    }
+
+    return $row['max_id'] === null ? 0 : (int)$row['max_id'];
+}
+
 $search_contratto = trim($_POST['contratto'] ?? $_GET['contratto'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_piano = trim($_POST['piano'] ?? $_GET['piano'] ?? '');
@@ -207,7 +223,9 @@ if (empty($search_errors)) {
                  ORDER BY $order_by";
 
     // Il conteggio totale viene calcolato una sola volta all'apertura o dopo un filtro.
-    // I blocchi caricati durante lo scroll non ripetono più COUNT su milioni di righe.
+    // Senza filtri usiamo MAX(id), che sfrutta la chiave primaria ed evita COUNT
+    // e JOIN su oltre tre milioni di righe. I blocchi caricati durante lo scroll
+    // continuano a non ripetere il conteggio.
     if (!$skip_count && (!$ajax_rows || $offset === 0)) {
         $has_call_detail_filters = $search_data_da !== ''
             || $search_data_a !== ''
@@ -216,29 +234,33 @@ if (empty($search_errors)) {
             || $search_durata_min !== ''
             || $search_durata_sec !== ''
             || $search_costo_max !== '';
+        $has_contract_filters = $search_contratto !== ''
+            || $search_stato_numero !== ''
+            || $search_piano !== '';
 
-        if (!$has_call_detail_filters && performance_table_exists($conn, 'StatisticheContratto')) {
-            if ($search_contratto === '' && $search_stato_numero === '' && $search_piano === '') {
-                $cached_total = performance_global_call_count($conn);
-                if ($cached_total !== null) {
-                    $total_count = $cached_total;
-                }
-            }
+        if (!$has_call_detail_filters && !$has_contract_filters) {
+            $total_count = fast_unfiltered_call_count($conn);
+        }
 
-            if ($total_count === null) {
-                $summary_where = implode(' AND ', $summary_clauses);
-                $count_result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
-                                              FROM StatisticheContratto sc
-                                              JOIN ContrattoTelefonico c ON c.numero = sc.numero
-                                              WHERE $summary_where");
-                if ($count_result && ($count_row = $count_result->fetch_assoc())) {
-                    $total_count = (int)($count_row['total_count'] ?? 0);
-                }
+        if ($total_count === null && !$has_call_detail_filters && performance_table_exists($conn, 'StatisticheContratto')) {
+            $summary_where = implode(' AND ', $summary_clauses);
+            $count_result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
+                                          FROM StatisticheContratto sc
+                                          JOIN ContrattoTelefonico c ON c.numero = sc.numero
+                                          WHERE $summary_where");
+            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
+                $total_count = (int)($count_row['total_count'] ?? 0);
             }
         }
 
         if ($total_count === null) {
-            $count_result = $conn->query("SELECT COUNT(*) AS total_count $from_sql WHERE $where_sql");
+            // Il JOIN con ContrattoTelefonico serve al conteggio solo quando il
+            // filtro riguarda stato o piano. Negli altri casi contiamo direttamente
+            // sull'indice di Telefonata.
+            $count_from_sql = ($search_stato_numero === '' && $search_piano === '')
+                ? 'FROM Telefonata t'
+                : $from_sql;
+            $count_result = $conn->query("SELECT COUNT(*) AS total_count $count_from_sql WHERE $where_sql");
             if ($count_result && ($count_row = $count_result->fetch_assoc())) {
                 $total_count = (int)($count_row['total_count'] ?? 0);
             } else {
@@ -265,7 +287,36 @@ if (empty($search_errors)) {
         output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
     }
 
-    $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
+    $has_any_filter = $search_contratto !== ''
+        || $search_stato_numero !== ''
+        || $search_piano !== ''
+        || $search_data_da !== ''
+        || $search_data_a !== ''
+        || $search_ora_da !== ''
+        || $search_ora_a !== ''
+        || $search_durata_min !== ''
+        || $search_durata_sec !== ''
+        || $search_costo_max !== '';
+
+    if (!$has_any_filter && $search_ordine === 'recenti') {
+        // Percorso veloce della schermata iniziale: MySQL seleziona prima solo il
+        // piccolo blocco richiesto usando l'indice (data, ora), poi esegue il JOIN
+        // con ContrattoTelefonico sulle sole righe effettivamente visualizzate.
+        $page_size = $limit + 1;
+        $sql = "SELECT recenti.id, recenti.effettuataDa, recenti.data, recenti.ora,
+                       recenti.durata, recenti.costo, c.tipo AS tipoContratto
+                FROM (
+                    SELECT id, effettuataDa, data, ora, durata, costo
+                    FROM Telefonata
+                    ORDER BY data DESC, ora DESC
+                    LIMIT $page_size OFFSET $offset
+                ) AS recenti
+                JOIN ContrattoTelefonico c ON c.numero = recenti.effettuataDa
+                ORDER BY recenti.data DESC, recenti.ora DESC";
+    } else {
+        $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
+    }
+
     $result = $conn->query($sql);
     if ($result) {
         while ($row = $result->fetch_assoc()) {

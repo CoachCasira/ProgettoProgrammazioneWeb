@@ -298,6 +298,88 @@
     }
 
 
+    function jumpResultsToLastBlock(container) {
+        var formSelector = container ? container.dataset.lazyForm : '';
+        var form = formSelector ? document.querySelector(formSelector) : null;
+        var lists = container ? container.querySelectorAll('[data-lazy-list]') : [];
+
+        if (!container || !form || lists.length === 0 || !window.fetch || !window.FormData) {
+            return Promise.resolve(false);
+        }
+        if (container.dataset.loadingRows === 'true' || container.dataset.jumpingLast === 'true') {
+            return Promise.resolve(false);
+        }
+
+        var total = parseInt(container.dataset.totalCount || '0', 10);
+        var limit = parseInt(container.dataset.limit || '50', 10);
+        if (!Number.isFinite(total) || total <= 0) {
+            return Promise.resolve(false);
+        }
+        if (!Number.isFinite(limit) || limit <= 0) {
+            limit = 50;
+        }
+
+        var lastOffset = Math.max(0, total - limit);
+        container.dataset.jumpingLast = 'true';
+        container.dataset.loadingRows = 'true';
+        container.classList.add('table-loading-more', 'results-jumping-last');
+
+        var request = buildRequest(form, {
+            ajax_rows: '1',
+            offset: String(lastOffset),
+            limit: String(limit),
+            direction: 'next',
+            skip_count: '1',
+            jump_last: '1'
+        });
+
+        return fetch(request.url, request.options)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || (!payload.html && !payload.table_html)) {
+                    return false;
+                }
+
+                lists.forEach(function (list) {
+                    var listType = list.dataset.lazyList || 'cards';
+                    var fragment = listType === 'table' ? (payload.table_html || '') : (payload.html || '');
+                    list.innerHTML = fragment;
+                });
+
+                var loadedCount = Math.max(0, lists[0] ? lists[0].children.length : 0);
+                updateContainerMetadataFromPayload(container, payload, loadedCount);
+                container.dataset.prevOffset = String(lastOffset);
+                container.dataset.nextOffset = String(Math.min(total, lastOffset + loadedCount));
+                container.dataset.hasPrev = lastOffset > 0 ? '1' : '0';
+                container.dataset.hasMore = '0';
+                refreshDynamicBehaviors();
+
+                container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+                var viewRoot = container.closest('[data-results-view-root="true"]');
+                if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
+                    window.ProgWeb.updateResultsNavigation(viewRoot);
+                }
+                if (window.ProgWeb && typeof window.ProgWeb.updateResultsScrollTopControl === 'function') {
+                    window.ProgWeb.updateResultsScrollTopControl(viewRoot);
+                }
+                return true;
+            })
+            .catch(function () {
+                return false;
+            })
+            .finally(function () {
+                container.dataset.jumpingLast = 'false';
+                container.dataset.loadingRows = 'false';
+                container.classList.remove('table-loading-more', 'results-jumping-last');
+            });
+    }
+
+
     function updateContainerMetadataFromPayload(container, payload, fallbackLoadedCount) {
         if (!container || !payload) {
             return;
@@ -481,6 +563,7 @@
     window.ProgWeb.initLazyTables = initLazyTables;
     window.ProgWeb.loadMoreRows = loadMoreRows;
     window.ProgWeb.resetResultsToFirstBlock = resetResultsToFirstBlock;
+    window.ProgWeb.jumpResultsToLastBlock = jumpResultsToLastBlock;
     document.addEventListener('DOMContentLoaded', function () {
         initLazyTables(document);
     });

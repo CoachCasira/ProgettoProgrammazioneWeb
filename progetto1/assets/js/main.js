@@ -1654,8 +1654,10 @@
         }
 
         var counter = nav.querySelector('[data-results-counter="true"]');
+        var firstButton = nav.querySelector('[data-results-first="true"]');
         var prevButton = nav.querySelector('[data-results-page-prev="true"]');
         var nextButton = nav.querySelector('[data-results-page-next="true"]');
+        var lastButton = nav.querySelector('[data-results-last="true"]');
         var total = parseInt(container.dataset.totalCount || '0', 10);
         var loaded = getLoadedResultsCountForView(root);
         var prevOffset = parseInt(container.dataset.prevOffset || '0', 10);
@@ -1685,6 +1687,10 @@
         var canMovePrev = container.scrollTop > 4 || container.dataset.hasPrev === '1';
         var canMoveNext = (container.scrollTop + container.clientHeight) < (container.scrollHeight - 4) || container.dataset.hasMore === '1';
 
+        if (firstButton) {
+            firstButton.disabled = !canMovePrev;
+            firstButton.setAttribute('aria-disabled', canMovePrev ? 'false' : 'true');
+        }
         if (prevButton) {
             prevButton.disabled = !canMovePrev;
             prevButton.setAttribute('aria-disabled', canMovePrev ? 'false' : 'true');
@@ -1692,6 +1698,10 @@
         if (nextButton) {
             nextButton.disabled = !canMoveNext;
             nextButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
+        }
+        if (lastButton) {
+            lastButton.disabled = !canMoveNext;
+            lastButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
         }
     }
 
@@ -1707,8 +1717,23 @@
             if (!nav.dataset.resultsNavigationReady) {
                 nav.dataset.resultsNavigationReady = 'true';
 
+                var firstButton = nav.querySelector('[data-results-first="true"]');
                 var prevButton = nav.querySelector('[data-results-page-prev="true"]');
                 var nextButton = nav.querySelector('[data-results-page-next="true"]');
+                var lastButton = nav.querySelector('[data-results-last="true"]');
+
+                if (firstButton) {
+                    firstButton.addEventListener('click', function () {
+                        if (firstButton.disabled || !(window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function')) {
+                            return;
+                        }
+                        firstButton.classList.add('is-working');
+                        window.ProgWeb.resetResultsToFirstBlock(container).finally(function () {
+                            firstButton.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                        });
+                    });
+                }
 
                 if (prevButton) {
                     prevButton.addEventListener('click', function () {
@@ -1753,6 +1778,19 @@
                         } else {
                             move();
                         }
+                    });
+                }
+
+                if (lastButton) {
+                    lastButton.addEventListener('click', function () {
+                        if (lastButton.disabled || !(window.ProgWeb && typeof window.ProgWeb.jumpResultsToLastBlock === 'function')) {
+                            return;
+                        }
+                        lastButton.classList.add('is-working');
+                        window.ProgWeb.jumpResultsToLastBlock(container).finally(function () {
+                            lastButton.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                        });
                     });
                 }
 

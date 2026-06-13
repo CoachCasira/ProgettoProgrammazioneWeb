@@ -402,7 +402,9 @@ if ($ajax_rows) {
         'html' => render_contratti_cards($rows),
         'table_html' => render_contratti_table_rows($rows),
         'has_more' => $has_more,
-        'next_offset' => $offset + count($rows)
+        'has_prev' => $offset > 0,
+        'next_offset' => $offset + count($rows),
+        'prev_offset' => $offset
     ];
     if ($total_count !== null) {
         $payload['total_count'] = $total_count;
@@ -489,9 +491,11 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
 <div id="contratti-results" class="results-view-root" data-results-view-root="true" data-view-key="contratti" data-current-view="cards">
     <div class="results-actions-row" data-card-modal-exclude="true">
         <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
-            <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato">⇈</button>
+            <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti" title="Risultati precedenti">↑</button>
             <span class="results-counter" data-results-counter="true">0 risultati</span>
-            <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+            <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi" title="Risultati successivi">↓</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato">⇊</button>
         </div>
 
         <div class="results-tools" data-card-modal-exclude="true">
@@ -503,7 +507,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
         </div>
     </div>
 
-    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#contratti-filter" data-next-offset="<?= count($rows) ?>" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
+    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#contratti-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
         <?php if (!empty($search_errors)): ?>
             <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
         <?php elseif (!empty($rows)): ?>

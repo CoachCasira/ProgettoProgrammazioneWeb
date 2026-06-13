@@ -2856,6 +2856,17 @@ table.data-table td.sim-code-cell {
     background-color: var(--link-hover);
 }
 
+
+.results-boundary-button {
+    font-size: 1.35rem;
+    letter-spacing: -0.08em;
+}
+
+.results-page-button.is-working {
+    cursor: wait;
+    opacity: 0.72;
+}
+
 .results-page-button:disabled,
 .results-page-button[aria-disabled="true"] {
     opacity: 0.42;

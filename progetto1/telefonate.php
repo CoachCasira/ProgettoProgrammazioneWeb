@@ -104,6 +104,7 @@ $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
+$jump_last = (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
 
 $search_errors = [];
 if (!is_digits_or_empty($search_contratto)) {
@@ -298,7 +299,40 @@ if (empty($search_errors)) {
         || $search_durata_sec !== ''
         || $search_costo_max !== '';
 
-    if (!$has_any_filter && $search_ordine === 'recenti') {
+    if ($jump_last) {
+        // L'ultimo blocco viene recuperato invertendo temporaneamente l'ordinamento.
+        // In questo modo evitiamo un OFFSET di milioni di righe sulla tabella Telefonata.
+        $reverse_order_options = [
+            'recenti' => 't.data ASC, t.ora ASC, t.id ASC',
+            'meno_recenti' => 't.data DESC, t.ora DESC, t.id DESC',
+            'durata_desc' => 't.durata ASC, t.data ASC, t.ora ASC, t.id ASC',
+            'durata_asc' => 't.durata DESC, t.data ASC, t.ora ASC, t.id ASC',
+            'costo_desc' => 't.costo ASC, t.data ASC, t.ora ASC, t.id ASC',
+            'costo_asc' => 't.costo DESC, t.data ASC, t.ora ASC, t.id ASC'
+        ];
+        $reverse_order_by = $reverse_order_options[$search_ordine] ?? $reverse_order_options['recenti'];
+
+        if (!$has_any_filter && $search_ordine === 'recenti') {
+            $page_size = $limit;
+            $sql = "SELECT ultime.id, ultime.effettuataDa, ultime.data, ultime.ora,
+                           ultime.durata, ultime.costo, c.tipo AS tipoContratto
+                    FROM (
+                        SELECT id, effettuataDa, data, ora, durata, costo
+                        FROM Telefonata
+                        ORDER BY data ASC, ora ASC, id ASC
+                        LIMIT $page_size
+                    ) AS ultime
+                    JOIN ContrattoTelefonico c ON c.numero = ultime.effettuataDa
+                    ORDER BY ultime.data ASC, ultime.ora ASC, ultime.id ASC";
+        } else {
+            $sql = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                           c.tipo AS tipoContratto
+                    $from_sql
+                    WHERE $where_sql
+                    ORDER BY $reverse_order_by
+                    LIMIT $limit";
+        }
+    } elseif (!$has_any_filter && $search_ordine === 'recenti') {
         // Percorso veloce della schermata iniziale: MySQL seleziona prima solo il
         // piccolo blocco richiesto usando l'indice (data, ora), poi esegue il JOIN
         // con ContrattoTelefonico sulle sole righe effettivamente visualizzate.
@@ -308,11 +342,11 @@ if (empty($search_errors)) {
                 FROM (
                     SELECT id, effettuataDa, data, ora, durata, costo
                     FROM Telefonata
-                    ORDER BY data DESC, ora DESC
+                    ORDER BY data DESC, ora DESC, id DESC
                     LIMIT $page_size OFFSET $offset
                 ) AS recenti
                 JOIN ContrattoTelefonico c ON c.numero = recenti.effettuataDa
-                ORDER BY recenti.data DESC, recenti.ora DESC";
+                ORDER BY recenti.data DESC, recenti.ora DESC, recenti.id DESC";
     } else {
         $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
     }
@@ -322,7 +356,11 @@ if (empty($search_errors)) {
         while ($row = $result->fetch_assoc()) {
             $rows[] = $row;
         }
-        if (count($rows) > $limit) {
+        if ($jump_last) {
+            // Ripristina l'ordinamento scelto dall'utente all'interno dell'ultimo blocco.
+            $rows = array_reverse($rows);
+            $has_more = false;
+        } elseif (count($rows) > $limit) {
             $has_more = true;
             $rows = array_slice($rows, 0, $limit);
         }
@@ -335,7 +373,9 @@ if ($ajax_rows) {
         'html' => render_telefonate_cards($rows),
         'table_html' => render_telefonate_table_rows($rows),
         'has_more' => $has_more,
-        'next_offset' => $offset + count($rows)
+        'has_prev' => $offset > 0,
+        'next_offset' => $offset + count($rows),
+        'prev_offset' => $offset
     ];
     if ($total_count !== null) {
         $payload['total_count'] = $total_count;
@@ -423,9 +463,11 @@ if ($ajax_rows) {
 <div id="telefonate-results" class="results-view-root" data-results-view-root="true" data-view-key="telefonate" data-current-view="cards">
     <div class="results-actions-row" data-card-modal-exclude="true">
         <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
-            <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato">⇈</button>
+            <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti" title="Risultati precedenti">↑</button>
             <span class="results-counter" data-results-counter="true">0 risultati</span>
-            <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
+            <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi" title="Risultati successivi">↓</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato">⇊</button>
         </div>
 
         <div class="results-tools" data-card-modal-exclude="true">
@@ -437,7 +479,7 @@ if ($ajax_rows) {
         </div>
     </div>
 
-    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#telefonate-filter" data-next-offset="<?= count($rows) ?>" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
+    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#telefonate-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
         <?php if (!empty($search_errors)): ?>
             <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
         <?php elseif (!empty($rows)): ?>

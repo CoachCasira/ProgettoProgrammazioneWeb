@@ -138,83 +138,89 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
 
 <h2>Panoramica operativa</h2>
 
-<section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
-    <div class="dashboard-section-heading">
-        <div>
-            <h3 id="dashboard-search-title">Ricerca rapida</h3>
-            <p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p>
+<div class="dashboard-search-layout">
+    <section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
+        <div class="dashboard-section-heading">
+            <div>
+                <h3 id="dashboard-search-title">Ricerca rapida</h3>
+                <p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p>
+            </div>
         </div>
-    </div>
 
-    <form class="dashboard-global-search" method="GET" action="index.php">
-        <div class="form-group">
-            <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
-            <input type="text" id="ricerca_globale" name="ricerca_globale" value="<?= htmlspecialchars($global_query) ?>" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
-        </div>
-        <button type="submit" class="btn">Cerca</button>
-    </form>
+        <form class="dashboard-global-search" method="GET" action="index.php">
+            <div class="form-group">
+                <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
+                <input type="text" id="ricerca_globale" name="ricerca_globale" value="<?= htmlspecialchars($global_query) ?>" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
+            </div>
+            <button type="submit" class="btn">Cerca</button>
+        </form>
 
-    <?php if ($global_error !== ''): ?>
-        <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
-    <?php elseif ($global_query !== ''): ?>
-        <div class="dashboard-search-results" aria-live="polite">
-            <?php if (!empty($global_phone_results)): ?>
-                <section class="dashboard-result-group" aria-labelledby="phone-results-title">
-                    <div class="dashboard-result-group-header">
-                        <h4 id="phone-results-title">Numeri telefonici</h4>
-                        <span><?= count($global_phone_results) ?> risultat<?= count($global_phone_results) === 1 ? 'o' : 'i' ?></span>
-                    </div>
-                    <div class="dashboard-result-list">
-                        <?php foreach ($global_phone_results as $row): ?>
-                            <?php
-                            $phone_status = dashboard_phone_status($row);
-                            $phone_is_disabled = $phone_status === 'Numero disattivato';
-                            ?>
-                            <a class="dashboard-result-card" href="contratti.php?numero=<?= urlencode($row['numero']) ?>" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['numero']) ?>" title="Apri il dettaglio del numero telefonico">
-                                <span class="dashboard-result-main">
-                                    <strong><?= htmlspecialchars($row['numero']) ?></strong>
-                                    <span><?= strtolower((string)$row['tipo']) === 'consumo' ? 'A consumo' : 'Ricaricabile' ?> · attivato il <?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></span>
-                                </span>
-                                <span class="dashboard-result-status <?= $phone_is_disabled ? 'is-disabled' : '' ?>"><?= htmlspecialchars($phone_status) ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            <?php endif; ?>
+        <?php if ($global_error !== ''): ?>
+            <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
+        <?php endif; ?>
+    </section>
 
-            <?php if (!empty($global_sim_results)): ?>
-                <section class="dashboard-result-group" aria-labelledby="sim-results-title">
-                    <div class="dashboard-result-group-header">
-                        <h4 id="sim-results-title">SIM</h4>
-                        <span><?= count($global_sim_results) ?> risultat<?= count($global_sim_results) === 1 ? 'o' : 'i' ?></span>
-                    </div>
-                    <div class="dashboard-result-list">
-                        <?php foreach ($global_sim_results as $row): ?>
-                            <?php
-                            $sim_state = (string)$row['simState'];
-                            $sim_subtitle = dashboard_sim_state_label($sim_state) . ' · ' . ($row['tipoSIM'] ?: 'Formato non indicato');
-                            if (!empty($row['numeroAssociato'])) {
-                                $sim_subtitle .= ' · numero ' . $row['numeroAssociato'];
-                            }
-                            ?>
-                            <a class="dashboard-result-card" href="sim.php?stato=<?= urlencode($sim_state) ?>&amp;codice=<?= urlencode($row['codice']) ?>" data-sim-card-modal="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" title="Apri il dettaglio della SIM">
-                                <span class="dashboard-result-main">
-                                    <strong><?= htmlspecialchars($row['codice']) ?></strong>
-                                    <span><?= htmlspecialchars($sim_subtitle) ?></span>
-                                </span>
-                                <span class="dashboard-result-status sim-state-<?= htmlspecialchars($sim_state) ?>"><?= htmlspecialchars(dashboard_sim_state_label($sim_state)) ?></span>
-                            </a>
-                        <?php endforeach; ?>
-                    </div>
-                </section>
-            <?php endif; ?>
+    <?php if ($global_query !== '' && $global_error === ''): ?>
+        <aside class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
+            <div class="dashboard-search-results">
+                <?php if (!empty($global_phone_results)): ?>
+                    <section class="dashboard-result-group" aria-labelledby="phone-results-title">
+                        <div class="dashboard-result-group-header">
+                            <h4 id="phone-results-title">Numeri telefonici</h4>
+                            <span><?= count($global_phone_results) ?> risultat<?= count($global_phone_results) === 1 ? 'o' : 'i' ?></span>
+                        </div>
+                        <div class="dashboard-result-list">
+                            <?php foreach ($global_phone_results as $row): ?>
+                                <?php
+                                $phone_status = dashboard_phone_status($row);
+                                $phone_is_disabled = $phone_status === 'Numero disattivato';
+                                ?>
+                                <a class="dashboard-result-card" href="contratti.php?numero=<?= urlencode($row['numero']) ?>" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['numero']) ?>" title="Apri il dettaglio del numero telefonico">
+                                    <span class="dashboard-result-main">
+                                        <strong><?= htmlspecialchars($row['numero']) ?></strong>
+                                        <span><?= strtolower((string)$row['tipo']) === 'consumo' ? 'A consumo' : 'Ricaricabile' ?> · attivato il <?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></span>
+                                    </span>
+                                    <span class="dashboard-result-status <?= $phone_is_disabled ? 'is-disabled' : '' ?>"><?= htmlspecialchars($phone_status) ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
 
-            <?php if (empty($global_phone_results) && empty($global_sim_results)): ?>
-                <div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “<?= htmlspecialchars($global_query) ?>”.</div>
-            <?php endif; ?>
-        </div>
+                <?php if (!empty($global_sim_results)): ?>
+                    <section class="dashboard-result-group" aria-labelledby="sim-results-title">
+                        <div class="dashboard-result-group-header">
+                            <h4 id="sim-results-title">SIM</h4>
+                            <span><?= count($global_sim_results) ?> risultat<?= count($global_sim_results) === 1 ? 'o' : 'i' ?></span>
+                        </div>
+                        <div class="dashboard-result-list">
+                            <?php foreach ($global_sim_results as $row): ?>
+                                <?php
+                                $sim_state = (string)$row['simState'];
+                                $sim_subtitle = dashboard_sim_state_label($sim_state) . ' · ' . ($row['tipoSIM'] ?: 'Formato non indicato');
+                                if (!empty($row['numeroAssociato'])) {
+                                    $sim_subtitle .= ' · numero ' . $row['numeroAssociato'];
+                                }
+                                ?>
+                                <a class="dashboard-result-card" href="sim.php?stato=<?= urlencode($sim_state) ?>&amp;codice=<?= urlencode($row['codice']) ?>" data-sim-card-modal="true" data-sim-code="<?= htmlspecialchars($row['codice']) ?>" title="Apri il dettaglio della SIM">
+                                    <span class="dashboard-result-main">
+                                        <strong><?= htmlspecialchars($row['codice']) ?></strong>
+                                        <span><?= htmlspecialchars($sim_subtitle) ?></span>
+                                    </span>
+                                    <span class="dashboard-result-status sim-state-<?= htmlspecialchars($sim_state) ?>"><?= htmlspecialchars(dashboard_sim_state_label($sim_state)) ?></span>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    </section>
+                <?php endif; ?>
+
+                <?php if (empty($global_phone_results) && empty($global_sim_results)): ?>
+                    <div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “<?= htmlspecialchars($global_query) ?>”.</div>
+                <?php endif; ?>
+            </div>
+        </aside>
     <?php endif; ?>
-</section>
+</div>
 
 <section class="stat-grid" aria-label="Indicatori principali">
     <article class="stat-card">
@@ -235,11 +241,7 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
     <article class="stat-card stat-card-wide">
         <span class="stat-label">SIM gestite</span>
         <strong class="stat-value"><?= htmlspecialchars($total_sim_gestite) ?></strong>
-        <div class="sim-summary" aria-label="Dettaglio stato SIM">
-            <span><?= htmlspecialchars($total_sim_attive) ?> in uso</span>
-            <span><?= htmlspecialchars($total_sim_non_attive) ?> disponibili</span>
-            <span><?= htmlspecialchars($total_sim_disattive) ?> disattivate</span>
-        </div>
+        <span class="stat-detail stat-detail-sim" aria-label="Dettaglio stato SIM"><?= htmlspecialchars($total_sim_attive) ?> in uso · <?= htmlspecialchars($total_sim_non_attive) ?> disponibili · <?= htmlspecialchars($total_sim_disattive) ?> disattivate</span>
     </article>
 </section>
 

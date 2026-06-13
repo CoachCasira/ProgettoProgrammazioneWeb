@@ -17,8 +17,8 @@ function csv_excel_identifier($value): string
 
 /**
  * Formatta un importo come numero decimale italiano, senza simbolo di valuta.
- * Il simbolo e l'unità sono indicati nell'intestazione della colonna, così
- * Excel mantiene il dato numerico ordinabile e allineato a destra.
+ * Il simbolo e l'unita sono indicati nell'intestazione della colonna, così
+ * Excel mantiene il dato numerico ordinabile e utilizzabile nei calcoli.
  */
 function csv_decimal_value($value, int $decimals = 2): string
 {
@@ -30,18 +30,56 @@ function csv_decimal_value($value, int $decimals = 2): string
 }
 
 /**
- * Scrive una riga CSV usando esclusivamente i parametri di fputcsv disponibili
- * anche nelle versioni PHP meno recenti presenti su alcuni hosting condivisi.
+ * Genera una riga CSV in UTF-8 usando la firma di fputcsv compatibile anche
+ * con le versioni PHP meno recenti presenti sugli hosting condivisi.
  */
-function csv_write_row($stream, array $row): void
+function csv_row_to_utf8(array $row): string
 {
-    if (fputcsv($stream, $row, ';', '"', '\\') === false) {
+    $temporary = fopen('php://temp', 'r+');
+    if ($temporary === false) {
         throw new RuntimeException('Impossibile generare il file CSV.');
     }
+
+    if (fputcsv($temporary, $row, ';', '"', '\\') === false) {
+        fclose($temporary);
+        throw new RuntimeException('Impossibile generare il file CSV.');
+    }
+
+    rewind($temporary);
+    $line = stream_get_contents($temporary);
+    fclose($temporary);
+
+    if ($line === false) {
+        throw new RuntimeException('Impossibile generare il file CSV.');
+    }
+
+    return $line;
 }
 
 /**
- * Produce un CSV UTF-8 ottimizzato per Excel in locale italiano.
+ * Converte una stringa UTF-8 in UTF-16LE. Questa codifica viene riconosciuta
+ * direttamente da Excel e mantiene corretti accenti e simbolo dell'euro.
+ */
+function csv_encode_for_excel(string $value): string
+{
+    if (function_exists('mb_convert_encoding')) {
+        return mb_convert_encoding($value, 'UTF-16LE', 'UTF-8');
+    }
+
+    if (function_exists('iconv')) {
+        $converted = iconv('UTF-8', 'UTF-16LE//TRANSLIT', $value);
+        if ($converted !== false) {
+            return $converted;
+        }
+    }
+
+    // Fallback manuale sufficiente per l'ASCII; normalmente Altervista rende
+    // disponibile almeno una tra mbstring e iconv.
+    return $value;
+}
+
+/**
+ * Produce un CSV ottimizzato per Excel in locale italiano.
  */
 function output_csv_response(string $filename, array $headers, array $rows): void
 {
@@ -50,7 +88,7 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
         ob_end_clean();
     }
 
-    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Type: text/csv; charset=UTF-16LE');
     header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
@@ -64,14 +102,13 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
     }
 
     try {
-        // BOM UTF-8 per caratteri accentati e simboli corretti in Excel.
-        fwrite($out, "\xEF\xBB\xBF");
-        // Forza Excel a usare il punto e virgola come separatore di colonna.
-        fwrite($out, "sep=;\r\n");
+        // BOM UTF-16LE: Excel riconosce correttamente anche il simbolo euro.
+        fwrite($out, "\xFF\xFE");
+        fwrite($out, csv_encode_for_excel("sep=;\r\n"));
+        fwrite($out, csv_encode_for_excel(csv_row_to_utf8($headers)));
 
-        csv_write_row($out, $headers);
         foreach ($rows as $row) {
-            csv_write_row($out, $row);
+            fwrite($out, csv_encode_for_excel(csv_row_to_utf8($row)));
         }
     } catch (Throwable $exception) {
         fclose($out);

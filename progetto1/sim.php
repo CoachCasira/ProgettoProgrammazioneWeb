@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
+require_once 'includes/csv.php';
 
 function normalize_sim_state(string $state): string
 {
@@ -539,24 +540,6 @@ function query_total_count(mysqli $conn, string $sql): int
     return (int)($row['total_count'] ?? 0);
 }
 
-function output_csv_response(string $filename, array $headers, array $rows): void
-{
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-    $out = fopen('php://output', 'w');
-
-    // BOM UTF-8: permette ad Excel di riconoscere correttamente caratteri come "€".
-    fwrite($out, "\xEF\xBB\xBF");
-
-    fputcsv($out, $headers, ';');
-    foreach ($rows as $row) {
-        fputcsv($out, $row, ';');
-    }
-    fclose($out);
-    exit;
-}
-
 function sim_csv_headers(string $state): array
 {
     if ($state === 'tutte') {
@@ -584,9 +567,9 @@ function sim_csv_row(array $row, string $state): array
         }
 
         return [
-            $row['codice'],
+            csv_excel_identifier($row['codice']),
             sim_state_title($row_state),
-            $numero_collegato,
+            csv_excel_identifier($numero_collegato),
             format_date_it($row['dataAttivazione'] ?? ''),
             $row_state === 'disattive' ? format_date_it($row['dataDisattivazione']) : '-',
             $row['tipoSIM'],
@@ -595,12 +578,12 @@ function sim_csv_row(array $row, string $state): array
     }
 
     if ($row_state === 'attive') {
-        return [$row['codice'], $row['associataA'], format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
+        return [csv_excel_identifier($row['codice']), csv_excel_identifier($row['associataA']), format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
     }
     if ($row_state === 'disponibili') {
-        return [$row['codice'], $row['tipoSIM'], 'Non associata a un numero'];
+        return [csv_excel_identifier($row['codice']), $row['tipoSIM'], 'Non associata a un numero'];
     }
-    return [$row['codice'], $row['eraAssociataA'], format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
+    return [csv_excel_identifier($row['codice']), csv_excel_identifier($row['eraAssociataA']), format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
 }
 
 $allowed_actions = ['list', 'create', 'edit', 'confirm_delete'];

@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
+require_once 'includes/csv.php';
 
 function render_telefonate_cards(array $rows): string
 {
@@ -68,24 +69,6 @@ function query_total_count(mysqli $conn, string $sql): int
     }
     $row = $result->fetch_assoc();
     return (int)($row['total_count'] ?? 0);
-}
-
-function output_csv_response(string $filename, array $headers, array $rows): void
-{
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-    $out = fopen('php://output', 'w');
-
-    // BOM UTF-8: permette ad Excel di riconoscere correttamente caratteri come "€".
-    fwrite($out, "\xEF\xBB\xBF");
-
-    fputcsv($out, $headers, ';');
-    foreach ($rows as $row) {
-        fputcsv($out, $row, ';');
-    }
-    fclose($out);
-    exit;
 }
 
 $search_contratto = trim($_POST['contratto'] ?? $_GET['contratto'] ?? '');
@@ -217,16 +200,16 @@ if (empty($search_errors)) {
         if ($export_result) {
             while ($row = $export_result->fetch_assoc()) {
                 $csv_rows[] = [
-                    $row['effettuataDa'],
+                    csv_excel_identifier($row['effettuataDa']),
                     format_date_it($row['data']),
                     format_time_minutes($row['ora']),
                     format_duration_seconds($row['durata']),
                     ucfirst((string)$row['tipoContratto']),
-                    format_euro($row['costo'])
+                    csv_decimal_value($row['costo'])
                 ];
             }
         }
-        output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
+        output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito (€)'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;

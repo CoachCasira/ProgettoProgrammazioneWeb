@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
+require_once 'includes/csv.php';
 
 function contratto_has_active_sim(array $row): bool
 {
@@ -199,24 +200,6 @@ function render_contratti_table_rows(array $rows): string
     return ob_get_clean();
 }
 
-function output_csv_response(string $filename, array $headers, array $rows): void
-{
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-
-    $out = fopen('php://output', 'w');
-
-    // BOM UTF-8: permette ad Excel di riconoscere correttamente caratteri come "€".
-    fwrite($out, "\xEF\xBB\xBF");
-
-    fputcsv($out, $headers, ';');
-    foreach ($rows as $row) {
-        fputcsv($out, $row, ';');
-    }
-    fclose($out);
-    exit;
-}
-
 $search_numero = trim($_POST['numero'] ?? $_GET['numero'] ?? '');
 $search_tipo = trim($_POST['tipo'] ?? $_GET['tipo'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
@@ -379,21 +362,21 @@ if (empty($search_errors)) {
                 $tipo = strtolower((string)$row['tipo']);
                 $is_consumo = $tipo === 'consumo';
                 $csv_rows[] = [
-                    $row['numero'],
+                    csv_excel_identifier($row['numero']),
                     contratto_status_label($row),
-                    $row['simDisattivaCodice'] ?: '',
+                    csv_excel_identifier($row['simDisattivaCodice'] ?: ''),
                     $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
                     format_date_it($row['dataAttivazione']),
                     $is_consumo ? 'A consumo' : 'Ricaricabile',
                     $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
-                    $is_consumo ? '' : format_euro($row['creditoResiduo']),
+                    $is_consumo ? '' : csv_decimal_value($row['creditoResiduo']),
                     (string)(int)$row['num_telefonate'],
                     format_duration_seconds($row['durata_totale'] ?? 0),
-                    format_euro($row['costo_totale'] ?? 0)
+                    csv_decimal_value($row['costo_totale'] ?? 0)
                 ];
             }
         }
-        output_csv_response('numeri_telefonici.csv', ['Numero di telefono', 'Stato numero', 'SIM disattivata collegata', 'Data disattivazione SIM', 'Data attivazione', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate registrate', 'Durata totale chiamate', 'Addebiti totali'], $csv_rows);
+        output_csv_response('numeri_telefonici.csv', ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo (€)', 'Chiamate', 'Durata totale', 'Addebiti totali (€)'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;

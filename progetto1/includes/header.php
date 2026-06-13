@@ -22,7 +22,7 @@ $is_sim_page = in_array($current_page, ['sim.php', 'sim_attive.php', 'sim_non_at
     <link rel="apple-touch-icon" href="<?= $base_path ?>/assets/images/logo.png?v=122">
     <link rel="stylesheet" href="<?= $base_path ?>/assets/css/style.css?v=148">
     <script src="<?= $base_path ?>/assets/js/main.js?v=135" defer></script>
-    <script src="<?= $base_path ?>/assets/js/ajax.js?v=130" defer></script>
+    <script src="<?= $base_path ?>/assets/js/ajax.js?v=131" defer></script>
 </head>
 <body>
 

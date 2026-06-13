@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
 require_once 'includes/csv.php';
+require_once 'includes/performance.php';
 
 function contratto_has_active_sim(array $row): bool
 {
@@ -213,6 +214,7 @@ $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
+$skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 
 $search_errors = [];
@@ -248,10 +250,12 @@ $total_count = 0;
 $sql_base = '';
 
 if (empty($search_errors)) {
+    $contract_stats_join = performance_contract_stats_join($conn, 'tf');
+
     $sql_base = "SELECT c.*,
-                   COALESCE(tf.num_telefonate, 0) AS num_telefonate,
-                   COALESCE(tf.durata_totale, 0) AS durata_totale,
-                   COALESCE(tf.costo_totale, 0) AS costo_totale,
+                   COALESCE(tf.numeroTelefonate, 0) AS num_telefonate,
+                   COALESCE(tf.durataTotale, 0) AS durata_totale,
+                   COALESCE(tf.addebitoTotale, 0) AS costo_totale,
                    sa.codice AS simAttivaCodice,
                    sa.dataAttivazione AS simAttivaDataAttivazione,
                    sd.codice AS simDisattivaCodice,
@@ -260,11 +264,7 @@ if (empty($search_errors)) {
                    sd.dataDisattivazione AS simDisattivaDataDisattivazione,
                    COALESCE(sdc.simDisattivaCount, 0) AS simDisattivaCount
             FROM ContrattoTelefonico c
-            LEFT JOIN (
-                SELECT effettuataDa, COUNT(*) AS num_telefonate, COALESCE(SUM(durata), 0) AS durata_totale, COALESCE(SUM(costo), 0) AS costo_totale
-                FROM Telefonata
-                GROUP BY effettuataDa
-            ) tf ON c.numero = tf.effettuataDa
+            $contract_stats_join
             LEFT JOIN SIMAttiva sa ON sa.associataA = c.numero
             LEFT JOIN SIMDisattiva sd ON sd.codice = (
                 SELECT sd2.codice
@@ -352,7 +352,11 @@ if (empty($search_errors)) {
     } else {
         $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
     }
-    $total_count = query_total_count($conn, $sql_base);
+    if (!$skip_count && (!$ajax_rows || $offset === 0)) {
+        $total_count = query_total_count($conn, $sql_base);
+    } else {
+        $total_count = null;
+    }
 
     if ($export_csv) {
         $csv_rows = [];
@@ -394,13 +398,16 @@ if (empty($search_errors)) {
 
 if ($ajax_rows) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    $payload = [
         'html' => render_contratti_cards($rows),
         'table_html' => render_contratti_table_rows($rows),
         'has_more' => $has_more,
-        'next_offset' => $offset + count($rows),
-        'total_count' => $total_count
-    ]);
+        'next_offset' => $offset + count($rows)
+    ];
+    if ($total_count !== null) {
+        $payload['total_count'] = $total_count;
+    }
+    echo json_encode($payload);
     exit;
 }
 $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato:' : 'Attivato:';

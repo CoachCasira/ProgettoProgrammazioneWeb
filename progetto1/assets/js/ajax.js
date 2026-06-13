@@ -1,7 +1,8 @@
 (function () {
     var liveSearchTimer = null;
     var lastRequestId = 0;
-    var LIVE_DELAY_MS = 300;
+    var LIVE_DELAY_MS = 450;
+    var activeSearchController = null;
 
     function buildRequest(form, extraFields) {
         var method = (form.getAttribute('method') || 'GET').toUpperCase();
@@ -109,7 +110,15 @@
         var requestId = lastRequestId + 1;
         lastRequestId = requestId;
 
+        if (activeSearchController && typeof activeSearchController.abort === 'function') {
+            activeSearchController.abort();
+        }
+        activeSearchController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+
         var request = buildRequest(form);
+        if (activeSearchController) {
+            request.options.signal = activeSearchController.signal;
+        }
 
         if (!isLiveSearch) {
             setFormLoading(form, true);
@@ -133,12 +142,18 @@
                     showAjaxError(target);
                 }
             })
-            .catch(function () {
+            .catch(function (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
                 if (requestId === lastRequestId) {
                     showAjaxError(target);
                 }
             })
             .finally(function () {
+                if (requestId === lastRequestId) {
+                    activeSearchController = null;
+                }
                 if (requestId === lastRequestId && !isLiveSearch) {
                     setFormLoading(form, false);
                     var refreshedTarget = document.querySelector(targetSelector);
@@ -211,7 +226,8 @@
             ajax_rows: '1',
             offset: String(offset),
             limit: String(limit),
-            direction: loadDirection
+            direction: loadDirection,
+            skip_count: '1'
         });
 
         fetch(request.url, request.options)
@@ -335,7 +351,8 @@
             ajax_rows: '1',
             offset: '0',
             limit: String(limit),
-            direction: 'next'
+            direction: 'next',
+            skip_count: '1'
         });
 
         return fetch(request.url, request.options)

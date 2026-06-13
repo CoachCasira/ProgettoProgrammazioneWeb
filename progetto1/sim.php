@@ -834,6 +834,7 @@ $search_data_a = $has_associated_state_filter ? trim($is_filter_request ? ($_POS
 $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
+$skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 $lazy_direction = ($_POST['direction'] ?? $_GET['direction'] ?? 'next') === 'prev' ? 'prev' : 'next';
 
@@ -920,7 +921,11 @@ if ($action === 'list' && empty($search_errors)) {
                     codice ASC";
 
     $sql_list_without_limit = $sql_list;
-    $total_count = query_total_count($conn, $sql_list_without_limit);
+    if (!$skip_count && (!$ajax_rows || $offset === 0)) {
+        $total_count = query_total_count($conn, $sql_list_without_limit);
+    } else {
+        $total_count = null;
+    }
 
 
     if ($export_csv) {
@@ -952,15 +957,18 @@ if ($action === 'list' && empty($search_errors)) {
 
 if ($ajax_rows) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    $payload = [
         'html' => render_sim_rows($rows, $state),
         'table_html' => render_sim_table_rows($rows, $state),
         'has_more' => $has_more,
         'has_prev' => $has_prev,
         'next_offset' => $offset + count($rows),
-        'prev_offset' => $offset,
-        'total_count' => $total_count
-    ]);
+        'prev_offset' => $offset
+    ];
+    if ($total_count !== null) {
+        $payload['total_count'] = $total_count;
+    }
+    echo json_encode($payload);
     exit;
 }
 ?>

@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
 require_once 'includes/csv.php';
+require_once 'includes/performance.php';
 
 function render_telefonate_cards(array $rows): string
 {
@@ -85,6 +86,7 @@ $search_costo_max = trim($_POST['costo_max'] ?? $_GET['costo_max'] ?? '');
 $limit = max(10, min(80, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
+$skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 
 $search_errors = [];
@@ -121,65 +123,72 @@ if (!is_non_negative_decimal_or_empty($search_costo_max)) {
 
 $rows = [];
 $has_more = false;
-$total_count = 0;
+$total_count = null;
 $sql_base = '';
+
 if (empty($search_errors)) {
-    $sql_base = "SELECT t.*, c.tipo AS tipoContratto,
-                   sa.codice AS simAttivaCodice,
-                   COALESCE(sdc.simDisattivaCount, 0) AS simDisattivaCount
-            FROM Telefonata t
-            JOIN ContrattoTelefonico c ON t.effettuataDa = c.numero
-            LEFT JOIN SIMAttiva sa ON sa.associataA = t.effettuataDa
-            LEFT JOIN (
-                SELECT eraAssociataA, COUNT(*) AS simDisattivaCount
-                FROM SIMDisattiva
-                GROUP BY eraAssociataA
-            ) sdc ON sdc.eraAssociataA = t.effettuataDa
-            WHERE 1=1";
+    $where_clauses = ['1=1'];
+    $summary_clauses = ['1=1'];
 
     if ($search_contratto !== '') {
         $contratto = $conn->real_escape_string($search_contratto);
         if (strlen($search_contratto) >= 10) {
-            $sql_base .= " AND t.effettuataDa = '$contratto'";
+            $where_clauses[] = "t.effettuataDa = '$contratto'";
+            $summary_clauses[] = "c.numero = '$contratto'";
         } else {
-            $sql_base .= " AND t.effettuataDa LIKE '%$contratto%'";
+            // La ricerca per prefisso usa l'indice del numero ed evita scansioni complete.
+            $where_clauses[] = "t.effettuataDa LIKE '$contratto%'";
+            $summary_clauses[] = "c.numero LIKE '$contratto%'";
         }
     }
+
     if ($search_stato_numero === 'attivo') {
-        $sql_base .= " AND sa.codice IS NOT NULL";
+        $active_condition = "EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)";
+        $where_clauses[] = $active_condition;
+        $summary_clauses[] = $active_condition;
     } elseif ($search_stato_numero === 'disattivato') {
-        $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
+        $disabled_condition = "NOT EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)
+                               AND EXISTS (SELECT 1 FROM SIMDisattiva sd WHERE sd.eraAssociataA = c.numero)";
+        $where_clauses[] = "($disabled_condition)";
+        $summary_clauses[] = "($disabled_condition)";
     }
+
     if ($search_piano !== '') {
         $piano = $conn->real_escape_string($search_piano);
-        $sql_base .= " AND c.tipo = '$piano'";
+        $where_clauses[] = "c.tipo = '$piano'";
+        $summary_clauses[] = "c.tipo = '$piano'";
     }
+
     if ($search_data_da !== '') {
         $data_da = $conn->real_escape_string($search_data_da);
-        $sql_base .= " AND t.data >= '$data_da'";
+        $where_clauses[] = "t.data >= '$data_da'";
     }
     if ($search_data_a !== '') {
         $data_a = $conn->real_escape_string($search_data_a);
-        $sql_base .= " AND t.data <= '$data_a'";
+        $where_clauses[] = "t.data <= '$data_a'";
     }
     if ($search_ora_da !== '') {
         $ora_da = $conn->real_escape_string(time_minutes_for_sql($search_ora_da, false));
-        $sql_base .= " AND t.ora >= '$ora_da'";
+        $where_clauses[] = "t.ora >= '$ora_da'";
     }
     if ($search_ora_a !== '') {
         $ora_a = $conn->real_escape_string(time_minutes_for_sql($search_ora_a, true));
-        $sql_base .= " AND t.ora <= '$ora_a'";
+        $where_clauses[] = "t.ora <= '$ora_a'";
     }
     if ($search_durata_min !== '' || $search_durata_sec !== '') {
-        $durata_minuti = $search_durata_min !== '' ? (int) $search_durata_min : 0;
-        $durata_secondi = $search_durata_sec !== '' ? (int) $search_durata_sec : 0;
+        $durata_minuti = $search_durata_min !== '' ? (int)$search_durata_min : 0;
+        $durata_secondi = $search_durata_sec !== '' ? (int)$search_durata_sec : 0;
         $durata_totale = ($durata_minuti * 60) + $durata_secondi;
-        $sql_base .= " AND t.durata >= $durata_totale";
+        $where_clauses[] = "t.durata >= $durata_totale";
     }
     if ($search_costo_max !== '') {
         $costo_max = decimal_for_sql($search_costo_max);
-        $sql_base .= " AND t.costo <= $costo_max";
+        $where_clauses[] = "t.costo <= $costo_max";
     }
+
+    $from_sql = "FROM Telefonata t
+                 JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa";
+    $where_sql = implode(' AND ', $where_clauses);
 
     $order_options = [
         'recenti' => 't.data DESC, t.ora DESC, t.id DESC',
@@ -191,8 +200,52 @@ if (empty($search_errors)) {
     ];
     $order_by = $order_options[$search_ordine] ?? $order_options['recenti'];
 
-    $sql_base .= " ORDER BY $order_by";
-    $total_count = query_total_count($conn, $sql_base);
+    $sql_base = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                        c.tipo AS tipoContratto
+                 $from_sql
+                 WHERE $where_sql
+                 ORDER BY $order_by";
+
+    // Il conteggio totale viene calcolato una sola volta all'apertura o dopo un filtro.
+    // I blocchi caricati durante lo scroll non ripetono più COUNT su milioni di righe.
+    if (!$skip_count && (!$ajax_rows || $offset === 0)) {
+        $has_call_detail_filters = $search_data_da !== ''
+            || $search_data_a !== ''
+            || $search_ora_da !== ''
+            || $search_ora_a !== ''
+            || $search_durata_min !== ''
+            || $search_durata_sec !== ''
+            || $search_costo_max !== '';
+
+        if (!$has_call_detail_filters && performance_table_exists($conn, 'StatisticheContratto')) {
+            if ($search_contratto === '' && $search_stato_numero === '' && $search_piano === '') {
+                $cached_total = performance_global_call_count($conn);
+                if ($cached_total !== null) {
+                    $total_count = $cached_total;
+                }
+            }
+
+            if ($total_count === null) {
+                $summary_where = implode(' AND ', $summary_clauses);
+                $count_result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
+                                              FROM StatisticheContratto sc
+                                              JOIN ContrattoTelefonico c ON c.numero = sc.numero
+                                              WHERE $summary_where");
+                if ($count_result && ($count_row = $count_result->fetch_assoc())) {
+                    $total_count = (int)($count_row['total_count'] ?? 0);
+                }
+            }
+        }
+
+        if ($total_count === null) {
+            $count_result = $conn->query("SELECT COUNT(*) AS total_count $from_sql WHERE $where_sql");
+            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
+                $total_count = (int)($count_row['total_count'] ?? 0);
+            } else {
+                $total_count = 0;
+            }
+        }
+    }
 
     if ($export_csv) {
         $csv_rows = [];
@@ -227,13 +280,16 @@ if (empty($search_errors)) {
 
 if ($ajax_rows) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
+    $payload = [
         'html' => render_telefonate_cards($rows),
         'table_html' => render_telefonate_table_rows($rows),
         'has_more' => $has_more,
-        'next_offset' => $offset + count($rows),
-        'total_count' => $total_count
-    ]);
+        'next_offset' => $offset + count($rows)
+    ];
+    if ($total_count !== null) {
+        $payload['total_count'] = $total_count;
+    }
+    echo json_encode($payload);
     exit;
 }
 ?>

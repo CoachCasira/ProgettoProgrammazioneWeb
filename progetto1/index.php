@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
+require_once 'includes/performance.php';
 
 function countRows($conn, $table) {
     $allowed = ['ContrattoTelefonico', 'Telefonata', 'SIMAttiva', 'SIMDisattiva', 'SIMNonAttiva'];
@@ -44,15 +45,19 @@ function dashboard_sim_state_label(string $state): string
 }
 
 $total_contratti = countRows($conn, 'ContrattoTelefonico');
-$total_telefonate = countRows($conn, 'Telefonata');
 $total_sim_attive = countRows($conn, 'SIMAttiva');
 $total_sim_disattive = countRows($conn, 'SIMDisattiva');
 $total_sim_non_attive = countRows($conn, 'SIMNonAttiva');
 $total_sim_gestite = $total_sim_attive + $total_sim_non_attive + $total_sim_disattive;
 $contratti_ricarica = singleValue($conn, "SELECT COUNT(*) AS totale FROM ContrattoTelefonico WHERE tipo='ricarica'", 'totale');
 $contratti_consumo = singleValue($conn, "SELECT COUNT(*) AS totale FROM ContrattoTelefonico WHERE tipo='consumo'", 'totale');
-$durata_media = singleValue($conn, "SELECT ROUND(AVG(durata), 0) AS media FROM Telefonata", 'media');
-$costo_totale = singleValue($conn, "SELECT ROUND(SUM(costo), 2) AS totale FROM Telefonata", 'totale');
+
+// I valori globali delle telefonate arrivano dalla tabella di riepilogo.
+// Restano esatti, ma non richiedono più una scansione di milioni di righe a ogni apertura.
+$call_stats = performance_global_call_stats($conn);
+$total_telefonate = $call_stats['totaleTelefonate'];
+$durata_media = $call_stats['durataMedia'];
+$costo_totale = $call_stats['addebitoTotale'];
 
 $global_query = trim($_GET['ricerca_globale'] ?? '');
 $global_error = '';

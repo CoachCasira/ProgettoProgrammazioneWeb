@@ -30,29 +30,52 @@ function csv_decimal_value($value, int $decimals = 2): string
 }
 
 /**
+ * Scrive una riga CSV usando esclusivamente i parametri di fputcsv disponibili
+ * anche nelle versioni PHP meno recenti presenti su alcuni hosting condivisi.
+ */
+function csv_write_row($stream, array $row): void
+{
+    if (fputcsv($stream, $row, ';', '"', '\\') === false) {
+        throw new RuntimeException('Impossibile generare il file CSV.');
+    }
+}
+
+/**
  * Produce un CSV UTF-8 ottimizzato per Excel in locale italiano.
  */
 function output_csv_response(string $filename, array $headers, array $rows): void
 {
-    header('Content-Type: text/csv; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Cache-Control: no-store, no-cache, must-revalidate');
-    header('Pragma: no-cache');
+    // Evita che eventuali output precedenti corrompano header e contenuto CSV.
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
 
-    $out = fopen('php://output', 'w');
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+    header('X-Content-Type-Options: nosniff');
+
+    $out = fopen('php://output', 'wb');
     if ($out === false) {
         http_response_code(500);
         exit;
     }
 
-    // BOM UTF-8 per caratteri accentati e simboli corretti in Excel.
-    fwrite($out, "\xEF\xBB\xBF");
-    // Forza Excel a usare il punto e virgola come separatore di colonna.
-    fwrite($out, "sep=;\r\n");
+    try {
+        // BOM UTF-8 per caratteri accentati e simboli corretti in Excel.
+        fwrite($out, "\xEF\xBB\xBF");
+        // Forza Excel a usare il punto e virgola come separatore di colonna.
+        fwrite($out, "sep=;\r\n");
 
-    fputcsv($out, $headers, ';', '"', '\\', "\r\n");
-    foreach ($rows as $row) {
-        fputcsv($out, $row, ';', '"', '\\', "\r\n");
+        csv_write_row($out, $headers);
+        foreach ($rows as $row) {
+            csv_write_row($out, $row);
+        }
+    } catch (Throwable $exception) {
+        fclose($out);
+        exit;
     }
 
     fclose($out);

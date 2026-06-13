@@ -998,6 +998,10 @@ if ($ajax_rows) {
                 <label for="codice">Codice SIM:</label>
                 <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
+            <div class="form-group sim-phone-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
+                <label for="numero_sim">Numero collegato:</label>
+                <input type="text" id="numero_sim" name="numero" value="<?= htmlspecialchars($has_associated_state_filter ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+            </div>
             <div class="form-group sim-state-filter-group">
                 <label for="sim-state-button">Stato SIM:</label>
                 <input type="hidden" name="stato" value="<?= htmlspecialchars($state) ?>" data-sim-state-hidden>
@@ -1027,10 +1031,6 @@ if ($ajax_rows) {
                 </div>
             </div>
 
-            <div class="form-group sim-phone-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
-                <label for="numero_sim">Numero associato o precedente:</label>
-                <input type="text" id="numero_sim" name="numero" value="<?= htmlspecialchars($has_associated_state_filter ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
-            </div>
             <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
                 <label>Periodo:</label>
                 <div class="range-pair compact-range-pair date-range-pair">

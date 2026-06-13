@@ -143,7 +143,7 @@ function render_contratti_cards(array $rows): string
                 <?php endif; ?>
                 <div class="card-detail-tile phone-duration-tile">
                     <dt>Durata totale chiamate</dt>
-                    <dd><?= htmlspecialchars(format_duration_seconds($durata_totale)) ?></dd>
+                    <dd><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></dd>
                 </div>
                 <div class="card-detail-tile phone-charge-tile">
                     <dt>Addebiti totali</dt>
@@ -192,7 +192,7 @@ function render_contratti_table_rows(array $rows): string
                     Nessun traffico
                 <?php endif; ?>
             </td>
-            <td class="numeric duration-value"><?= htmlspecialchars(format_duration_seconds($durata_totale)) ?></td>
+            <td class="numeric duration-value"><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></td>
             <td class="numeric"><?= htmlspecialchars(format_euro($costo_totale)) ?></td>
         </tr>
     <?php endforeach;
@@ -315,15 +315,15 @@ if (empty($search_errors)) {
         $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
     }
     if ($search_residuo === 'quasi_esaurito') {
-        $sql_base .= " AND ((c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) < 5) OR (c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) < 30))";
+        $sql_base .= " AND ((c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo < 5) OR (c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui < 30))";
     } elseif ($search_residuo === 'credito_basso') {
-        $sql_base .= " AND c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) < 5";
+        $sql_base .= " AND c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo < 5";
     } elseif ($search_residuo === 'minuti_bassi') {
-        $sql_base .= " AND c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) < 30";
+        $sql_base .= " AND c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui < 30";
     } elseif ($search_residuo === 'credito_disponibile') {
-        $sql_base .= " AND c.tipo = 'ricarica' AND COALESCE(c.creditoResiduo, 0) >= 5";
+        $sql_base .= " AND c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo >= 5";
     } elseif ($search_residuo === 'minuti_disponibili') {
-        $sql_base .= " AND c.tipo = 'consumo' AND COALESCE(c.minutiResidui, 0) >= 30";
+        $sql_base .= " AND c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui >= 30";
     }
     if ($effective_min_chiamate > 0) {
         $sql_base .= " AND COALESCE(tf.num_telefonate, 0) >= $effective_min_chiamate";
@@ -458,14 +458,14 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </select>
         </div>
         <div class="form-group residual-filter-group">
-            <label for="residuo">Credito o minuti residui:</label>
+            <label for="residuo">Disponibilità del piano:</label>
             <select id="residuo" name="residuo" data-scroll-select="true">
-                <option value="">Mostra tutti</option>
-                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Credito sotto 5 € o minuti sotto 30</option>
-                <option value="credito_basso" <?= $search_residuo === 'credito_basso' ? 'selected' : '' ?>>Credito sotto 5 €</option>
-                <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>Minuti sotto 30</option>
-                <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Credito da 5 € in su</option>
-                <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>Minuti da 30 in su</option>
+                <option value="">Tutti i piani</option>
+                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Piani quasi esauriti</option>
+                <option value="credito_basso" <?= $search_residuo === 'credito_basso' ? 'selected' : '' ?>>Ricaricabili: credito &lt; 5 €</option>
+                <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>A consumo: minuti &lt; 30</option>
+                <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Ricaricabili: credito ≥ 5 €</option>
+                <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>A consumo: minuti ≥ 30</option>
             </select>
         </div>
         <div class="form-group order-filter-group">

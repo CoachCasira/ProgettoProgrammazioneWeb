@@ -259,8 +259,8 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
             <span>Visualizza prima le telefonate con l’addebito più elevato.</span>
         </a>
         <a class="dashboard-shortcut" href="contratti.php?residuo=quasi_esaurito">
-            <strong>Credito o minuti quasi esauriti</strong>
-            <span>Mostra i numeri ricaricabili con meno di 5 € di credito e quelli a consumo con meno di 30 minuti disponibili.</span>
+            <strong>Piani quasi esauriti</strong>
+            <span>Trova i numeri ricaricabili con meno di 5 € di credito e i numeri a consumo con meno di 30 minuti residui.</span>
         </a>
     </div>
 </section>

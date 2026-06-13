@@ -5171,3 +5171,124 @@ select[data-scroll-select="true"].native-select-hidden {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* =========================================================
+   V18 - Uniformità filtri SIM, residui e durate riepilogative
+   ========================================================= */
+
+/* Etichette e controlli delle barre di ricerca hanno la stessa metrica.
+   Evita piccoli disallineamenti visivi tra select native, tendine custom e input. */
+.compact-filter-form > .form-group > label {
+    display: flex;
+    align-items: flex-end;
+    min-height: 1.35rem;
+    margin-bottom: 0.42rem;
+    font-size: 0.92rem;
+    line-height: 1.2;
+}
+
+.compact-filter-form input,
+.compact-filter-form select,
+.compact-filter-form .custom-select-button,
+.compact-filter-form .multi-select-button,
+.compact-filter-form > .btn {
+    min-height: 2.74rem !important;
+    height: 2.74rem;
+    box-sizing: border-box;
+}
+
+/* La durata totale nelle card è volutamente sintetica e resta su una riga. */
+.phone-card .phone-duration-tile dd {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.86rem;
+}
+
+/* Desktop: ordine richiesto Code -> Numero collegato -> Stato -> Periodo -> Formato. */
+@media (min-width: 1201px) {
+    .sim-filter-form {
+        grid-template-columns:
+            minmax(175px, 1fr)
+            minmax(185px, 1fr)
+            minmax(165px, 0.92fr)
+            minmax(310px, 1.65fr)
+            minmax(165px, 0.92fr)
+            minmax(145px, 0.78fr) !important;
+        gap: 0.8rem !important;
+        align-items: end;
+    }
+
+    .sim-filter-form .sim-code-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-phone-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-state-filter-group {
+        grid-column: 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+        max-width: none !important;
+    }
+
+    .sim-filter-form .sim-type-filter-group {
+        grid-column: 5 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form > .btn {
+        grid-column: 6 !important;
+        grid-row: 1 !important;
+        width: 100%;
+    }
+
+    /* Solo SIM disponibili: i quattro controlli rimasti si ricompattano. */
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) {
+        grid-template-columns:
+            minmax(220px, 1fr)
+            minmax(200px, 0.95fr)
+            minmax(220px, 1fr)
+            minmax(150px, 0.76fr) !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-code-filter-group {
+        grid-column: 1 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-state-filter-group {
+        grid-column: 2 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-type-filter-group {
+        grid-column: 3 !important;
+    }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn {
+        grid-column: 4 !important;
+        grid-row: 1 !important;
+    }
+}
+
+/* Tablet: mantiene lo stesso ordine logico su due righe. */
+@media (max-width: 1200px) and (min-width: 901px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 4 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn { grid-column: 4 !important; grid-row: 2 !important; }
+}

@@ -88,6 +88,28 @@ function format_duration_seconds($value): string
     return implode(' ', $parts);
 }
 
+/**
+ * Formatta una durata complessiva in modo compatto per le viste riepilogative.
+ * I secondi non vengono mostrati perché, sui totali di molte chiamate, non
+ * aggiungono valore operativo e rendono le card difficili da leggere.
+ */
+function format_total_duration_compact($value): string
+{
+    $total_seconds = max(0, (int) $value);
+    $hours = intdiv($total_seconds, 3600);
+    $minutes = intdiv($total_seconds % 3600, 60);
+
+    if ($hours > 0) {
+        return $hours . ' h' . ($minutes > 0 ? ' ' . $minutes . ' min' : '');
+    }
+
+    if ($minutes > 0) {
+        return $minutes . ' min';
+    }
+
+    return $total_seconds > 0 ? 'Meno di 1 min' : '0 min';
+}
+
 
 function format_minutes_remaining($value): string
 {

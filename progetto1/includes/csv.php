@@ -2,8 +2,6 @@
 /**
  * Restituisce un identificativo come testo Excel, evitando notazione
  * scientifica e perdita di precisione per numeri telefonici e codici SIM.
- * Gli identificativi gestiti dall'applicazione sono composti esclusivamente
- * da cifre, quindi la formula generata non contiene input eseguibile.
  */
 function csv_excel_identifier($value): string
 {
@@ -30,8 +28,8 @@ function csv_decimal_value($value, int $decimals = 2): string
 }
 
 /**
- * Genera una riga CSV in UTF-8 usando la firma di fputcsv compatibile anche
- * con le versioni PHP meno recenti presenti sugli hosting condivisi.
+ * Genera una singola riga CSV in UTF-8 con una firma di fputcsv compatibile
+ * anche con le versioni PHP meno recenti disponibili sugli hosting condivisi.
  */
 function csv_row_to_utf8(array $row): string
 {
@@ -53,42 +51,48 @@ function csv_row_to_utf8(array $row): string
         throw new RuntimeException('Impossibile generare il file CSV.');
     }
 
-    return $line;
+    return rtrim($line, "\r\n") . "\r\n";
 }
 
 /**
- * Converte una stringa UTF-8 in UTF-16LE. Questa codifica viene riconosciuta
- * direttamente da Excel e mantiene corretti accenti e simbolo dell'euro.
+ * Converte una stringa UTF-8 nella codifica Windows-1252 usata da Excel per
+ * i CSV aperti direttamente. In questa codifica il simbolo euro e' il byte 80.
  */
 function csv_encode_for_excel(string $value): string
 {
     if (function_exists('mb_convert_encoding')) {
-        return mb_convert_encoding($value, 'UTF-16LE', 'UTF-8');
+        return mb_convert_encoding($value, 'Windows-1252', 'UTF-8');
     }
 
     if (function_exists('iconv')) {
-        $converted = iconv('UTF-8', 'UTF-16LE//TRANSLIT', $value);
+        $converted = iconv('UTF-8', 'Windows-1252//TRANSLIT', $value);
         if ($converted !== false) {
             return $converted;
         }
     }
 
-    // Fallback manuale sufficiente per l'ASCII; normalmente Altervista rende
-    // disponibile almeno una tra mbstring e iconv.
-    return $value;
+    // Fallback per hosting senza mbstring/iconv: conserva il simbolo euro e
+    // converte i caratteri accentati rappresentabili in ISO-8859-1.
+    $placeholder = '__CSV_EURO__';
+    $value = str_replace("\xE2\x82\xAC", $placeholder, $value);
+    if (function_exists('utf8_decode')) {
+        $value = utf8_decode($value);
+    }
+
+    return str_replace($placeholder, "\x80", $value);
 }
 
 /**
- * Produce un CSV ottimizzato per Excel in locale italiano.
+ * Produce un CSV compatibile con Excel in locale italiano.
  */
 function output_csv_response(string $filename, array $headers, array $rows): void
 {
-    // Evita che eventuali output precedenti corrompano header e contenuto CSV.
+    // Evita che spazi, warning o output precedenti corrompano il download.
     while (ob_get_level() > 0) {
         ob_end_clean();
     }
 
-    header('Content-Type: text/csv; charset=UTF-16LE');
+    header('Content-Type: text/csv; charset=Windows-1252');
     header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     header('Pragma: no-cache');
@@ -102,9 +106,9 @@ function output_csv_response(string $filename, array $headers, array $rows): voi
     }
 
     try {
-        // BOM UTF-16LE: Excel riconosce correttamente anche il simbolo euro.
-        fwrite($out, "\xFF\xFE");
-        fwrite($out, csv_encode_for_excel("sep=;\r\n"));
+        // Nessun BOM: Excel interpreta il file come ANSI/Windows-1252 e
+        // visualizza correttamente il simbolo euro presente nelle intestazioni.
+        fwrite($out, "sep=;\r\n");
         fwrite($out, csv_encode_for_excel(csv_row_to_utf8($headers)));
 
         foreach ($rows as $row) {

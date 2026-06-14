@@ -1141,6 +1141,7 @@
 
     var cardModalPreviousFocus = null;
     var cardModalHistory = [];
+    var cardModalRootIsCall = false;
 
     function getFocusableElements(container) {
         if (!container) {
@@ -1298,6 +1299,89 @@
         return card;
     }
 
+    function getCardModalType(card) {
+        if (!card || !card.classList) {
+            return 'generic';
+        }
+        if (card.classList.contains('call-card')) {
+            return 'call';
+        }
+        if (card.classList.contains('phone-card')) {
+            return 'phone';
+        }
+        if (card.classList.contains('sim-card')) {
+            return 'sim';
+        }
+        if (card.classList.contains('card-modal-card-group')) {
+            return 'sim-group';
+        }
+        return 'generic';
+    }
+
+    function getCardModalIdentity(card) {
+        var type = getCardModalType(card);
+        var value = '';
+
+        if (type === 'phone') {
+            var phoneTitle = card.querySelector('.phone-card-header .card-title, .card-title');
+            value = phoneTitle ? phoneTitle.textContent.trim() : '';
+        } else if (type === 'sim') {
+            value = card.getAttribute('data-sim-code') || '';
+            if (!value) {
+                var simTitle = card.querySelector('.card-title');
+                value = simTitle ? simTitle.textContent.trim() : '';
+            }
+        } else if (type === 'call') {
+            var callTitle = card.querySelector('.call-expanded-title');
+            if (callTitle) {
+                value = callTitle.textContent.trim();
+            } else {
+                var date = card.querySelector('.call-card-date span');
+                var time = card.querySelector('.call-card-date strong');
+                var number = card.querySelector('.call-number-link .card-title');
+                value = [
+                    date ? date.textContent.trim() : '',
+                    time ? time.textContent.trim() : '',
+                    number ? number.textContent.trim() : ''
+                ].join('|');
+            }
+        }
+
+        return type + ':' + value;
+    }
+
+    function cloneCardModalSnapshot(card) {
+        return resetCardModalTransientState(card.cloneNode(true));
+    }
+
+    function updateCardModalHistory(currentCard, targetCard) {
+        var currentSnapshot = cloneCardModalSnapshot(currentCard);
+
+        if (!cardModalRootIsCall) {
+            /* Manteniamo invariato il comportamento già usato tra Numero e SIM:
+               una sola scheda precedente evita cronologie cicliche molto lunghe. */
+            cardModalHistory = [currentSnapshot];
+            return;
+        }
+
+        /* Quando la navigazione nasce da una chiamata conserviamo il percorso
+           Chiamata -> Numero -> SIM. Se si torna su una scheda già presente
+           (per esempio SIM -> Numero associato), eliminiamo il ciclo e il tasto
+           Indietro riporta direttamente alla chiamata di partenza. */
+        var path = cardModalHistory.concat([currentSnapshot]);
+        var targetIdentity = getCardModalIdentity(targetCard);
+        var repeatedIndex = -1;
+
+        for (var index = 0; index < path.length; index += 1) {
+            if (getCardModalIdentity(path[index]) === targetIdentity) {
+                repeatedIndex = index;
+                break;
+            }
+        }
+
+        cardModalHistory = repeatedIndex >= 0 ? path.slice(0, repeatedIndex) : path;
+    }
+
     function buildExpandedCallModalCard(card) {
         if (!card || !card.classList || !card.classList.contains('call-card') || card.classList.contains('call-card-expanded-detail')) {
             return card;
@@ -1346,23 +1430,25 @@
         header.appendChild(heading);
         header.appendChild(status);
 
-        var callerBanner = document.createElement('div');
-        callerBanner.className = 'call-caller-banner';
+        var callerBanner;
+        if (sourceNumberLink) {
+            callerBanner = sourceNumberLink.cloneNode(false);
+            callerBanner.className = 'call-caller-banner call-caller-banner-link';
+            callerBanner.removeAttribute('role');
+            callerBanner.removeAttribute('tabindex');
+            callerBanner.setAttribute('aria-label', 'Apri il dettaglio del numero chiamante ' + numberText);
+        } else {
+            callerBanner = document.createElement('div');
+            callerBanner.className = 'call-caller-banner call-caller-banner-static';
+        }
+
         var callerLabel = document.createElement('span');
         callerLabel.textContent = 'Numero chiamante';
-        var callerLink;
-        if (sourceNumberLink) {
-            callerLink = sourceNumberLink.cloneNode(false);
-            callerLink.className = 'call-modal-number-link';
-            callerLink.removeAttribute('role');
-            callerLink.removeAttribute('tabindex');
-        } else {
-            callerLink = document.createElement('span');
-            callerLink.className = 'call-modal-number-link call-modal-number-static';
-        }
-        callerLink.textContent = numberText;
+        var callerValue = document.createElement('strong');
+        callerValue.className = 'call-modal-number-value';
+        callerValue.textContent = numberText;
         callerBanner.appendChild(callerLabel);
-        callerBanner.appendChild(callerLink);
+        callerBanner.appendChild(callerValue);
 
         var primaryMetric = document.createElement('div');
         primaryMetric.className = 'call-expanded-primary-metric';
@@ -1462,6 +1548,10 @@
         }
 
         var preparedClone = prepareCardModalClone(clone);
+        var dialog = overlay.querySelector('.card-modal-dialog');
+        if (dialog) {
+            dialog.classList.toggle('card-modal-dialog-call', preparedClone.classList.contains('call-card-expanded-detail'));
+        }
         disableDisabledSimPhoneLinkInsideModal(preparedClone);
         content.innerHTML = '';
         content.appendChild(preparedClone);
@@ -1479,6 +1569,7 @@
         }
 
         cardModalHistory = [];
+        cardModalRootIsCall = false;
         overlay.classList.remove('is-visible');
         overlay.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('card-modal-open');
@@ -1529,13 +1620,11 @@
         if (wasVisible) {
             var currentCard = content.querySelector('.card-modal-card');
             if (currentCard) {
-                /* Conserviamo soltanto la scheda immediatamente precedente.
-                   Numero e SIM possono richiamarsi a vicenda: accumulare ogni
-                   passaggio creerebbe una cronologia ciclica molto lunga. */
-                cardModalHistory = [resetCardModalTransientState(currentCard.cloneNode(true))];
+                updateCardModalHistory(currentCard, card);
             }
         } else {
             cardModalHistory = [];
+            cardModalRootIsCall = getCardModalType(card) === 'call';
             if (document.activeElement instanceof HTMLElement) {
                 cardModalPreviousFocus = document.activeElement;
             }

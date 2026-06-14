@@ -6651,13 +6651,17 @@ select[data-scroll-select="true"].native-select-hidden {
     transform: none;
 }
 
-/* V51 - dettaglio chiamata realmente esteso nell'overlay */
+/* V52 - dettaglio chiamata compatto, interamente cliccabile e con cronologia dedicata */
+.card-modal-dialog.card-modal-dialog-call {
+    width: min(820px, 94vw);
+}
+
 .card-modal-card.call-card-expanded-detail {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: 1rem;
-    padding: 1.25rem;
+    gap: 0.8rem;
+    padding: 1rem;
     border: 1px solid #CFC5BC;
     border-left: 5px solid var(--secondary-color);
     border-radius: 16px;
@@ -6666,12 +6670,12 @@ select[data-scroll-select="true"].native-select-hidden {
 
 .card-modal-card.call-card-expanded-detail .call-expanded-header {
     align-items: flex-start;
-    gap: 1rem;
+    gap: 0.85rem;
 }
 
 .card-modal-card.call-card-expanded-detail .call-expanded-title {
-    margin-top: 0.25rem;
-    font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+    margin-top: 0.2rem;
+    font-size: clamp(1.3rem, 2vw, 1.62rem);
     line-height: 1.15;
 }
 
@@ -6685,84 +6689,102 @@ select[data-scroll-select="true"].native-select-hidden {
 .call-expanded-primary-metric {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    min-height: 4.6rem;
-    padding: 1rem 1.15rem;
+    min-height: 4rem;
+    padding: 0.82rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 12px;
 }
 
 .call-caller-banner {
+    justify-content: flex-start;
+    gap: clamp(2rem, 7vw, 4.75rem);
     background-color: #F5F1ED;
+}
+
+.call-caller-banner-link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.call-caller-banner-link:hover,
+.call-caller-banner-link:focus-visible {
+    border-color: var(--secondary-color);
+    background-color: #EEE8E2;
+    box-shadow: 0 4px 12px rgba(73, 62, 55, 0.1);
+    outline: none;
 }
 
 .call-caller-banner > span,
 .call-expanded-primary-metric > span {
+    flex: 0 0 auto;
     color: var(--muted-text);
     font-weight: 900;
 }
 
-.call-modal-number-link {
+.call-modal-number-value {
     color: var(--primary-color);
     font-family: var(--font-monospace, monospace);
-    font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+    font-size: clamp(1.2rem, 2.2vw, 1.5rem);
     font-weight: 900;
-    text-decoration: none;
-    text-align: right;
+    line-height: 1.1;
+    text-align: left;
     overflow-wrap: anywhere;
 }
 
-.call-modal-number-link:hover,
-.call-modal-number-link:focus {
+.call-caller-banner-link:hover .call-modal-number-value,
+.call-caller-banner-link:focus-visible .call-modal-number-value {
     color: var(--link-hover);
     text-decoration: underline;
-    text-decoration-thickness: 0.12em;
-    text-underline-offset: 0.16em;
+    text-decoration-thickness: 0.11em;
+    text-underline-offset: 0.15em;
 }
 
-.call-modal-number-static {
+.call-caller-banner-static {
     cursor: default;
 }
 
 .call-expanded-primary-metric {
+    justify-content: space-between;
+    gap: 1rem;
     background-color: #EEE8E2;
 }
 
 .call-expanded-primary-metric strong {
     color: var(--primary-color);
-    font-size: clamp(1.4rem, 2.8vw, 1.8rem);
+    font-size: clamp(1.16rem, 2vw, 1.42rem);
     line-height: 1.1;
     text-align: right;
 }
 
 .card-modal-card.call-card-expanded-detail .call-expanded-detail-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.8rem;
+    gap: 0.7rem;
 }
 
 .card-modal-card.call-card-expanded-detail .call-expanded-detail-grid > div {
-    min-height: 4.7rem;
-    padding: 0.9rem 1rem;
+    min-height: 4.15rem;
+    padding: 0.75rem 0.85rem;
 }
 
 .card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dt {
-    margin-bottom: 0.45rem;
-    font-size: 0.88rem;
+    margin-bottom: 0.35rem;
+    font-size: 0.82rem;
 }
 
 .card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dd {
-    font-size: 1.05rem;
+    font-size: 1rem;
     font-weight: 900;
 }
 
 .card-modal-card.call-card-expanded-detail .call-charge-detail dd {
-    font-size: 1.18rem;
+    font-size: 1.08rem;
 }
 
 @media (max-width: 640px) {
     .card-modal-card.call-card-expanded-detail {
-        padding: 1rem;
+        padding: 0.9rem;
     }
 
     .card-modal-card.call-card-expanded-detail .call-expanded-header,
@@ -6772,7 +6794,11 @@ select[data-scroll-select="true"].native-select-hidden {
         flex-direction: column;
     }
 
-    .call-modal-number-link,
+    .call-caller-banner {
+        gap: 0.35rem;
+    }
+
+    .call-modal-number-value,
     .call-expanded-primary-metric strong {
         text-align: left;
     }

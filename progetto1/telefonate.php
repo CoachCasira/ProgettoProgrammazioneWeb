@@ -299,9 +299,63 @@ if (empty($search_errors)) {
         || $search_durata_sec !== ''
         || $search_costo_max !== '';
 
-    if ($jump_last) {
-        // L'ultimo blocco viene recuperato invertendo temporaneamente l'ordinamento.
-        // In questo modo evitiamo un OFFSET di milioni di righe sulla tabella Telefonata.
+    /* Senza filtri qualunque ordinamento deve leggere soltanto il piccolo
+       blocco richiesto prima di eseguire il JOIN. È particolarmente importante
+       per la scorciatoia "Chiamate più costose", che altrimenti ordinerebbe e
+       unirebbe oltre tre milioni di righe prima di mostrare le prime dodici. */
+    $fast_unfiltered_orders = [
+        'recenti' => [
+            'normal' => 'data DESC, ora DESC, id DESC',
+            'reverse' => 'data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_data_ora'
+        ],
+        'meno_recenti' => [
+            'normal' => 'data ASC, ora ASC, id ASC',
+            'reverse' => 'data DESC, ora DESC, id DESC',
+            'index' => 'idx_telefonata_data_ora'
+        ],
+        'durata_desc' => [
+            'normal' => 'durata DESC, data DESC, ora DESC, id DESC',
+            'reverse' => 'durata ASC, data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_durata'
+        ],
+        'durata_asc' => [
+            'normal' => 'durata ASC, data DESC, ora DESC, id DESC',
+            'reverse' => 'durata DESC, data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_durata'
+        ],
+        'costo_desc' => [
+            'normal' => 'costo DESC, data DESC, ora DESC, id DESC',
+            'reverse' => 'costo ASC, data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_costo'
+        ],
+        'costo_asc' => [
+            'normal' => 'costo ASC, data DESC, ora DESC, id DESC',
+            'reverse' => 'costo DESC, data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_costo'
+        ]
+    ];
+
+    if (!$has_any_filter) {
+        $fast_order = $fast_unfiltered_orders[$search_ordine] ?? $fast_unfiltered_orders['recenti'];
+        $inner_order = $jump_last ? $fast_order['reverse'] : $fast_order['normal'];
+        $outer_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 'blocco.$1', $inner_order);
+        $page_size = $jump_last ? $limit : ($limit + 1);
+        $offset_sql = $jump_last ? '' : " OFFSET $offset";
+        $index_name = $fast_order['index'];
+
+        $sql = "SELECT blocco.id, blocco.effettuataDa, blocco.data, blocco.ora,
+                       blocco.durata, blocco.costo, c.tipo AS tipoContratto
+                FROM (
+                    SELECT id, effettuataDa, data, ora, durata, costo
+                    FROM Telefonata FORCE INDEX ($index_name)
+                    ORDER BY $inner_order
+                    LIMIT $page_size$offset_sql
+                ) AS blocco
+                JOIN ContrattoTelefonico c ON c.numero = blocco.effettuataDa
+                ORDER BY $outer_order";
+    } elseif ($jump_last) {
+        // Con filtri l'ultimo blocco viene recuperato invertendo temporaneamente l'ordinamento.
         $reverse_order_options = [
             'recenti' => 't.data ASC, t.ora ASC, t.id ASC',
             'meno_recenti' => 't.data DESC, t.ora DESC, t.id DESC',
@@ -311,42 +365,12 @@ if (empty($search_errors)) {
             'costo_asc' => 't.costo DESC, t.data ASC, t.ora ASC, t.id ASC'
         ];
         $reverse_order_by = $reverse_order_options[$search_ordine] ?? $reverse_order_options['recenti'];
-
-        if (!$has_any_filter && $search_ordine === 'recenti') {
-            $page_size = $limit;
-            $sql = "SELECT ultime.id, ultime.effettuataDa, ultime.data, ultime.ora,
-                           ultime.durata, ultime.costo, c.tipo AS tipoContratto
-                    FROM (
-                        SELECT id, effettuataDa, data, ora, durata, costo
-                        FROM Telefonata
-                        ORDER BY data ASC, ora ASC, id ASC
-                        LIMIT $page_size
-                    ) AS ultime
-                    JOIN ContrattoTelefonico c ON c.numero = ultime.effettuataDa
-                    ORDER BY ultime.data ASC, ultime.ora ASC, ultime.id ASC";
-        } else {
-            $sql = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
-                           c.tipo AS tipoContratto
-                    $from_sql
-                    WHERE $where_sql
-                    ORDER BY $reverse_order_by
-                    LIMIT $limit";
-        }
-    } elseif (!$has_any_filter && $search_ordine === 'recenti') {
-        // Percorso veloce della schermata iniziale: MySQL seleziona prima solo il
-        // piccolo blocco richiesto usando l'indice (data, ora), poi esegue il JOIN
-        // con ContrattoTelefonico sulle sole righe effettivamente visualizzate.
-        $page_size = $limit + 1;
-        $sql = "SELECT recenti.id, recenti.effettuataDa, recenti.data, recenti.ora,
-                       recenti.durata, recenti.costo, c.tipo AS tipoContratto
-                FROM (
-                    SELECT id, effettuataDa, data, ora, durata, costo
-                    FROM Telefonata
-                    ORDER BY data DESC, ora DESC, id DESC
-                    LIMIT $page_size OFFSET $offset
-                ) AS recenti
-                JOIN ContrattoTelefonico c ON c.numero = recenti.effettuataDa
-                ORDER BY recenti.data DESC, recenti.ora DESC, recenti.id DESC";
+        $sql = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                       c.tipo AS tipoContratto
+                $from_sql
+                WHERE $where_sql
+                ORDER BY $reverse_order_by
+                LIMIT $limit";
     } else {
         $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
     }

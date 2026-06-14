@@ -175,7 +175,7 @@
     }
 
     function isContainerNearScrollBottom(container) {
-        return container.scrollHeight - container.scrollTop - container.clientHeight < 180;
+        return container.scrollHeight - container.scrollTop - container.clientHeight < 48;
     }
 
     function isContainerNearScrollTop(container) {
@@ -260,20 +260,38 @@
                     refreshDynamicBehaviors();
                 }
 
-                if (payload && Object.prototype.hasOwnProperty.call(payload, 'has_more')) {
-                    container.dataset.hasMore = payload.has_more ? '1' : '0';
-                }
-                if (payload && Object.prototype.hasOwnProperty.call(payload, 'has_prev')) {
-                    container.dataset.hasPrev = payload.has_prev ? '1' : '0';
-                }
-                if (payload && Object.prototype.hasOwnProperty.call(payload, 'next_offset')) {
-                    container.dataset.nextOffset = String(payload.next_offset);
-                }
-                if (payload && Object.prototype.hasOwnProperty.call(payload, 'prev_offset')) {
-                    container.dataset.prevOffset = String(payload.prev_offset);
+                /* I metadati rappresentano l'intervallo complessivamente caricato,
+                   non soltanto l'ultimo blocco ricevuto. Quando aggiungiamo righe in
+                   fondo conserviamo l'offset iniziale; quando le aggiungiamo in cima
+                   conserviamo l'offset finale. In questo modo il contatore non salta
+                   erroneamente da 1-12 a 13-24 dopo un semplice scroll. */
+                if (loadDirection === 'prev') {
+                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'has_prev')) {
+                        container.dataset.hasPrev = payload.has_prev ? '1' : '0';
+                    }
+                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'prev_offset')) {
+                        container.dataset.prevOffset = String(payload.prev_offset);
+                    }
+                } else {
+                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'has_more')) {
+                        container.dataset.hasMore = payload.has_more ? '1' : '0';
+                    }
+                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'next_offset')) {
+                        container.dataset.nextOffset = String(payload.next_offset);
+                    }
                 }
                 if (payload && Object.prototype.hasOwnProperty.call(payload, 'total_count')) {
                     container.dataset.totalCount = String(payload.total_count);
+                }
+
+                if (loadDirection === 'next') {
+                    /* Disattiviamo qualsiasi scroll anchoring residuo del browser:
+                       l'aggiunta del blocco successivo non deve spostare la riga che
+                       l'utente stava osservando. */
+                    container.scrollTop = oldScrollTop;
+                    window.requestAnimationFrame(function () {
+                        container.scrollTop = oldScrollTop;
+                    });
                 }
 
                 var viewRoot = container.closest('[data-results-view-root="true"]');

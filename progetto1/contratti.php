@@ -206,7 +206,11 @@ $search_tipo = trim($_POST['tipo'] ?? $_GET['tipo'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '');
 $search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
-$search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'automatico');
+$search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'recenti');
+if ($search_ordine === '' || $search_ordine === 'automatico') {
+    // Compatibilità con vecchi link e sessioni: il criterio base è quello recente.
+    $search_ordine = 'recenti';
+}
 $search_residuo = trim($_POST['residuo'] ?? $_GET['residuo'] ?? '');
 $effective_min_chiamate = 0;
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
@@ -230,7 +234,7 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
     $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
 }
-if (!in_array($search_ordine, ['automatico', 'recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
+if (!in_array($search_ordine, ['recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
 }
 if ($search_residuo !== '' && !in_array($search_residuo, ['quasi_esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
@@ -309,7 +313,7 @@ if (empty($search_errors)) {
         $sql_base .= " AND c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui >= 30";
     }
     if ($effective_min_chiamate > 0) {
-        $sql_base .= " AND COALESCE(tf.num_telefonate, 0) >= $effective_min_chiamate";
+        $sql_base .= " AND COALESCE(tf.numeroTelefonate, 0) >= $effective_min_chiamate";
     }
     $date_filter_column = $search_stato_numero === 'disattivato' ? 'sd.dataDisattivazione' : 'c.dataAttivazione';
     if ($search_data_da !== '') {
@@ -325,31 +329,16 @@ if (empty($search_errors)) {
     // I contratti senza alcuna SIM associata non sono utili per la consultazione operativa dell'utente.
     $sql_base .= " AND (sa.codice IS NOT NULL OR COALESCE(sdc.simDisattivaCount, 0) > 0)";
 
-    if ($search_ordine === 'chiamate_crescenti' || ($search_ordine === 'automatico' && $effective_min_chiamate > 0)) {
+    if ($search_ordine === 'chiamate_crescenti') {
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
-    } elseif ($search_ordine === 'automatico' && $search_residuo === 'quasi_esaurito') {
-        // I risultati più urgenti vengono mostrati per primi. Il rapporto rispetto
-        // alla soglia rende confrontabili credito residuo e minuti residui.
-        $sql_base .= " ORDER BY CASE
-                              WHEN c.tipo = 'ricarica' THEN COALESCE(c.creditoResiduo, 0) / 5
-                              ELSE COALESCE(c.minutiResidui, 0) / 30
-                           END ASC,
-                           c.dataAttivazione DESC,
-                           c.numero ASC";
-    } elseif ($search_ordine === 'automatico' && $search_residuo === 'credito_basso') {
-        $sql_base .= " ORDER BY COALESCE(c.creditoResiduo, 0) ASC, c.dataAttivazione DESC, c.numero ASC";
-    } elseif ($search_ordine === 'automatico' && $search_residuo === 'minuti_bassi') {
-        $sql_base .= " ORDER BY COALESCE(c.minutiResidui, 0) ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
         $sql_base .= " ORDER BY num_telefonate DESC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'maggiore_durata') {
         $sql_base .= " ORDER BY durata_totale DESC, num_telefonate DESC, c.numero ASC";
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
-    } elseif ($search_ordine === 'automatico' && ($search_data_da !== '' || $search_data_a !== '')) {
-        $order_date_column = $search_stato_numero === 'disattivato' ? 'sd.dataDisattivazione' : 'c.dataAttivazione';
-        $sql_base .= " ORDER BY $order_date_column ASC, c.numero ASC";
     } else {
+        // Criterio iniziale unico e dichiarato nell'interfaccia.
         $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
     }
     if (!$skip_count && (!$ajax_rows || $offset === 0)) {
@@ -463,7 +452,6 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
         <div class="form-group order-filter-group">
             <label for="ordine">Mostra prima:</label>
             <select id="ordine" name="ordine" data-scroll-select="true">
-                <option value="automatico" <?= $search_ordine == 'automatico' ? 'selected' : '' ?>>Nessun criterio specifico</option>
                 <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
                 <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
                 <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>

@@ -5609,3 +5609,47 @@ select[data-scroll-select="true"].native-select-hidden {
         background-color: #F3EEE9;
     }
 }
+
+
+/* =========================================================
+   V31 - Stabilità lazy loading e leggibilità tabella Numeri
+   ========================================================= */
+
+/* La tabella Numeri conserva una larghezza minima anche sui desktop ampi.
+   I contenuti restano su una sola riga e, quando necessario, l'utente usa
+   lo scorrimento orizzontale senza perdere leggibilità. */
+.results-view-root[data-view-key="contratti"] .table-container-inner {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.results-view-root[data-view-key="contratti"] table.data-table {
+    width: max-content !important;
+    min-width: 1380px !important;
+    table-layout: auto !important;
+}
+
+.results-view-root[data-view-key="contratti"] table.data-table th,
+.results-view-root[data-view-key="contratti"] table.data-table td {
+    white-space: nowrap !important;
+    line-height: 1.35;
+}
+
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(1),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(1) { min-width: 165px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(2),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(2) { min-width: 185px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(3),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(3) { min-width: 155px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(4),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(4) { min-width: 145px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(5),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(5),
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(6),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(6) { min-width: 145px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(7),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(7) { min-width: 175px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(8),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(8) { min-width: 155px; }
+.results-view-root[data-view-key="contratti"] table.data-table th:nth-child(9),
+.results-view-root[data-view-key="contratti"] table.data-table td:nth-child(9) { min-width: 145px; }

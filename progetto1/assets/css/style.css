@@ -6336,3 +6336,103 @@ select[data-scroll-select="true"].native-select-hidden {
         min-width: 0 !important;
     }
 }
+
+/* =========================================================
+   V44 - Sticky senza trasparenze e filtri Numeri rifiniti
+   ========================================================= */
+
+/* In vista tabellare la tabella deve iniziare esattamente sui bordi dello
+   scroll container. Il padding ereditato dalla vista a schede lasciava una
+   fascia superiore e laterale nella quale si intravedevano le righe durante
+   lo scorrimento sticky. */
+.results-view-root[data-current-view="table"] .results-data-container {
+    padding: 0 !important;
+    background-color: var(--surface-color) !important;
+}
+
+.results-view-root[data-current-view="table"] .table-container-inner {
+    border-radius: 9px;
+    background-color: var(--surface-color) !important;
+}
+
+/* La testata è completamente opaca e aderisce al bordo superiore dello
+   scroll container, senza lasciare filtrare i record sottostanti. */
+.results-view-root[data-current-view="table"] table.data-table thead,
+.results-view-root[data-current-view="table"] table.data-table thead tr {
+    background-color: var(--secondary-color) !important;
+}
+
+.results-view-root[data-current-view="table"] table.data-table thead th {
+    top: -1px !important;
+    background-color: var(--secondary-color) !important;
+    background-clip: border-box !important;
+    box-shadow: 0 -2px 0 2px var(--secondary-color),
+                0 2px 0 var(--border-color),
+                0 5px 10px rgba(51, 45, 41, 0.10);
+}
+
+/* Anche la prima colonna dei Numeri copre completamente il bordo sinistro:
+   durante lo scroll orizzontale non rimane visibile alcuna porzione delle
+   celle che scorrono dietro. */
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table th:first-child,
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table td:first-child {
+    left: -1px !important;
+    background-clip: border-box !important;
+}
+
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table thead th:first-child {
+    box-shadow: -2px 0 0 2px var(--secondary-color),
+                7px 0 10px -9px rgba(51, 45, 41, 0.82),
+                0 -2px 0 2px var(--secondary-color),
+                0 2px 0 var(--border-color) !important;
+}
+
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table tbody tr:nth-child(odd) td:first-child {
+    box-shadow: -2px 0 0 2px var(--surface-color),
+                7px 0 10px -9px rgba(51, 45, 41, 0.82) !important;
+}
+
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table tbody tr:nth-child(even) td:first-child {
+    box-shadow: -2px 0 0 2px var(--row-alt),
+                7px 0 10px -9px rgba(51, 45, 41, 0.82) !important;
+}
+
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table tbody tr:hover td:first-child,
+.results-view-root[data-view-key="contratti"][data-current-view="table"] table.data-table tbody tr:focus-within td:first-child {
+    box-shadow: -2px 0 0 2px #F3EEE9,
+                7px 0 10px -9px rgba(51, 45, 41, 0.82) !important;
+}
+
+/* Desktop: Mostra prima resta leggibile ma perde lo spazio eccedente;
+   Filtro chiamate diventa leggermente più compatto e Cerca più ampio. */
+@media (min-width: 1100px) {
+    .contratti-filter-form {
+        grid-template-columns: 1fr 1.12fr 0.98fr 0.92fr 0.82fr 1.04fr !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 2 / span 2 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 4 / span 2 !important;
+    }
+
+    .contratti-filter-form > .btn {
+        grid-column: 6 !important;
+        width: 100% !important;
+    }
+
+    /* Il controllo chiuso rimane proporzionato; quando viene aperto, il menu
+       può allargarsi quanto basta per mostrare per intero le descrizioni. */
+    .contratti-filter-form .order-filter-group .custom-select-menu {
+        right: auto !important;
+        width: max-content !important;
+        min-width: 100% !important;
+        max-width: min(25rem, calc(100vw - 2rem));
+    }
+
+    .contratti-filter-form .order-filter-group .custom-select-option {
+        white-space: nowrap;
+    }
+}

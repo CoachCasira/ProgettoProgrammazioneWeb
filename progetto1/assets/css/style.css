@@ -5462,3 +5462,150 @@ select[data-scroll-select="true"].native-select-hidden {
         width: 100%;
     }
 }
+
+/* =========================================================
+   Rifiniture responsive v30
+   - il pulsante Cerca resta sempre dopo tutti i filtri;
+   - le tabelle Numeri e SIM conservano la prima colonna durante
+     lo scorrimento orizzontale su schermi ridotti;
+   - il browser non modifica la posizione della pagina quando il
+     blocco risultati viene sostituito dal salto primo/ultimo.
+   ========================================================= */
+.results-data-container {
+    overflow-anchor: none;
+}
+
+/* Fra tablet e desktop compatto disponiamo i filtri Numeri in un
+   ordine prevedibile. Il pulsante occupa l'ultima posizione, dopo
+   Disponibilità del piano. */
+@media (min-width: 761px) and (max-width: 1099px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 2 !important;
+        grid-row: 3 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 1 !important;
+        grid-row: 4 !important;
+    }
+
+    .contratti-filter-form .residual-filter-group {
+        grid-column: 2 !important;
+        grid-row: 4 !important;
+    }
+
+    .contratti-filter-form > .btn {
+        grid-column: 2 !important;
+        grid-row: 5 !important;
+        width: 100% !important;
+    }
+}
+
+/* Su smartphone il DOM è già nell'ordine corretto: tutti i filtri,
+   quindi il pulsante di invio. */
+@media (max-width: 760px) {
+    .contratti-filter-form > .btn {
+        order: 99;
+    }
+}
+
+/* Le tabelle con molte colonne devono rimanere leggibili: niente
+   testi spezzati e larghezza sufficiente per lo scroll orizzontale. */
+@media (max-width: 1180px) {
+    .results-view-root[data-view-key="contratti"] .table-container-inner,
+    .results-view-root[data-view-key="sim"] .table-container-inner {
+        position: relative;
+        overflow-x: auto;
+        overflow-y: visible;
+        -webkit-overflow-scrolling: touch;
+        isolation: isolate;
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table {
+        width: max-content !important;
+        min-width: 1280px !important;
+        table-layout: auto;
+    }
+
+    .results-view-root[data-view-key="sim"] table.data-table {
+        width: max-content !important;
+        min-width: 1220px !important;
+        table-layout: auto;
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table th,
+    .results-view-root[data-view-key="contratti"] table.data-table td,
+    .results-view-root[data-view-key="sim"] table.data-table th,
+    .results-view-root[data-view-key="sim"] table.data-table td {
+        white-space: nowrap !important;
+        min-width: 8rem;
+        line-height: 1.35;
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table th:first-child,
+    .results-view-root[data-view-key="contratti"] table.data-table td:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table th:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table td:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 5;
+        min-width: 10.5rem;
+        box-shadow: 7px 0 10px -9px rgba(51, 45, 41, 0.8);
+    }
+
+    .results-view-root[data-view-key="sim"] table.data-table th:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table td:first-child {
+        min-width: 14rem;
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table thead th:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table thead th:first-child {
+        z-index: 7;
+        background-color: var(--secondary-color);
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table tbody tr:nth-child(odd) td:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table tbody tr:nth-child(odd) td:first-child {
+        background-color: var(--surface-color);
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table tbody tr:nth-child(even) td:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table tbody tr:nth-child(even) td:first-child {
+        background-color: var(--row-alt);
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table tbody tr.number-disabled-row td:first-child {
+        background-color: #F7F3EF;
+    }
+
+    .results-view-root[data-view-key="contratti"] table.data-table tbody tr:hover td:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table tbody tr:hover td:first-child,
+    .results-view-root[data-view-key="contratti"] table.data-table tbody tr:focus-within td:first-child,
+    .results-view-root[data-view-key="sim"] table.data-table tbody tr:focus-within td:first-child {
+        background-color: #F3EEE9;
+    }
+}

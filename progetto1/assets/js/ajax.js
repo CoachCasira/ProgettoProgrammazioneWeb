@@ -425,8 +425,15 @@
             limit = 50;
         }
 
+        /* Conserviamo la posizione della pagina: sostituire il blocco mentre il
+           contenitore è in fondo può attivare lo scroll anchoring del browser e
+           spostare l'intera pagina. */
+        var pageScrollX = window.pageXOffset || document.documentElement.scrollLeft || 0;
+        var pageScrollY = window.pageYOffset || document.documentElement.scrollTop || 0;
+
         container.dataset.resettingRows = 'true';
         container.dataset.loadingRows = 'true';
+        container.dataset.suppressLazyUntil = String(Date.now() + 900);
         container.classList.add('table-loading-more', 'results-returning-top');
 
         var request = buildRequest(form, {
@@ -455,17 +462,43 @@
                     list.innerHTML = fragment;
                 });
 
-                updateContainerMetadataFromPayload(container, payload, Math.max(0, lists[0] ? lists[0].children.length : 0));
+                var loadedCount = Math.max(0, lists[0] ? lists[0].children.length : 0);
+
+                /* Il salto al primo blocco deve sempre azzerare gli offset. Non ci
+                   affidiamo ai metadati precedenti, che appartenevano all'ultimo
+                   blocco e potevano far apparire 13-24 dopo il ritorno. */
+                container.dataset.prevOffset = '0';
+                container.dataset.nextOffset = String(loadedCount);
+                container.dataset.hasPrev = '0';
+                if (Object.prototype.hasOwnProperty.call(payload, 'has_more')) {
+                    container.dataset.hasMore = payload.has_more ? '1' : '0';
+                } else {
+                    container.dataset.hasMore = loadedCount >= limit ? '1' : '0';
+                }
+                if (Object.prototype.hasOwnProperty.call(payload, 'total_count')) {
+                    container.dataset.totalCount = String(payload.total_count);
+                }
+
                 container.scrollTop = 0;
                 refreshDynamicBehaviors();
 
                 var viewRoot = container.closest('[data-results-view-root="true"]');
-                if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
-                    window.ProgWeb.updateResultsNavigation(viewRoot);
-                }
-                if (window.ProgWeb && typeof window.ProgWeb.updateResultsScrollTopControl === 'function') {
-                    window.ProgWeb.updateResultsScrollTopControl(viewRoot);
-                }
+                var stabilizeAtTop = function () {
+                    container.scrollTop = 0;
+                    window.scrollTo(pageScrollX, pageScrollY);
+                    if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
+                        window.ProgWeb.updateResultsNavigation(viewRoot);
+                    }
+                    if (window.ProgWeb && typeof window.ProgWeb.updateResultsScrollTopControl === 'function') {
+                        window.ProgWeb.updateResultsScrollTopControl(viewRoot);
+                    }
+                };
+
+                window.requestAnimationFrame(function () {
+                    stabilizeAtTop();
+                    window.requestAnimationFrame(stabilizeAtTop);
+                });
+                window.setTimeout(stabilizeAtTop, 120);
                 return true;
             })
             .catch(function () {
@@ -475,6 +508,9 @@
                 container.dataset.resettingRows = 'false';
                 container.dataset.loadingRows = 'false';
                 container.classList.remove('table-loading-more', 'results-returning-top');
+                window.setTimeout(function () {
+                    delete container.dataset.suppressLazyUntil;
+                }, 950);
             });
     }
 
@@ -483,7 +519,8 @@
         scope.querySelectorAll('[data-lazy-container="true"]:not([data-lazy-ready="true"])').forEach(function (container) {
             container.dataset.lazyReady = 'true';
             container.addEventListener('scroll', function () {
-                if (container.dataset.loadingRows === 'true') {
+                var suppressLazyUntil = parseInt(container.dataset.suppressLazyUntil || '0', 10);
+                if (container.dataset.loadingRows === 'true' || (Number.isFinite(suppressLazyUntil) && Date.now() < suppressLazyUntil)) {
                     return;
                 }
                 if (container.dataset.hasPrev === '1' && isContainerNearScrollTop(container)) {

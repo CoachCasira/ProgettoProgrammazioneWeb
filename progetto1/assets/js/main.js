@@ -1298,8 +1298,111 @@
         return card;
     }
 
+    function buildExpandedCallModalCard(card) {
+        if (!card || !card.classList || !card.classList.contains('call-card') || card.classList.contains('call-card-expanded-detail')) {
+            return card;
+        }
+
+        var dateNode = card.querySelector('.call-card-date span');
+        var timeNode = card.querySelector('.call-card-date strong');
+        var sourceNumberLink = card.querySelector('.call-number-link');
+        var numberNode = sourceNumberLink ? sourceNumberLink.querySelector('.card-title') : null;
+        var values = {};
+
+        card.querySelectorAll('.call-detail-grid > div').forEach(function (item) {
+            var label = item.querySelector('dt');
+            var value = item.querySelector('dd');
+            if (label && value) {
+                values[label.textContent.trim().toLowerCase()] = value.textContent.trim();
+            }
+        });
+
+        var dateText = dateNode ? dateNode.textContent.trim() : '';
+        var timeText = timeNode ? timeNode.textContent.trim() : '';
+        var numberText = numberNode ? numberNode.textContent.trim() : (sourceNumberLink ? sourceNumberLink.textContent.trim() : '');
+        var durationText = values.durata || '';
+        var planText = values.piano || '';
+        var chargeText = values.addebito || '';
+
+        var expanded = document.createElement('article');
+        expanded.className = 'data-card call-card call-card-expanded-detail';
+
+        var header = document.createElement('div');
+        header.className = 'data-card-header call-expanded-header';
+
+        var heading = document.createElement('div');
+        var kicker = document.createElement('span');
+        kicker.className = 'card-kicker';
+        kicker.textContent = 'Chiamata effettuata';
+        var title = document.createElement('h3');
+        title.className = 'card-title call-expanded-title';
+        title.textContent = dateText && timeText ? dateText + ' alle ' + timeText : (dateText || timeText || 'Dettaglio chiamata');
+        heading.appendChild(kicker);
+        heading.appendChild(title);
+
+        var status = document.createElement('span');
+        status.className = 'status-pill call-status-pill';
+        status.textContent = 'Chiamata registrata';
+        header.appendChild(heading);
+        header.appendChild(status);
+
+        var callerBanner = document.createElement('div');
+        callerBanner.className = 'call-caller-banner';
+        var callerLabel = document.createElement('span');
+        callerLabel.textContent = 'Numero chiamante';
+        var callerLink;
+        if (sourceNumberLink) {
+            callerLink = sourceNumberLink.cloneNode(false);
+            callerLink.className = 'call-modal-number-link';
+            callerLink.removeAttribute('role');
+            callerLink.removeAttribute('tabindex');
+        } else {
+            callerLink = document.createElement('span');
+            callerLink.className = 'call-modal-number-link call-modal-number-static';
+        }
+        callerLink.textContent = numberText;
+        callerBanner.appendChild(callerLabel);
+        callerBanner.appendChild(callerLink);
+
+        var primaryMetric = document.createElement('div');
+        primaryMetric.className = 'call-expanded-primary-metric';
+        var primaryLabel = document.createElement('span');
+        primaryLabel.textContent = 'Durata della chiamata';
+        var primaryValue = document.createElement('strong');
+        primaryValue.textContent = durationText;
+        primaryMetric.appendChild(primaryLabel);
+        primaryMetric.appendChild(primaryValue);
+
+        var details = document.createElement('dl');
+        details.className = 'card-detail-grid call-expanded-detail-grid';
+
+        function appendDetail(labelText, valueText, extraClass) {
+            var item = document.createElement('div');
+            item.className = 'card-detail-tile' + (extraClass ? ' ' + extraClass : '');
+            var label = document.createElement('dt');
+            label.textContent = labelText;
+            var value = document.createElement('dd');
+            value.textContent = valueText;
+            item.appendChild(label);
+            item.appendChild(value);
+            details.appendChild(item);
+        }
+
+        appendDetail('Data della chiamata', dateText);
+        appendDetail('Ora della chiamata', timeText);
+        appendDetail('Piano tariffario', planText);
+        appendDetail('Addebito', chargeText, 'call-charge-detail');
+
+        expanded.appendChild(header);
+        expanded.appendChild(callerBanner);
+        expanded.appendChild(primaryMetric);
+        expanded.appendChild(details);
+        return expanded;
+    }
+
     function prepareCardModalClone(card) {
         var clone = resetCardModalTransientState(card.cloneNode(true));
+        clone = buildExpandedCallModalCard(clone);
         clone.classList.add('card-modal-card');
         clone.classList.remove('expandable-card');
         clone.removeAttribute('data-expandable-card');

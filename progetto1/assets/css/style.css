@@ -6650,3 +6650,134 @@ select[data-scroll-select="true"].native-select-hidden {
 .data-card.card-modal-just-closed:focus-within {
     transform: none;
 }
+
+/* V51 - dettaglio chiamata realmente esteso nell'overlay */
+.card-modal-card.call-card-expanded-detail {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #CFC5BC;
+    border-left: 5px solid var(--secondary-color);
+    border-radius: 16px;
+    background-color: #FBFAF8;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-header {
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-title {
+    margin-top: 0.25rem;
+    font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+    line-height: 1.15;
+}
+
+.call-status-pill {
+    background-color: var(--secondary-color);
+    color: var(--light-text);
+    white-space: nowrap;
+}
+
+.call-caller-banner,
+.call-expanded-primary-metric {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-height: 4.6rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+}
+
+.call-caller-banner {
+    background-color: #F5F1ED;
+}
+
+.call-caller-banner > span,
+.call-expanded-primary-metric > span {
+    color: var(--muted-text);
+    font-weight: 900;
+}
+
+.call-modal-number-link {
+    color: var(--primary-color);
+    font-family: var(--font-monospace, monospace);
+    font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+    font-weight: 900;
+    text-decoration: none;
+    text-align: right;
+    overflow-wrap: anywhere;
+}
+
+.call-modal-number-link:hover,
+.call-modal-number-link:focus {
+    color: var(--link-hover);
+    text-decoration: underline;
+    text-decoration-thickness: 0.12em;
+    text-underline-offset: 0.16em;
+}
+
+.call-modal-number-static {
+    cursor: default;
+}
+
+.call-expanded-primary-metric {
+    background-color: #EEE8E2;
+}
+
+.call-expanded-primary-metric strong {
+    color: var(--primary-color);
+    font-size: clamp(1.4rem, 2.8vw, 1.8rem);
+    line-height: 1.1;
+    text-align: right;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid > div {
+    min-height: 4.7rem;
+    padding: 0.9rem 1rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dt {
+    margin-bottom: 0.45rem;
+    font-size: 0.88rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dd {
+    font-size: 1.05rem;
+    font-weight: 900;
+}
+
+.card-modal-card.call-card-expanded-detail .call-charge-detail dd {
+    font-size: 1.18rem;
+}
+
+@media (max-width: 640px) {
+    .card-modal-card.call-card-expanded-detail {
+        padding: 1rem;
+    }
+
+    .card-modal-card.call-card-expanded-detail .call-expanded-header,
+    .call-caller-banner,
+    .call-expanded-primary-metric {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .call-modal-number-link,
+    .call-expanded-primary-metric strong {
+        text-align: left;
+    }
+
+    .card-modal-card.call-card-expanded-detail .call-expanded-detail-grid {
+        grid-template-columns: 1fr;
+    }
+}

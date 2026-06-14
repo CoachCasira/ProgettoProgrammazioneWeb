@@ -6439,85 +6439,90 @@ select[data-scroll-select="true"].native-select-hidden {
 
 
 /* =========================================================
-   V45 - Tabella SIM compatta su desktop e prima colonna stabile
+   V46 - Correzione tabella SIM compatta e contenuti visibili
    ========================================================= */
 
-/* La vista completa delle SIM contiene otto colonne, ma su un desktop
-   normale può entrare interamente senza obbligare l'utente a uno scroll
-   orizzontale minimo. Riduciamo solo gli spazi eccedenti, conservando
-   leggibilità, codici completi e pulsanti operativi sulla stessa riga. */
+/* Desktop: il contenitore deve avere una larghezza reale, non max-content.
+   La precedente combinazione max-content + tabella percentuale poteva
+   collassare le colonne e nascondere completamente testi e intestazioni. */
 @media (min-width: 1181px) {
-    .results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container,
+    .results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container {
+        overflow-x: auto !important;
+    }
+
     .results-view-root[data-view-key="sim"][data-current-view="table"] .table-container-inner {
-        overflow-x: hidden !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte {
         width: 100% !important;
-        min-width: 0 !important;
+        min-width: 100% !important;
         table-layout: fixed !important;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th,
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td {
         min-width: 0 !important;
-        padding: 0.62rem 0.42rem !important;
+        padding: 0.58rem 0.34rem !important;
         white-space: nowrap !important;
-        overflow: hidden;
+        overflow: hidden !important;
         text-overflow: ellipsis;
-        font-size: 0.9rem;
+        font-size: 0.84rem;
+        box-sizing: border-box;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(1),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(1) { width: 20%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(1) { width: 18%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(2),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(2) { width: 7%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(2) { width: 8%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(3),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(3) { width: 14%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(3) { width: 13%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(4),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(4) { width: 13%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(4) { width: 12%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(5),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(5) { width: 14%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(5) { width: 13%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(6),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(6) { width: 10%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(6) { width: 9%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(7),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(7) { width: 8%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(7) { width: 9%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(8),
-    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(8) { width: 14%; }
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(8) { width: 18%; }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td.identifier {
-        font-size: 0.9rem;
+        font-size: 0.82rem;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .sim-actions-column {
         min-width: 0 !important;
-        padding-left: 0.28rem !important;
-        padding-right: 0.28rem !important;
+        padding-left: 0.2rem !important;
+        padding-right: 0.2rem !important;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .card-action-link,
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .action-edit,
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .action-delete {
-        padding: 0.34rem 0.48rem !important;
-        font-size: 0.72rem !important;
+        padding: 0.32rem 0.42rem !important;
+        font-size: 0.7rem !important;
     }
 }
 
-/* Sugli schermi ridotti la tabella SIM continua correttamente a scorrere in
-   orizzontale, ma Codice SIM deve restare una vera prima colonna fissa:
-   intestazione visibile, sfondo opaco e nessuna cella che traspare a sinistra. */
+/* Schermi ridotti: Codice SIM resta una prima colonna realmente fissa,
+   opaca e con intestazione sempre visibile durante lo scroll orizzontale. */
 @media (max-width: 1180px) {
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table th:first-child,
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table td:first-child {
         position: sticky !important;
-        left: -1px !important;
+        left: 0 !important;
         width: 14rem !important;
         min-width: 14rem !important;
         max-width: 14rem !important;
@@ -6527,7 +6532,7 @@ select[data-scroll-select="true"].native-select-hidden {
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table thead th:first-child {
         z-index: 40 !important;
         background-color: var(--secondary-color) !important;
-        box-shadow: -3px 0 0 3px var(--secondary-color),
+        box-shadow: -4px 0 0 4px var(--secondary-color),
                     8px 0 12px -10px rgba(51, 45, 41, 0.9),
                     0 -2px 0 2px var(--secondary-color),
                     0 2px 0 var(--border-color) !important;
@@ -6536,21 +6541,22 @@ select[data-scroll-select="true"].native-select-hidden {
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table tbody tr:nth-child(odd) td:first-child {
         z-index: 18 !important;
         background-color: var(--surface-color) !important;
-        box-shadow: -3px 0 0 3px var(--surface-color),
+        box-shadow: -4px 0 0 4px var(--surface-color),
                     8px 0 12px -10px rgba(51, 45, 41, 0.9) !important;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table tbody tr:nth-child(even) td:first-child {
         z-index: 18 !important;
         background-color: var(--row-alt) !important;
-        box-shadow: -3px 0 0 3px var(--row-alt),
+        box-shadow: -4px 0 0 4px var(--row-alt),
                     8px 0 12px -10px rgba(51, 45, 41, 0.9) !important;
     }
 
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table tbody tr:hover td:first-child,
     .results-view-root[data-view-key="sim"][data-current-view="table"] table.data-table tbody tr:focus-within td:first-child {
         background-color: #F3EEE9 !important;
-        box-shadow: -3px 0 0 3px #F3EEE9,
+        box-shadow: -4px 0 0 4px #F3EEE9,
                     8px 0 12px -10px rgba(51, 45, 41, 0.9) !important;
     }
 }
+

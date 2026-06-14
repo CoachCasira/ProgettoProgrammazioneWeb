@@ -335,16 +335,10 @@ if (empty($search_errors)) {
     $sql_base .= " AND (sa.codice IS NOT NULL OR COALESCE(sdc.simDisattivaCount, 0) > 0)";
 
     if ($effective_min_chiamate > 0 && $search_ordine === 'recenti') {
-        /* Il filtro minimo definisce naturalmente il punto di partenza: quando
-           l'utente non sceglie un ordinamento diverso, mostriamo prima i numeri
-           più vicini alla soglia e poi quelli con più chiamate. */
+        /* Se l'utente applica soltanto una soglia minima di chiamate, il punto
+           di partenza naturale è la soglia stessa. Un ordinamento scelto
+           esplicitamente in "Mostra prima" mantiene invece la precedenza. */
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
-    } elseif ($search_residuo === 'credito_basso' || $search_residuo === 'credito_disponibile') {
-        // I filtri monetari partono dal valore più vicino alla soglia scelta.
-        $sql_base .= " ORDER BY c.creditoResiduo ASC, c.dataAttivazione DESC, c.numero ASC";
-    } elseif ($search_residuo === 'minuti_bassi' || $search_residuo === 'minuti_disponibili') {
-        // I filtri sui minuti partono dal valore più vicino alla soglia scelta.
-        $sql_base .= " ORDER BY c.minutiResidui ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'chiamate_crescenti') {
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
@@ -353,6 +347,14 @@ if (empty($search_errors)) {
         $sql_base .= " ORDER BY durata_totale DESC, num_telefonate DESC, c.numero ASC";
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
+    } elseif ($search_residuo === 'credito_basso' || $search_residuo === 'credito_disponibile') {
+        /* Quando resta selezionato l'ordinamento predefinito, il filtro sulla
+           disponibilità monetaria mostra prima il valore più vicino alla soglia. */
+        $sql_base .= " ORDER BY c.creditoResiduo ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_residuo === 'minuti_bassi' || $search_residuo === 'minuti_disponibili') {
+        /* Analogamente, il filtro sui minuti parte dalla soglia soltanto se
+           l'utente non ha richiesto un differente criterio di ordinamento. */
+        $sql_base .= " ORDER BY c.minutiResidui ASC, c.dataAttivazione DESC, c.numero ASC";
     } else {
         if ($search_stato_numero === '') {
             /* Con “Mostra tutti” diamo priorità ai numeri operativamente attivi.

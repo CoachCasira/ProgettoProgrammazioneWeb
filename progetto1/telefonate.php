@@ -8,7 +8,7 @@ function render_telefonate_cards(array $rows): string
 {
     ob_start();
     foreach ($rows as $row): ?>
-        <article class="data-card call-card">
+        <article class="data-card call-card expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio della chiamata effettuata da <?= htmlspecialchars($row['effettuataDa']) ?> il <?= htmlspecialchars(format_date_it($row['data'])) ?> alle <?= htmlspecialchars(format_time_minutes($row['ora'])) ?>">
             <div class="call-card-date">
                 <span><?= htmlspecialchars(format_date_it($row['data'])) ?></span>
                 <strong><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></strong>

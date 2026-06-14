@@ -1382,9 +1382,17 @@
         setBackgroundInert(false, overlay);
 
         if (cardModalPreviousFocus && document.contains(cardModalPreviousFocus)) {
-            cardModalPreviousFocus.focus({ preventScroll: true });
+            var shouldAvoidRestoringVisualFocus = Boolean(cardModalPreviousFocus.closest('.data-card, .call-number-link, .card-detail-link, [data-phone-card-modal="true"], [data-sim-card-modal="true"], [data-sim-history-modal="true"]'));
+            if (shouldAvoidRestoringVisualFocus) {
+                cardModalPreviousFocus.blur();
+            } else {
+                cardModalPreviousFocus.focus({ preventScroll: true });
+            }
         }
         cardModalPreviousFocus = null;
+        if (document.activeElement && document.activeElement !== document.body && document.activeElement.closest && document.activeElement.closest('.data-card, .card-modal-overlay')) {
+            document.activeElement.blur();
+        }
     }
 
     function goBackCardModal() {
@@ -1692,7 +1700,7 @@
     }
 
     function isTableRowModalAction(target) {
-        return Boolean(target.closest('button, input, select, textarea, label, .table-action-group, .action-disable-sim, .action-edit-sim, .action-delete-sim, [data-card-modal-exclude="true"]'));
+        return Boolean(target.closest('a[data-phone-card-modal="true"], a[data-sim-card-modal="true"], a[data-sim-history-modal="true"], button, input, select, textarea, label, .table-action-group, .action-disable-sim, .action-edit-sim, .action-delete-sim, [data-card-modal-exclude="true"]'));
     }
 
     function initTableRowModals(root) {

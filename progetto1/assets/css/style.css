@@ -6629,3 +6629,24 @@ select[data-scroll-select="true"].native-select-hidden {
         font-size: 0.78rem !important;
     }
 }
+
+
+/* V50 - dettaglio esteso chiamate e pulizia focus dopo chiusura popup */
+.call-card.expandable-card {
+    cursor: zoom-in;
+}
+
+.card-modal-card.call-card {
+    cursor: default;
+}
+
+.card-modal-card.call-card:hover,
+.card-modal-card.call-card:focus-within {
+    transform: none;
+}
+
+.data-card.card-modal-just-closed,
+.data-card.card-modal-just-closed:hover,
+.data-card.card-modal-just-closed:focus-within {
+    transform: none;
+}

@@ -354,7 +354,14 @@ if (empty($search_errors)) {
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
     } else {
-        $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
+        if ($search_stato_numero === '') {
+            /* Con “Mostra tutti” diamo priorità ai numeri operativamente attivi.
+               All'interno dei due gruppi manteniamo l'ordinamento per attivazione
+               più recente, senza interferire con gli ordinamenti scelti dall'utente. */
+            $sql_base .= " ORDER BY CASE WHEN sa.codice IS NOT NULL THEN 0 ELSE 1 END ASC, c.dataAttivazione DESC, c.numero ASC";
+        } else {
+            $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
+        }
     }
     if (!$skip_count && (!$ajax_rows || $offset === 0)) {
         $total_count = query_total_count($conn, $sql_base);

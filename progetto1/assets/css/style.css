@@ -5653,3 +5653,55 @@ select[data-scroll-select="true"].native-select-hidden {
 .results-view-root[data-view-key="contratti"] table.data-table td:nth-child(8) { min-width: 155px; }
 .results-view-root[data-view-key="contratti"] table.data-table th:nth-child(9),
 .results-view-root[data-view-key="contratti"] table.data-table td:nth-child(9) { min-width: 145px; }
+
+/* =========================================================
+   Rifiniture filtri Numeri v32
+   - filtro chiamate meno esteso;
+   - pulsante Cerca più ampio e sempre conclusivo.
+   ========================================================= */
+@media (min-width: 1100px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 3 / span 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .residual-filter-group {
+        grid-column: 5 / span 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 3 / span 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form > .btn {
+        grid-column: 5 / span 2 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+    }
+}

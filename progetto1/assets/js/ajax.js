@@ -3,6 +3,8 @@
     var lastRequestId = 0;
     var LIVE_DELAY_MS = 450;
     var activeSearchController = null;
+    var activeCountController = null;
+    var lastCountRequestId = 0;
 
     function buildRequest(form, extraFields) {
         var method = (form.getAttribute('method') || 'GET').toUpperCase();
@@ -98,6 +100,70 @@
         return true;
     }
 
+    function refreshDeferredCount(form, targetSelector, searchRequestId) {
+        if (!form || form.id !== 'telefonate-filter' || !window.fetch || !window.FormData) {
+            return;
+        }
+
+        var target = document.querySelector(targetSelector);
+        var container = target ? target.querySelector('[data-lazy-container="true"][data-count-pending="1"]') : null;
+        if (!container) {
+            return;
+        }
+
+        if (activeCountController && typeof activeCountController.abort === 'function') {
+            activeCountController.abort();
+        }
+        activeCountController = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        var countRequestId = lastCountRequestId + 1;
+        lastCountRequestId = countRequestId;
+
+        var request = buildRequest(form, {
+            count_only: '1',
+            skip_count: '0'
+        });
+        if (activeCountController) {
+            request.options.signal = activeCountController.signal;
+        }
+
+        fetch(request.url, request.options)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Conteggio non disponibile');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (countRequestId !== lastCountRequestId || (searchRequestId && searchRequestId !== lastRequestId)) {
+                    return;
+                }
+
+                var refreshedTarget = document.querySelector(targetSelector);
+                var refreshedContainer = refreshedTarget ? refreshedTarget.querySelector('[data-lazy-container="true"]') : null;
+                if (!refreshedContainer || !payload || !Object.prototype.hasOwnProperty.call(payload, 'total_count')) {
+                    return;
+                }
+
+                refreshedContainer.dataset.totalCount = String(payload.total_count);
+                refreshedContainer.dataset.countPending = '0';
+                var viewRoot = refreshedContainer.closest('[data-results-view-root="true"]');
+                if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
+                    window.ProgWeb.updateResultsNavigation(viewRoot);
+                }
+            })
+            .catch(function (error) {
+                if (error && error.name === 'AbortError') {
+                    return;
+                }
+                // I risultati rimangono utilizzabili anche se il totale tarda o fallisce.
+            })
+            .finally(function () {
+                if (countRequestId === lastCountRequestId) {
+                    activeCountController = null;
+                }
+            });
+    }
+
     function submitAjaxForm(form, isLiveSearch) {
         var targetSelector = form.dataset.updateTarget || '.content';
         var target = document.querySelector(targetSelector);
@@ -112,6 +178,10 @@
 
         if (activeSearchController && typeof activeSearchController.abort === 'function') {
             activeSearchController.abort();
+        }
+        if (activeCountController && typeof activeCountController.abort === 'function') {
+            activeCountController.abort();
+            activeCountController = null;
         }
         activeSearchController = typeof AbortController !== 'undefined' ? new AbortController() : null;
 
@@ -140,7 +210,9 @@
                 var scrollToTop = !isLiveSearch && targetSelector === '.content';
                 if (!updateFromResponse(html, targetSelector, scrollToTop)) {
                     showAjaxError(target);
+                    return;
                 }
+                refreshDeferredCount(form, targetSelector, requestId);
             })
             .catch(function (error) {
                 if (error && error.name === 'AbortError') {
@@ -621,5 +693,10 @@
     window.ProgWeb.jumpResultsToLastBlock = jumpResultsToLastBlock;
     document.addEventListener('DOMContentLoaded', function () {
         initLazyTables(document);
+        var form = document.querySelector('#telefonate-filter');
+        var targetSelector = form ? (form.dataset.updateTarget || '.content') : '';
+        if (form && targetSelector) {
+            refreshDeferredCount(form, targetSelector, 0);
+        }
     });
 }());

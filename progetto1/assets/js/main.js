@@ -315,6 +315,28 @@
         });
     }
 
+    function initPhoneTrafficOrderControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form.contratti-filter-form:not([data-traffic-order-ready="true"])').forEach(function (form) {
+            var threshold = form.querySelector('#min_chiamate');
+            var order = form.querySelector('#ordine');
+
+            form.dataset.trafficOrderReady = 'true';
+            if (!threshold || !order) {
+                return;
+            }
+
+            threshold.addEventListener('change', function () {
+                if (threshold.value !== '') {
+                    order.value = 'chiamate_crescenti';
+                } else if (order.value === 'chiamate_crescenti') {
+                    order.value = 'recenti';
+                }
+                updateCustomSelect(order);
+            });
+        });
+    }
+
     function closeCustomSelect(wrapper) {
         if (!wrapper) {
             return;
@@ -1658,13 +1680,17 @@
         var prevButton = nav.querySelector('[data-results-page-prev="true"]');
         var nextButton = nav.querySelector('[data-results-page-next="true"]');
         var lastButton = nav.querySelector('[data-results-last="true"]');
-        var total = parseInt(container.dataset.totalCount || '0', 10);
+        var totalRaw = container.dataset.totalCount || '';
+        var countPending = container.dataset.countPending === '1';
+        var totalKnown = !countPending && totalRaw !== '';
+        var total = totalKnown ? parseInt(totalRaw, 10) : 0;
         var loaded = getLoadedResultsCountForView(root);
         var prevOffset = parseInt(container.dataset.prevOffset || '0', 10);
         var nextOffset = parseInt(container.dataset.nextOffset || String(prevOffset + loaded), 10);
 
         if (!Number.isFinite(total) || total < 0) {
             total = 0;
+            totalKnown = false;
         }
         if (!Number.isFinite(prevOffset) || prevOffset < 0) {
             prevOffset = 0;
@@ -1673,12 +1699,14 @@
             nextOffset = prevOffset + loaded;
         }
 
-        var start = total === 0 || loaded === 0 ? 0 : prevOffset + 1;
-        var end = total === 0 || loaded === 0 ? 0 : Math.min(total, nextOffset);
+        var start = loaded === 0 ? 0 : prevOffset + 1;
+        var end = loaded === 0 ? 0 : (totalKnown ? Math.min(total, nextOffset) : nextOffset);
 
         if (counter) {
-            if (total === 0) {
+            if (loaded === 0 && (!totalKnown || total === 0)) {
                 counter.textContent = '0 risultati';
+            } else if (!totalKnown) {
+                counter.textContent = start + '-' + end + ' risultati';
             } else {
                 counter.textContent = start + '-' + end + ' di ' + total + ' risultati';
             }
@@ -1700,8 +1728,10 @@
             nextButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
         }
         if (lastButton) {
-            lastButton.disabled = !canMoveNext;
-            lastButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
+            var canJumpLast = totalKnown && canMoveNext;
+            lastButton.disabled = !canJumpLast;
+            lastButton.setAttribute('aria-disabled', canJumpLast ? 'false' : 'true');
+            lastButton.title = totalKnown ? 'Vai all\'ultimo risultato' : 'Calcolo del totale in corso';
         }
     }
 
@@ -2100,6 +2130,7 @@
         initScrollableSelects(scope);
         initTrafficThresholdControls(scope);
         initPhoneDateLabelControls(scope);
+        initPhoneTrafficOrderControls(scope);
         initSimStateControls(scope);
         initClearableInputs(scope);
         initDashboardQuickSearchReset(scope);

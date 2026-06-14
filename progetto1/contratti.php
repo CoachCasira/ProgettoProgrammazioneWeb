@@ -212,6 +212,10 @@ if ($search_ordine === '' || $search_ordine === 'automatico') {
     $search_ordine = 'recenti';
 }
 $search_residuo = trim($_POST['residuo'] ?? $_GET['residuo'] ?? '');
+if ($search_residuo === 'quasi_esaurito') {
+    // Compatibilità con il vecchio collegamento della Panoramica.
+    $search_residuo = 'esaurito';
+}
 $effective_min_chiamate = 0;
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
@@ -237,7 +241,7 @@ if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($sea
 if (!in_array($search_ordine, ['recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
 }
-if ($search_residuo !== '' && !in_array($search_residuo, ['quasi_esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
+if ($search_residuo !== '' && !in_array($search_residuo, ['esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
     $search_errors[] = 'Selezionare un filtro di disponibilità residua valido.';
 }
 if (empty($search_errors)) {
@@ -245,6 +249,11 @@ if (empty($search_errors)) {
         $effective_min_chiamate = (int)$search_min_chiamate_custom;
     } elseif ($search_min_chiamate !== '' && $search_min_chiamate !== 'custom') {
         $effective_min_chiamate = (int)$search_min_chiamate;
+    }
+
+    if ($effective_min_chiamate > 0 && $search_ordine === 'recenti') {
+        // Una soglia implica naturalmente un ordinamento crescente dalla soglia.
+        $search_ordine = 'chiamate_crescenti';
     }
 }
 
@@ -301,12 +310,12 @@ if (empty($search_errors)) {
     } elseif ($search_stato_numero === 'disattivato') {
         $sql_base .= " AND sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0";
     }
-    if ($search_residuo === 'quasi_esaurito') {
-        $sql_base .= " AND ((c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo < 5) OR (c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui < 30))";
+    if ($search_residuo === 'esaurito') {
+        $sql_base .= " AND ((c.tipo = 'ricarica' AND c.creditoResiduo = 0) OR (c.tipo = 'consumo' AND c.minutiResidui = 0))";
     } elseif ($search_residuo === 'credito_basso') {
-        $sql_base .= " AND c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo < 5";
+        $sql_base .= " AND c.tipo = 'ricarica' AND c.creditoResiduo > 0 AND c.creditoResiduo < 5";
     } elseif ($search_residuo === 'minuti_bassi') {
-        $sql_base .= " AND c.tipo = 'consumo' AND c.minutiResidui IS NOT NULL AND c.minutiResidui < 30";
+        $sql_base .= " AND c.tipo = 'consumo' AND c.minutiResidui > 0 AND c.minutiResidui < 30";
     } elseif ($search_residuo === 'credito_disponibile') {
         $sql_base .= " AND c.tipo = 'ricarica' AND c.creditoResiduo IS NOT NULL AND c.creditoResiduo >= 5";
     } elseif ($search_residuo === 'minuti_disponibili') {
@@ -329,7 +338,14 @@ if (empty($search_errors)) {
     // I contratti senza alcuna SIM associata non sono utili per la consultazione operativa dell'utente.
     $sql_base .= " AND (sa.codice IS NOT NULL OR COALESCE(sdc.simDisattivaCount, 0) > 0)";
 
-    if ($search_ordine === 'chiamate_crescenti') {
+    if ($search_residuo === 'credito_basso' || $search_residuo === 'credito_disponibile') {
+        // I filtri monetari partono dal valore più vicino alla soglia scelta.
+        $sql_base .= " ORDER BY c.creditoResiduo ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_residuo === 'minuti_bassi' || $search_residuo === 'minuti_disponibili') {
+        // I filtri sui minuti partono dal valore più vicino alla soglia scelta.
+        $sql_base .= " ORDER BY c.minutiResidui ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'chiamate_crescenti' || ($effective_min_chiamate > 0 && $search_ordine === 'recenti')) {
+        // Con una soglia attiva il risultato naturale parte dalla soglia e cresce.
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
         $sql_base .= " ORDER BY num_telefonate DESC, c.dataAttivazione DESC, c.numero ASC";
@@ -338,7 +354,6 @@ if (empty($search_errors)) {
     } elseif ($search_ordine === 'maggiore_spesa') {
         $sql_base .= " ORDER BY costo_totale DESC, num_telefonate DESC, c.numero ASC";
     } else {
-        // Criterio iniziale unico e dichiarato nell'interfaccia.
         $sql_base .= " ORDER BY c.dataAttivazione DESC, c.numero ASC";
     }
     if (!$skip_count && (!$ajax_rows || $offset === 0)) {
@@ -442,7 +457,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             <label for="residuo">Disponibilità del piano:</label>
             <select id="residuo" name="residuo" data-scroll-select="true">
                 <option value="">Tutti i piani</option>
-                <option value="quasi_esaurito" <?= $search_residuo === 'quasi_esaurito' ? 'selected' : '' ?>>Piani quasi esauriti</option>
+                <option value="esaurito" <?= $search_residuo === 'esaurito' ? 'selected' : '' ?>>Piani esauriti</option>
                 <option value="credito_basso" <?= $search_residuo === 'credito_basso' ? 'selected' : '' ?>>Ricaricabili: credito &lt; 5 €</option>
                 <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>A consumo: minuti &lt; 30</option>
                 <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Ricaricabili: credito ≥ 5 €</option>
@@ -453,10 +468,10 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             <label for="ordine">Mostra prima:</label>
             <select id="ordine" name="ordine" data-scroll-select="true">
                 <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
-                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Meno chiamate sopra la soglia</option>
-                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Più chiamate registrate</option>
-                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Maggiore durata totale</option>
-                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Maggiore spesa totale</option>
+                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Numeri con meno chiamate</option>
+                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Numeri con più chiamate</option>
+                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Numeri con più ore di chiamata</option>
+                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Numeri con maggior addebito</option>
             </select>
         </div>
         <div class="form-group traffic-filter-group">

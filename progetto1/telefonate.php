@@ -105,6 +105,7 @@ $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 $jump_last = (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
+$count_only = (($_POST['count_only'] ?? $_GET['count_only'] ?? '') === '1');
 
 $search_errors = [];
 if (!is_digits_or_empty($search_contratto)) {
@@ -145,35 +146,53 @@ $sql_base = '';
 
 if (empty($search_errors)) {
     $where_clauses = ['1=1'];
-    $summary_clauses = ['1=1'];
 
     if ($search_contratto !== '') {
         $contratto = $conn->real_escape_string($search_contratto);
         if (strlen($search_contratto) >= 10) {
             $where_clauses[] = "t.effettuataDa = '$contratto'";
-            $summary_clauses[] = "c.numero = '$contratto'";
         } else {
-            // La ricerca per prefisso usa l'indice del numero ed evita scansioni complete.
             $where_clauses[] = "t.effettuataDa LIKE '$contratto%'";
-            $summary_clauses[] = "c.numero LIKE '$contratto%'";
         }
     }
 
+    /* Stato e piano appartengono al contratto, che contiene poche centinaia di
+       righe. Ricaviamo prima i numeri compatibili e poi filtriamo Telefonata
+       tramite il suo indice su effettuataDa. In questo modo il JOIN non viene
+       eseguito su milioni di righe prima del LIMIT. */
+    $contract_scope_clauses = ['1=1'];
+    $has_contract_scope_filter = false;
+
     if ($search_stato_numero === 'attivo') {
-        $active_condition = "EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)";
-        $where_clauses[] = $active_condition;
-        $summary_clauses[] = $active_condition;
+        $contract_scope_clauses[] = "EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)";
+        $has_contract_scope_filter = true;
     } elseif ($search_stato_numero === 'disattivato') {
-        $disabled_condition = "NOT EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)
-                               AND EXISTS (SELECT 1 FROM SIMDisattiva sd WHERE sd.eraAssociataA = c.numero)";
-        $where_clauses[] = "($disabled_condition)";
-        $summary_clauses[] = "($disabled_condition)";
+        $contract_scope_clauses[] = "NOT EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)";
+        $contract_scope_clauses[] = "EXISTS (SELECT 1 FROM SIMDisattiva sd WHERE sd.eraAssociataA = c.numero)";
+        $has_contract_scope_filter = true;
     }
 
     if ($search_piano !== '') {
         $piano = $conn->real_escape_string($search_piano);
-        $where_clauses[] = "c.tipo = '$piano'";
-        $summary_clauses[] = "c.tipo = '$piano'";
+        $contract_scope_clauses[] = "c.tipo = '$piano'";
+        $has_contract_scope_filter = true;
+    }
+
+    if ($has_contract_scope_filter) {
+        $eligible_numbers = [];
+        $contract_scope_sql = implode(' AND ', $contract_scope_clauses);
+        $eligible_result = $conn->query("SELECT c.numero FROM ContrattoTelefonico c WHERE $contract_scope_sql");
+        if ($eligible_result) {
+            while ($eligible_row = $eligible_result->fetch_assoc()) {
+                $eligible_numbers[] = "'" . $conn->real_escape_string((string)$eligible_row['numero']) . "'";
+            }
+        }
+
+        if ($eligible_numbers) {
+            $where_clauses[] = 't.effettuataDa IN (' . implode(',', $eligible_numbers) . ')';
+        } else {
+            $where_clauses[] = '0=1';
+        }
     }
 
     if ($search_data_da !== '') {
@@ -203,76 +222,92 @@ if (empty($search_errors)) {
         $where_clauses[] = "t.costo <= $costo_max";
     }
 
-    $from_sql = "FROM Telefonata t
-                 JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa";
     $where_sql = implode(' AND ', $where_clauses);
+    $has_any_filter = $search_contratto !== ''
+        || $search_stato_numero !== ''
+        || $search_piano !== ''
+        || $search_data_da !== ''
+        || $search_data_a !== ''
+        || $search_ora_da !== ''
+        || $search_ora_a !== ''
+        || $search_durata_min !== ''
+        || $search_durata_sec !== ''
+        || $search_costo_max !== '';
 
-    $order_options = [
-        'recenti' => 't.data DESC, t.ora DESC, t.id DESC',
-        'meno_recenti' => 't.data ASC, t.ora ASC, t.id ASC',
-        'durata_desc' => 't.durata DESC, t.data DESC, t.ora DESC, t.id DESC',
-        'durata_asc' => 't.durata ASC, t.data DESC, t.ora DESC, t.id DESC',
-        'costo_desc' => 't.costo DESC, t.data DESC, t.ora DESC, t.id DESC',
-        'costo_asc' => 't.costo ASC, t.data DESC, t.ora DESC, t.id DESC'
+    /* Gli ordinamenti su durata e costo usano soltanto il valore e la chiave
+       primaria. Gli indici secondari InnoDB contengono già l'id: evitiamo così
+       un filesort su milioni di righe quando si apre "Chiamate più costose". */
+    $fast_orders = [
+        'recenti' => [
+            'normal' => 'data DESC, ora DESC, id DESC',
+            'reverse' => 'data ASC, ora ASC, id ASC',
+            'index' => 'idx_telefonata_data_ora'
+        ],
+        'meno_recenti' => [
+            'normal' => 'data ASC, ora ASC, id ASC',
+            'reverse' => 'data DESC, ora DESC, id DESC',
+            'index' => 'idx_telefonata_data_ora'
+        ],
+        'durata_desc' => [
+            'normal' => 'durata DESC, id DESC',
+            'reverse' => 'durata ASC, id ASC',
+            'index' => 'idx_telefonata_durata'
+        ],
+        'durata_asc' => [
+            'normal' => 'durata ASC, id ASC',
+            'reverse' => 'durata DESC, id DESC',
+            'index' => 'idx_telefonata_durata'
+        ],
+        'costo_desc' => [
+            'normal' => 'costo DESC, id DESC',
+            'reverse' => 'costo ASC, id ASC',
+            'index' => 'idx_telefonata_costo'
+        ],
+        'costo_asc' => [
+            'normal' => 'costo ASC, id ASC',
+            'reverse' => 'costo DESC, id DESC',
+            'index' => 'idx_telefonata_costo'
+        ]
     ];
-    $order_by = $order_options[$search_ordine] ?? $order_options['recenti'];
+    $fast_order = $fast_orders[$search_ordine] ?? $fast_orders['recenti'];
 
-    $sql_base = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
-                        c.tipo AS tipoContratto
-                 $from_sql
-                 WHERE $where_sql
-                 ORDER BY $order_by";
-
-    // Il conteggio totale viene calcolato una sola volta all'apertura o dopo un filtro.
-    // Senza filtri usiamo MAX(id), che sfrutta la chiave primaria ed evita COUNT
-    // e JOIN su oltre tre milioni di righe. I blocchi caricati durante lo scroll
-    // continuano a non ripetere il conteggio.
-    if (!$skip_count && (!$ajax_rows || $offset === 0)) {
-        $has_call_detail_filters = $search_data_da !== ''
-            || $search_data_a !== ''
-            || $search_ora_da !== ''
-            || $search_ora_a !== ''
-            || $search_durata_min !== ''
-            || $search_durata_sec !== ''
-            || $search_costo_max !== '';
-        $has_contract_filters = $search_contratto !== ''
-            || $search_stato_numero !== ''
-            || $search_piano !== '';
-
-        if (!$has_call_detail_filters && !$has_contract_filters) {
-            $total_count = fast_unfiltered_call_count($conn);
+    if ($count_only) {
+        $count_result = $conn->query("SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql");
+        $count_value = 0;
+        if ($count_result && ($count_row = $count_result->fetch_assoc())) {
+            $count_value = (int)($count_row['total_count'] ?? 0);
         }
-
-        if ($total_count === null && !$has_call_detail_filters && performance_table_exists($conn, 'StatisticheContratto')) {
-            $summary_where = implode(' AND ', $summary_clauses);
-            $count_result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
-                                          FROM StatisticheContratto sc
-                                          JOIN ContrattoTelefonico c ON c.numero = sc.numero
-                                          WHERE $summary_where");
-            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
-                $total_count = (int)($count_row['total_count'] ?? 0);
-            }
-        }
-
-        if ($total_count === null) {
-            // Il JOIN con ContrattoTelefonico serve al conteggio solo quando il
-            // filtro riguarda stato o piano. Negli altri casi contiamo direttamente
-            // sull'indice di Telefonata.
-            $count_from_sql = ($search_stato_numero === '' && $search_piano === '')
-                ? 'FROM Telefonata t'
-                : $from_sql;
-            $count_result = $conn->query("SELECT COUNT(*) AS total_count $count_from_sql WHERE $where_sql");
-            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
-                $total_count = (int)($count_row['total_count'] ?? 0);
-            } else {
-                $total_count = 0;
-            }
-        }
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['total_count' => $count_value]);
+        exit;
     }
 
+    /* Il totale senza filtri è immediato. Con filtri viene calcolato da una
+       richiesta separata dopo aver già mostrato il primo blocco, così l'utente
+       vede subito il risultato e non attende il COUNT su milioni di righe. */
+    if (!$has_any_filter) {
+        $total_count = fast_unfiltered_call_count($conn);
+        if ($total_count === null) {
+            $total_count = 0;
+        }
+    } else {
+        $total_count = null;
+    }
+
+    $normal_order = $fast_order['normal'];
+    $reverse_order = $fast_order['reverse'];
+    $index_name = $fast_order['index'];
+
     if ($export_csv) {
+        $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
+        $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                              c.tipo AS tipoContratto
+                       FROM Telefonata t
+                       JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
+                       WHERE $where_sql
+                       ORDER BY $export_order";
         $csv_rows = [];
-        $export_result = $conn->query($sql_base);
+        $export_result = $conn->query($sql_export);
         if ($export_result) {
             while ($row = $export_result->fetch_assoc()) {
                 $csv_rows[] = [
@@ -288,92 +323,28 @@ if (empty($search_errors)) {
         output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
     }
 
-    $has_any_filter = $search_contratto !== ''
-        || $search_stato_numero !== ''
-        || $search_piano !== ''
-        || $search_data_da !== ''
-        || $search_data_a !== ''
-        || $search_ora_da !== ''
-        || $search_ora_a !== ''
-        || $search_durata_min !== ''
-        || $search_durata_sec !== ''
-        || $search_costo_max !== '';
+    $inner_order = $jump_last ? $reverse_order : $normal_order;
+    $outer_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 'blocco.$1', $inner_order);
+    $page_size = $jump_last ? $limit : ($limit + 1);
+    $offset_sql = $jump_last ? '' : " OFFSET $offset";
 
-    /* Senza filtri qualunque ordinamento deve leggere soltanto il piccolo
-       blocco richiesto prima di eseguire il JOIN. È particolarmente importante
-       per la scorciatoia "Chiamate più costose", che altrimenti ordinerebbe e
-       unirebbe oltre tre milioni di righe prima di mostrare le prime dodici. */
-    $fast_unfiltered_orders = [
-        'recenti' => [
-            'normal' => 'data DESC, ora DESC, id DESC',
-            'reverse' => 'data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_data_ora'
-        ],
-        'meno_recenti' => [
-            'normal' => 'data ASC, ora ASC, id ASC',
-            'reverse' => 'data DESC, ora DESC, id DESC',
-            'index' => 'idx_telefonata_data_ora'
-        ],
-        'durata_desc' => [
-            'normal' => 'durata DESC, data DESC, ora DESC, id DESC',
-            'reverse' => 'durata ASC, data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_durata'
-        ],
-        'durata_asc' => [
-            'normal' => 'durata ASC, data DESC, ora DESC, id DESC',
-            'reverse' => 'durata DESC, data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_durata'
-        ],
-        'costo_desc' => [
-            'normal' => 'costo DESC, data DESC, ora DESC, id DESC',
-            'reverse' => 'costo ASC, data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_costo'
-        ],
-        'costo_asc' => [
-            'normal' => 'costo ASC, data DESC, ora DESC, id DESC',
-            'reverse' => 'costo DESC, data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_costo'
-        ]
-    ];
-
-    if (!$has_any_filter) {
-        $fast_order = $fast_unfiltered_orders[$search_ordine] ?? $fast_unfiltered_orders['recenti'];
-        $inner_order = $jump_last ? $fast_order['reverse'] : $fast_order['normal'];
-        $outer_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 'blocco.$1', $inner_order);
-        $page_size = $jump_last ? $limit : ($limit + 1);
-        $offset_sql = $jump_last ? '' : " OFFSET $offset";
-        $index_name = $fast_order['index'];
-
-        $sql = "SELECT blocco.id, blocco.effettuataDa, blocco.data, blocco.ora,
-                       blocco.durata, blocco.costo, c.tipo AS tipoContratto
-                FROM (
-                    SELECT id, effettuataDa, data, ora, durata, costo
-                    FROM Telefonata FORCE INDEX ($index_name)
-                    ORDER BY $inner_order
-                    LIMIT $page_size$offset_sql
-                ) AS blocco
-                JOIN ContrattoTelefonico c ON c.numero = blocco.effettuataDa
-                ORDER BY $outer_order";
-    } elseif ($jump_last) {
-        // Con filtri l'ultimo blocco viene recuperato invertendo temporaneamente l'ordinamento.
-        $reverse_order_options = [
-            'recenti' => 't.data ASC, t.ora ASC, t.id ASC',
-            'meno_recenti' => 't.data DESC, t.ora DESC, t.id DESC',
-            'durata_desc' => 't.durata ASC, t.data ASC, t.ora ASC, t.id ASC',
-            'durata_asc' => 't.durata DESC, t.data ASC, t.ora ASC, t.id ASC',
-            'costo_desc' => 't.costo ASC, t.data ASC, t.ora ASC, t.id ASC',
-            'costo_asc' => 't.costo DESC, t.data ASC, t.ora ASC, t.id ASC'
-        ];
-        $reverse_order_by = $reverse_order_options[$search_ordine] ?? $reverse_order_options['recenti'];
-        $sql = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
-                       c.tipo AS tipoContratto
-                $from_sql
-                WHERE $where_sql
-                ORDER BY $reverse_order_by
-                LIMIT $limit";
-    } else {
-        $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
+    /* Per la ricerca di un singolo numero ordinata per data esiste un indice
+       ancora più selettivo; negli altri casi usiamo l'indice dell'ordinamento. */
+    if (strlen($search_contratto) >= 10 && in_array($search_ordine, ['recenti', 'meno_recenti'], true)) {
+        $index_name = 'idx_telefonata_utenza_data';
     }
+
+    $sql = "SELECT blocco.id, blocco.effettuataDa, blocco.data, blocco.ora,
+                   blocco.durata, blocco.costo, c.tipo AS tipoContratto
+            FROM (
+                SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo
+                FROM Telefonata t FORCE INDEX ($index_name)
+                WHERE $where_sql
+                ORDER BY $inner_order
+                LIMIT $page_size$offset_sql
+            ) AS blocco
+            JOIN ContrattoTelefonico c ON c.numero = blocco.effettuataDa
+            ORDER BY $outer_order";
 
     $result = $conn->query($sql);
     if ($result) {
@@ -381,7 +352,6 @@ if (empty($search_errors)) {
             $rows[] = $row;
         }
         if ($jump_last) {
-            // Ripristina l'ordinamento scelto dall'utente all'interno dell'ultimo blocco.
             $rows = array_reverse($rows);
             $has_more = false;
         } elseif (count($rows) > $limit) {
@@ -390,7 +360,6 @@ if (empty($search_errors)) {
         }
     }
 }
-
 if ($ajax_rows) {
     header('Content-Type: application/json; charset=utf-8');
     $payload = [
@@ -503,7 +472,7 @@ if ($ajax_rows) {
         </div>
     </div>
 
-    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#telefonate-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
+    <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#telefonate-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count === null ? '' : $total_count ?>" data-count-pending="<?= $total_count === null ? '1' : '0' ?>">
         <?php if (!empty($search_errors)): ?>
             <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
         <?php elseif (!empty($rows)): ?>

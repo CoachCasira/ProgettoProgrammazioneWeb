@@ -275,23 +275,32 @@ if (empty($search_errors)) {
         ? 'idx_telefonata_ora_durata'
         : 'idx_telefonata_data_ora';
 
-    /* Quando l'utente imposta un intervallo orario e mantiene il criterio
-       predefinito, l'ora diventa il riferimento principale a prescindere dalla
-       data. Se è presente anche una durata minima, questa viene usata soltanto
-       come criterio secondario tra chiamate con lo stesso orario. */
-    if (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
+    /* Con il criterio predefinito i filtri definiscono un ordinamento naturale:
+       - durata minima: prima le chiamate più vicine alla soglia;
+       - ora iniziale/finale: prima gli orari più vicini all'inizio dell'intervallo;
+       - a parità dei valori filtrati: prima la telefonata con data più recente.
+
+       Quando durata e ora sono entrambe presenti, la durata resta il criterio
+       principale: una chiamata di 9 minuti deve precedere una di 9 minuti e
+       20 secondi. L'ora viene usata come secondo criterio e la data come
+       discriminante finale tra chiamate equivalenti. */
+    if ($duration_filter_active && ($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
         $fast_order = [
-            'normal' => 'ora ASC, durata ASC, id ASC',
-            'reverse' => 'ora DESC, durata DESC, id DESC',
-            'index' => $time_order_index
+            'normal' => 'durata ASC, ora ASC, data DESC, id DESC',
+            'reverse' => 'durata DESC, ora DESC, data ASC, id ASC',
+            'index' => 'idx_telefonata_durata'
         ];
-    /* Senza filtro orario, una durata minima definisce il punto di partenza:
-       mostriamo prima le chiamate più vicine alla soglia e poi quelle più lunghe. */
     } elseif ($duration_filter_active && $search_ordine === 'recenti') {
         $fast_order = [
-            'normal' => 'durata ASC, id ASC',
-            'reverse' => 'durata DESC, id DESC',
+            'normal' => 'durata ASC, data DESC, ora DESC, id DESC',
+            'reverse' => 'durata DESC, data ASC, ora ASC, id ASC',
             'index' => 'idx_telefonata_durata'
+        ];
+    } elseif (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
+        $fast_order = [
+            'normal' => 'ora ASC, data DESC, id DESC',
+            'reverse' => 'ora DESC, data ASC, id ASC',
+            'index' => $time_order_index
         ];
     }
 

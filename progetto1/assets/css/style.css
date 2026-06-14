@@ -5705,3 +5705,254 @@ select[data-scroll-select="true"].native-select-hidden {
         width: 100% !important;
     }
 }
+
+/* =========================================================
+   V33 - Uniformità card, reset filtri e messaggi temporanei
+   ========================================================= */
+
+/* I messaggi di conferma scompaiono davvero: dopo la dissolvenza vengono
+   rimossi anche dal DOM da main.js. */
+.alert-soft-hidden {
+    opacity: 0 !important;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* X disegnata geometricamente: resta perfettamente centrata in tutti i campi,
+   compresi durata, ricerca rapida, numeri, chiamate e SIM. */
+.clear-input-button,
+.custom-select-reset {
+    position: absolute;
+    display: inline-grid;
+    place-items: center;
+    width: 1.45rem !important;
+    height: 1.45rem !important;
+    min-width: 1.45rem !important;
+    padding: 0 !important;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: #EEE8E3;
+    color: var(--primary-color);
+    font-size: 0 !important;
+    line-height: 0 !important;
+    box-sizing: border-box;
+}
+
+.clear-input-button::before,
+.clear-input-button::after,
+.custom-select-reset::before,
+.custom-select-reset::after {
+    content: "" !important;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.58rem;
+    height: 1.5px;
+    border-radius: 999px;
+    background: currentColor;
+    transform-origin: center;
+}
+
+.clear-input-button::before,
+.custom-select-reset::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.clear-input-button::after,
+.custom-select-reset::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.clear-input-button:hover,
+.clear-input-button:focus,
+.custom-select-reset:hover,
+.custom-select-reset:focus {
+    background: var(--secondary-color) !important;
+    color: var(--light-text) !important;
+    outline: none;
+}
+
+/* Reset delle tendine: appare solo quando il filtro è diverso dal valore
+   predefinito e riporta la select alla prima opzione. */
+.custom-select-reset {
+    right: 2.05rem;
+    top: 50%;
+    z-index: 95;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(-50%);
+    transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.custom-select-reset.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.custom-select.has-reset-value .custom-select-current,
+.multi-select-filter.has-reset-value .custom-select-current {
+    padding-right: 2rem;
+}
+
+/* Nei campi orari la X resta prima dell'icona nativa dell'orologio. */
+.telefonate-filter-form .time-range-pair .clearable-input {
+    width: 100%;
+    min-width: 0;
+}
+
+.telefonate-filter-form .time-range-pair .clearable-input input {
+    padding-right: 4rem !important;
+}
+
+.telefonate-filter-form .time-range-pair .clear-input-button {
+    right: 2.15rem;
+}
+
+/* Il controllo composto della durata non altera il centraggio del reset. */
+.telefonate-filter-form .duration-segment .clearable-input {
+    height: 100%;
+}
+
+.telefonate-filter-form .duration-segment .clear-input-button {
+    right: 0.38rem;
+    top: 50%;
+}
+
+/* Card Numeri: tutti i riquadri secondari hanno stessa altezza, titolo su una
+   sola riga e valore allineato alla stessa quota. */
+.phone-card .phone-detail-grid {
+    grid-auto-rows: minmax(5.15rem, auto);
+    align-items: stretch;
+}
+
+.phone-card .phone-detail-grid .card-detail-tile {
+    min-height: 5.15rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.phone-card .phone-detail-grid .card-detail-tile dt {
+    min-height: 1.1rem !important;
+    height: 1.1rem;
+    margin-bottom: 0.38rem;
+    font-size: 0.66rem !important;
+    line-height: 1.1 !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    align-items: center;
+}
+
+.phone-card .phone-detail-grid .card-detail-tile dd {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+
+.phone-card .phone-detail-grid .phone-calls-tile dt,
+.phone-card .phone-detail-grid .phone-calls-tile .tile-overlay-link {
+    white-space: nowrap;
+}
+
+.phone-card .phone-detail-grid .active-sim-tile dd,
+.phone-card .phone-detail-grid .disabled-sim-tile dd {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.78rem;
+}
+
+/* Card SIM: il badge resta in alto a destra e il codice dispone dell'intera
+   larghezza della card, evitando il ritorno a capo. */
+.sim-card {
+    position: relative;
+}
+
+.sim-card .data-card-header {
+    display: block;
+    min-height: 3.35rem;
+    padding-right: 0;
+}
+
+.sim-card .data-card-header > div {
+    width: 100%;
+}
+
+.sim-card .status-pill {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    margin: 0 !important;
+}
+
+.sim-card .card-kicker {
+    padding-right: 6rem;
+}
+
+.sim-card .card-title-mono {
+    width: 100%;
+    max-width: 100%;
+    margin-top: 0.36rem;
+    padding-right: 0;
+    font-size: 1.08rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+}
+
+.sim-card .card-detail-grid {
+    grid-auto-rows: minmax(5.15rem, auto);
+    align-items: stretch;
+}
+
+.sim-card .card-detail-grid > div {
+    min-height: 5.15rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.sim-card .card-detail-grid dt {
+    min-height: 1.1rem;
+    height: 1.1rem;
+    margin-bottom: 0.38rem;
+    font-size: 0.66rem;
+    line-height: 1.1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sim-card .card-detail-grid dd {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.25;
+}
+
+.sim-card .sim-phone-tile dt,
+.sim-card .sim-phone-tile .tile-overlay-link,
+.sim-card .sim-phone-tile dd {
+    white-space: nowrap;
+}
+
+.sim-card .sim-phone-tile dd {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 420px) {
+    .sim-card .card-title-mono {
+        font-size: 0.96rem;
+    }
+
+    .phone-card .phone-detail-grid .card-detail-tile dt,
+    .sim-card .card-detail-grid dt {
+        font-size: 0.62rem !important;
+    }
+}

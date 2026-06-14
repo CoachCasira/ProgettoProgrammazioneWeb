@@ -271,6 +271,17 @@ if (empty($search_errors)) {
     ];
     $fast_order = $fast_orders[$search_ordine] ?? $fast_orders['recenti'];
 
+    /* Se l'utente indica soltanto l'orario iniziale, il primo risultato deve
+       partire da quell'ora e proseguire in avanti. Manteniamo prima le date più
+       recenti e, all'interno di ciascun giorno, ordiniamo l'orario in crescita. */
+    if ($search_ora_da !== '' && $search_ora_a === '' && $search_ordine === 'recenti') {
+        $fast_order = [
+            'normal' => 'data DESC, ora ASC, id ASC',
+            'reverse' => 'data ASC, ora DESC, id DESC',
+            'index' => 'idx_telefonata_data_ora'
+        ];
+    }
+
     if ($count_only) {
         $count_result = $conn->query("SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql");
         $count_value = 0;
@@ -421,9 +432,9 @@ if ($ajax_rows) {
         <div class="form-group time-filter-group range-filter-group">
             <label>Ora della chiamata:</label>
             <div class="range-pair compact-range-pair time-range-pair">
-                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata">
+                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata" data-clearable="true">
                 <span class="compound-control-divider" aria-hidden="true"></span>
-                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Ora finale della chiamata">
+                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Ora finale della chiamata" data-clearable="true">
             </div>
         </div>
         <div class="form-group call-plan-filter-group">

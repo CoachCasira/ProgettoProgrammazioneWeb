@@ -63,6 +63,12 @@
             message.dataset.alertReady = 'true';
             window.setTimeout(function () {
                 message.classList.add('alert-soft-hidden');
+                window.setTimeout(function () {
+                    if (message.parentNode) {
+                        message.remove();
+                        updateStickyLayout();
+                    }
+                }, 450);
             }, 6000);
         });
     }
@@ -129,6 +135,18 @@
         if (allCheckbox) {
             allCheckbox.checked = explicitSelectedCount === 0 || explicitSelectedCount === 3;
         }
+
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        var resetButton = wrapper ? wrapper.querySelector('.multi-select-reset') : null;
+        var canReset = selectedStates.length !== 3;
+        if (wrapper) {
+            wrapper.classList.toggle('has-reset-value', canReset);
+        }
+        if (resetButton) {
+            resetButton.classList.toggle('is-visible', canReset);
+            resetButton.setAttribute('aria-hidden', canReset ? 'false' : 'true');
+            resetButton.tabIndex = canReset ? 0 : -1;
+        }
     }
 
     function applySimState(form, states) {
@@ -187,6 +205,18 @@
         }
         wrapper.dataset.multiSelectReady = 'true';
         var button = wrapper.querySelector('.multi-select-button');
+        var resetButton = wrapper.querySelector('.multi-select-reset');
+        if (!resetButton) {
+            resetButton = document.createElement('button');
+            resetButton.type = 'button';
+            resetButton.className = 'custom-select-reset multi-select-reset';
+            resetButton.setAttribute('aria-label', 'Ripristina stati SIM');
+            resetButton.setAttribute('title', 'Ripristina stati SIM');
+            resetButton.setAttribute('aria-hidden', 'true');
+            resetButton.tabIndex = -1;
+            wrapper.insertBefore(resetButton, wrapper.querySelector('.multi-select-menu'));
+        }
+
         if (button) {
             button.addEventListener('click', function (event) {
                 event.stopPropagation();
@@ -197,6 +227,22 @@
                 button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
             });
         }
+        resetButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = true;
+            });
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.checked = true;
+            }
+            applySimState(form, ['attive', 'disponibili', 'disattive']);
+            closeSimMultiSelect(wrapper);
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        });
+
         wrapper.addEventListener('click', function (event) {
             event.stopPropagation();
         });
@@ -363,6 +409,16 @@
             optionButton.classList.toggle('is-selected', isSelected);
             optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
         });
+
+        var resetButton = wrapper.querySelector('.custom-select-reset');
+        var defaultValue = wrapper.dataset.defaultValue || '';
+        var canReset = select.value !== defaultValue;
+        wrapper.classList.toggle('has-reset-value', canReset);
+        if (resetButton) {
+            resetButton.classList.toggle('is-visible', canReset);
+            resetButton.setAttribute('aria-hidden', canReset ? 'false' : 'true');
+            resetButton.tabIndex = canReset ? 0 : -1;
+        }
     }
 
     function initScrollableSelects(root) {
@@ -393,6 +449,14 @@
             arrow.textContent = '⌄';
             button.appendChild(arrow);
 
+            var resetButton = document.createElement('button');
+            resetButton.type = 'button';
+            resetButton.className = 'custom-select-reset';
+            resetButton.setAttribute('aria-label', 'Ripristina filtro');
+            resetButton.setAttribute('title', 'Ripristina filtro');
+            resetButton.setAttribute('aria-hidden', 'true');
+            resetButton.tabIndex = -1;
+
             var menu = document.createElement('div');
             menu.className = 'custom-select-menu';
             menu.setAttribute('role', 'listbox');
@@ -413,7 +477,9 @@
                 menu.appendChild(optionButton);
             });
 
+            wrapper.dataset.defaultValue = select.options.length > 0 ? select.options[0].value : '';
             wrapper.appendChild(button);
+            wrapper.appendChild(resetButton);
             wrapper.appendChild(menu);
             select.insertAdjacentElement('afterend', wrapper);
             updateCustomSelect(select);
@@ -424,6 +490,15 @@
                 document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
                 wrapper.classList.toggle('is-open', shouldOpen);
                 button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+
+            resetButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                select.value = wrapper.dataset.defaultValue || '';
+                updateCustomSelect(select);
+                closeCustomSelect(wrapper);
+                select.dispatchEvent(new Event('change', { bubbles: true }));
             });
 
             select.addEventListener('change', function () {

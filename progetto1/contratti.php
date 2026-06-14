@@ -140,11 +140,11 @@ function render_contratti_cards(array $rows): string
                 <?php else: ?>
                     <div class="card-detail-tile">
                         <dt>Chiamate registrate</dt>
-                        <dd>Nessun traffico</dd>
+                        <dd>0</dd>
                     </div>
                 <?php endif; ?>
                 <div class="card-detail-tile phone-duration-tile">
-                    <dt>Durata totale chiamate</dt>
+                    <dt>Durata chiamate</dt>
                     <dd><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></dd>
                 </div>
                 <div class="card-detail-tile phone-charge-tile">
@@ -191,7 +191,7 @@ function render_contratti_table_rows(array $rows): string
                         <?= htmlspecialchars((string) $num_telefonate) ?> chiamate
                     </a>
                 <?php else: ?>
-                    Nessun traffico
+                    0
                 <?php endif; ?>
             </td>
             <td class="numeric duration-value"><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></td>

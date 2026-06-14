@@ -6560,3 +6560,16 @@ select[data-scroll-select="true"].native-select-hidden {
     }
 }
 
+
+/* =========================================================
+   V47 - Allineamento Mostra prima con il primo campo data
+   ========================================================= */
+
+/* Sul desktop i due segmenti occupati dal range Attivato dal/al hanno la
+   stessa larghezza. In questo modo il bordo destro di Mostra prima coincide
+   con il bordo destro del primo campo data, senza sporgere di alcuni pixel. */
+@media (min-width: 1100px) {
+    .contratti-filter-form {
+        grid-template-columns: 1fr 1.12fr 0.95fr 0.95fr 0.82fr 1.04fr !important;
+    }
+}

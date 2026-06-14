@@ -6573,3 +6573,59 @@ select[data-scroll-select="true"].native-select-hidden {
         grid-template-columns: 1fr 1.12fr 0.95fr 0.95fr 0.82fr 1.04fr !important;
     }
 }
+
+/* =========================================================
+   V48 - Scala uniforme della tabella SIM
+   ========================================================= */
+
+/* A schermo intero la tabella SIM mantiene la stessa scala tipografica e la
+   stessa altezza visiva delle tabelle Numeri e Chiamate. Per far entrare tutte
+   le colonne si riducono soltanto gli spazi orizzontali, senza rimpicciolire
+   testi, intestazioni o contenuti. */
+@media (min-width: 1181px) {
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th,
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td {
+        padding: 0.8rem 0.32rem !important;
+        font-size: inherit !important;
+        line-height: 1.25;
+        text-overflow: ellipsis;
+    }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td.identifier {
+        font-size: 1.03rem !important;
+    }
+
+    /* Ripartizione compatta ma leggibile: il testo resta della stessa
+       dimensione delle altre tabelle e l'intera vista continua a stare nel
+       contenitore desktop senza una barra orizzontale superflua. */
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(1),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(1) { width: 18.5%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(2),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(2) { width: 8%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(3),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(3) { width: 12.5%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(4),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(4) { width: 12%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(5),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(5) { width: 14.5%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(6),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(6) { width: 8.5%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(7),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(7) { width: 8%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte th:nth-child(8),
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte td:nth-child(8) { width: 18%; }
+
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .card-action-link,
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .action-edit,
+    .results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte .action-delete {
+        padding: 0.38rem 0.5rem !important;
+        font-size: 0.78rem !important;
+    }
+}

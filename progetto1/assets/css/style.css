@@ -5992,3 +5992,80 @@ select[data-scroll-select="true"].native-select-hidden {
         font-size: 0.62rem !important;
     }
 }
+
+/* =========================================================
+   V35 - CARD CHIAMATE PIU' COMPATTE E LAZY LOADING DISCRETO
+   ========================================================= */
+.call-card {
+    grid-template-columns: minmax(108px, 0.17fr) minmax(190px, 0.38fr) minmax(270px, 1fr);
+    gap: 0.72rem;
+    padding: 0.82rem 0.95rem;
+}
+
+.call-card-date {
+    min-height: 4.25rem;
+    padding: 0.52rem 0.62rem;
+    border-radius: 10px;
+}
+
+.call-card-date span {
+    font-size: 0.78rem;
+}
+
+.call-card-date strong {
+    font-size: 1.18rem;
+}
+
+.call-card .call-detail-grid {
+    gap: 0.58rem;
+}
+
+.call-card .call-detail-grid > div {
+    display: flex;
+    min-height: 3.75rem;
+    padding: 0.52rem 0.65rem;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.call-card .call-detail-grid dt {
+    margin-bottom: 0.1rem;
+    font-size: 0.7rem;
+    line-height: 1.1;
+}
+
+.call-card .call-detail-grid dd {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.18;
+}
+
+/* L'indicatore compare solo per richieste lente ed è un piccolo badge: non
+   aggiunge altezza al contenitore e non sposta le schede durante lo scroll. */
+.cards-container.table-loading-more::after {
+    position: sticky;
+    bottom: 0.45rem;
+    z-index: 20;
+    width: max-content;
+    max-width: calc(100% - 1rem);
+    margin: 0.35rem auto 0;
+    padding: 0.38rem 0.72rem;
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    background-color: rgba(251, 250, 248, 0.96);
+    box-shadow: 0 3px 10px rgba(51, 45, 41, 0.14);
+    font-size: 0.8rem;
+    line-height: 1.1;
+}
+
+@media (max-width: 900px) {
+    .call-card {
+        gap: 0.62rem;
+        padding: 0.76rem;
+    }
+
+    .call-card-date {
+        min-height: auto;
+        padding: 0.5rem 0.62rem;
+    }
+}

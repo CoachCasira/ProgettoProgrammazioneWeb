@@ -2172,6 +2172,11 @@
             return;
         }
 
+        if (link.matches('[data-sim-history-modal="true"]')) {
+            openSimHistoryFromLink(link);
+            return;
+        }
+
         if (link.matches('[data-phone-card-modal="true"]')) {
             openPhoneCardFromCallLink(link);
             return;
@@ -2211,6 +2216,11 @@
 
                 if (link.matches('[data-sim-card-modal="true"]')) {
                     openSimCardFromLink(link);
+                    return;
+                }
+
+                if (link.matches('[data-sim-history-modal="true"]')) {
+                    openSimHistoryFromLink(link);
                     return;
                 }
 

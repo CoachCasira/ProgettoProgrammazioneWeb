@@ -334,7 +334,12 @@ if (empty($search_errors)) {
     // I contratti senza alcuna SIM associata non sono utili per la consultazione operativa dell'utente.
     $sql_base .= " AND (sa.codice IS NOT NULL OR COALESCE(sdc.simDisattivaCount, 0) > 0)";
 
-    if ($search_residuo === 'credito_basso' || $search_residuo === 'credito_disponibile') {
+    if ($effective_min_chiamate > 0 && $search_ordine === 'recenti') {
+        /* Il filtro minimo definisce naturalmente il punto di partenza: quando
+           l'utente non sceglie un ordinamento diverso, mostriamo prima i numeri
+           più vicini alla soglia e poi quelli con più chiamate. */
+        $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_residuo === 'credito_basso' || $search_residuo === 'credito_disponibile') {
         // I filtri monetari partono dal valore più vicino alla soglia scelta.
         $sql_base .= " ORDER BY c.creditoResiduo ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_residuo === 'minuti_bassi' || $search_residuo === 'minuti_disponibili') {

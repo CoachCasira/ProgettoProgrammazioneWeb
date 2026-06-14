@@ -271,23 +271,27 @@ if (empty($search_errors)) {
     ];
     $fast_order = $fast_orders[$search_ordine] ?? $fast_orders['recenti'];
 
-    /* Con il criterio predefinito, i filtri numerici definiscono anche il
-       punto di partenza della consultazione. Una durata minima mostra quindi
-       prima le chiamate più vicine alla soglia e poi quelle più lunghe. */
-    if ($duration_filter_active && $search_ordine === 'recenti') {
+    $time_order_index = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_ora_durata')
+        ? 'idx_telefonata_ora_durata'
+        : 'idx_telefonata_data_ora';
+
+    /* Quando l'utente imposta un intervallo orario e mantiene il criterio
+       predefinito, l'ora diventa il riferimento principale a prescindere dalla
+       data. Se è presente anche una durata minima, questa viene usata soltanto
+       come criterio secondario tra chiamate con lo stesso orario. */
+    if (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
+        $fast_order = [
+            'normal' => 'ora ASC, durata ASC, id ASC',
+            'reverse' => 'ora DESC, durata DESC, id DESC',
+            'index' => $time_order_index
+        ];
+    /* Senza filtro orario, una durata minima definisce il punto di partenza:
+       mostriamo prima le chiamate più vicine alla soglia e poi quelle più lunghe. */
+    } elseif ($duration_filter_active && $search_ordine === 'recenti') {
         $fast_order = [
             'normal' => 'durata ASC, id ASC',
             'reverse' => 'durata DESC, id DESC',
             'index' => 'idx_telefonata_durata'
-        ];
-    /* Se è compilato almeno uno dei due estremi orari, il range viene letto da
-       sinistra verso destra: dall'ora iniziale (o da mezzanotte, se manca) fino
-       all'ora finale. */
-    } elseif (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
-        $fast_order = [
-            'normal' => 'data DESC, ora ASC, id ASC',
-            'reverse' => 'data ASC, ora DESC, id DESC',
-            'index' => 'idx_telefonata_data_ora'
         ];
     }
 
@@ -322,7 +326,7 @@ if (empty($search_errors)) {
         $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
         $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
                               c.tipo AS tipoContratto
-                       FROM Telefonata t
+                       FROM Telefonata t FORCE INDEX ($index_name)
                        JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
                        WHERE $where_sql
                        ORDER BY $export_order";

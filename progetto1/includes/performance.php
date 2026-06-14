@@ -23,6 +23,27 @@ function performance_table_exists(mysqli $conn, string $table): bool
     return $cache[$table];
 }
 
+
+function performance_index_exists(mysqli $conn, string $table, string $index): bool
+{
+    static $cache = [];
+    $cache_key = $table . ':' . $index;
+
+    if (array_key_exists($cache_key, $cache)) {
+        return $cache[$cache_key];
+    }
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table) || !preg_match('/^[A-Za-z0-9_]+$/', $index)) {
+        return false;
+    }
+
+    $safe_index = $conn->real_escape_string($index);
+    $result = $conn->query("SHOW INDEX FROM `$table` WHERE Key_name = '$safe_index'");
+    $cache[$cache_key] = $result instanceof mysqli_result && $result->num_rows > 0;
+
+    return $cache[$cache_key];
+}
+
 function performance_contract_stats_join(mysqli $conn, string $alias = 'tf'): string
 {
     if (performance_table_exists($conn, 'StatisticheContratto')) {

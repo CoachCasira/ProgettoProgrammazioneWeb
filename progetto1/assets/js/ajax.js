@@ -247,7 +247,11 @@
     }
 
     function isContainerNearScrollBottom(container) {
-        return container.scrollHeight - container.scrollTop - container.clientHeight < 48;
+        /* Avviamo il caricamento prima che l'utente raggiunga davvero il fondo:
+           il blocco successivo arriva mentre sta ancora leggendo gli ultimi record
+           visibili e lo scorrimento risulta molto più continuo. */
+        var preloadDistance = Math.max(320, Math.round(container.clientHeight * 0.55));
+        return container.scrollHeight - container.scrollTop - container.clientHeight < preloadDistance;
     }
 
     function isContainerNearScrollTop(container) {
@@ -271,7 +275,14 @@
         }
 
         container.dataset.loadingRows = 'true';
-        container.classList.add('table-loading-more');
+        /* Evitiamo di mostrare il messaggio per richieste rapide. Se la risposta
+           impiega più di un istante, compare un indicatore compatto senza
+           spostare il contenuto già visibile. */
+        var loadingIndicatorTimer = window.setTimeout(function () {
+            if (container.dataset.loadingRows === 'true') {
+                container.classList.add('table-loading-more');
+            }
+        }, 260);
 
         var limit = parseInt(container.dataset.limit || '50', 10);
         if (!Number.isFinite(limit) || limit <= 0) {
@@ -382,6 +393,7 @@
                 }
             })
             .finally(function () {
+                window.clearTimeout(loadingIndicatorTimer);
                 container.dataset.loadingRows = 'false';
                 container.classList.remove('table-loading-more');
             });

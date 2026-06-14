@@ -20,9 +20,9 @@ $is_sim_page = in_array($current_page, ['sim.php', 'sim_attive.php', 'sim_non_at
     <title>Gestione Numeri Telefonici</title>
     <link rel="icon" type="image/png" href="<?= $base_path ?>/assets/images/logo.png?v=122">
     <link rel="apple-touch-icon" href="<?= $base_path ?>/assets/images/logo.png?v=122">
-    <link rel="stylesheet" href="<?= $base_path ?>/assets/css/style.css?v=158">
+    <link rel="stylesheet" href="<?= $base_path ?>/assets/css/style.css?v=159">
     <script src="<?= $base_path ?>/assets/js/main.js?v=143" defer></script>
-    <script src="<?= $base_path ?>/assets/js/ajax.js?v=138" defer></script>
+    <script src="<?= $base_path ?>/assets/js/ajax.js?v=139" defer></script>
 </head>
 <body>
 

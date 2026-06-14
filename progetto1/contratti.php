@@ -172,7 +172,7 @@ function render_contratti_table_rows(array $rows): string
         $costo_totale = (float)($row['costo_totale'] ?? 0);
         $is_currently_disabled = contratto_is_currently_disabled($row);
         ?>
-        <tr class="<?= $is_currently_disabled ? 'number-disabled-row' : '' ?>">
+        <tr>
             <td class="identifier"><?= htmlspecialchars($row['numero']) ?></td>
             <td>
                 <?php if ($is_currently_disabled): ?>

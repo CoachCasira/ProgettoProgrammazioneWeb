@@ -6159,3 +6159,65 @@ select[data-scroll-select="true"].native-select-hidden {
 .custom-select.is-dependency-locked .custom-select-arrow {
     opacity: 0.45;
 }
+
+
+/* =========================================================
+   V42 - Tabelle coerenti, intestazioni fisse e azioni SIM compatte
+   ========================================================= */
+
+/* Lo stato del numero resta riconoscibile dal badge: le righe dei numeri
+   disattivati seguono la stessa alternanza cromatica di tutte le altre. */
+.results-view-root[data-view-key="contratti"] table.data-table tbody tr.number-disabled-row:nth-child(odd) td {
+    background-color: var(--surface-color) !important;
+}
+
+.results-view-root[data-view-key="contratti"] table.data-table tbody tr.number-disabled-row:nth-child(even) td {
+    background-color: var(--row-alt) !important;
+}
+
+/* L'intestazione rimane sempre visibile durante lo scorrimento verticale del
+   contenitore risultati, in tutte le viste tabellari. */
+.results-view-root[data-current-view="table"] table.data-table thead th {
+    position: sticky !important;
+    top: 0;
+    z-index: 12;
+    background-color: var(--secondary-color) !important;
+    box-shadow: 0 2px 0 var(--border-color), 0 5px 10px rgba(51, 45, 41, 0.10);
+}
+
+/* Se su schermi ridotti è fissa anche la prima colonna, la cella d'angolo deve
+   rimanere sopra sia alle righe sia alle altre intestazioni. */
+.results-view-root[data-current-view="table"] table.data-table thead th:first-child {
+    z-index: 16;
+}
+
+/* Il caricamento di blocchi precedenti non deve affidarsi allo scroll anchoring
+   automatico del browser, perché la posizione viene mantenuta da ajax.js. */
+.results-data-container {
+    overflow-anchor: none;
+}
+
+/* Azioni delle SIM disattivate: pulsanti affiancati, compatti e senza aumento
+   inutile dell'altezza della riga. */
+.results-view-root[data-view-key="sim"] table.data-table .sim-actions-column {
+    min-width: 9.4rem;
+    white-space: nowrap;
+    text-align: center;
+}
+
+.results-view-root[data-view-key="sim"] table.data-table .sim-actions-column .table-action-group {
+    display: inline-flex;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 0.32rem;
+    width: auto;
+}
+
+.results-view-root[data-view-key="sim"] table.data-table .sim-actions-column .action-edit,
+.results-view-root[data-view-key="sim"] table.data-table .sim-actions-column .action-delete {
+    min-width: 0;
+    padding: 0.32rem 0.52rem;
+    font-size: 0.76rem;
+    line-height: 1;
+    white-space: nowrap;
+}

@@ -312,6 +312,21 @@
 
         var oldScrollHeight = container.scrollHeight;
         var oldScrollTop = container.scrollTop;
+
+        /* Quando si aggiunge un blocco prima dei risultati già visibili,
+           conserviamo come ancora il primo record della vista attiva. Il suo
+           spostamento reale è più affidabile della sola differenza di altezza
+           del contenitore e impedisce il lampo dell'intestazione tabellare. */
+        var viewRootBeforeLoad = container.closest('[data-results-view-root="true"]');
+        var currentViewBeforeLoad = viewRootBeforeLoad && viewRootBeforeLoad.dataset.currentView === 'table' ? 'table' : 'cards';
+        var activeListBeforeLoad = viewRootBeforeLoad
+            ? viewRootBeforeLoad.querySelector('[data-view-panel="' + currentViewBeforeLoad + '"] [data-lazy-list]')
+            : null;
+        var prependAnchor = loadDirection === 'prev' && activeListBeforeLoad
+            ? activeListBeforeLoad.firstElementChild
+            : null;
+        var prependAnchorTop = prependAnchor ? prependAnchor.getBoundingClientRect().top : null;
+
         var request = buildRequest(form, {
             ajax_rows: '1',
             offset: String(offset),
@@ -347,9 +362,25 @@
                     });
 
                     if (loadDirection === 'prev') {
-                        container.scrollTop = oldScrollTop + (container.scrollHeight - oldScrollHeight);
+                        var restorePrependPosition = function () {
+                            if (prependAnchor && prependAnchor.isConnected && prependAnchorTop !== null) {
+                                var anchorDelta = prependAnchor.getBoundingClientRect().top - prependAnchorTop;
+                                container.scrollTop += anchorDelta;
+                            } else {
+                                container.scrollTop = oldScrollTop + (container.scrollHeight - oldScrollHeight);
+                            }
+                        };
+
+                        /* Il primo ripristino avviene nello stesso task dell'inserimento,
+                           prima del rendering; il secondo assorbe eventuali assestamenti
+                           dovuti al collegamento dei comportamenti dinamici. */
+                        restorePrependPosition();
+                        refreshDynamicBehaviors();
+                        restorePrependPosition();
+                        window.requestAnimationFrame(restorePrependPosition);
+                    } else {
+                        refreshDynamicBehaviors();
                     }
-                    refreshDynamicBehaviors();
                 }
 
                 /* I metadati rappresentano l'intervallo complessivamente caricato,

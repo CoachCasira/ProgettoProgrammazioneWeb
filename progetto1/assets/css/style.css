@@ -6807,3 +6807,83 @@ select[data-scroll-select="true"].native-select-hidden {
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================================================
+   V53 - DETTAGLIO CHIAMATA PIU' COMPATTO E SENZA SPAZI VUOTI
+   ========================================================= */
+.card-modal-dialog.card-modal-dialog-call {
+    width: min(640px, 94vw);
+}
+
+.card-modal-card.call-card-expanded-detail {
+    max-width: 590px;
+    margin-inline: auto;
+    gap: 0.68rem;
+    padding: 0.86rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-header {
+    gap: 0.65rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-title {
+    font-size: clamp(1.2rem, 1.8vw, 1.45rem);
+}
+
+.call-caller-banner,
+.call-expanded-primary-metric {
+    display: grid;
+    grid-template-columns: minmax(9.8rem, max-content) max-content;
+    justify-content: start;
+    column-gap: 1rem;
+    min-height: 3.5rem;
+    padding: 0.68rem 0.82rem;
+}
+
+.call-modal-number-value {
+    font-size: clamp(1.08rem, 1.8vw, 1.28rem);
+}
+
+.call-expanded-primary-metric {
+    justify-content: start;
+}
+
+.call-expanded-primary-metric strong {
+    font-size: clamp(1.02rem, 1.7vw, 1.22rem);
+    text-align: left;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid {
+    gap: 0.58rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid > div {
+    min-height: 3.75rem;
+    padding: 0.64rem 0.72rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dt {
+    margin-bottom: 0.26rem;
+    font-size: 0.76rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-expanded-detail-grid dd {
+    font-size: 0.94rem;
+}
+
+.card-modal-card.call-card-expanded-detail .call-charge-detail dd {
+    font-size: 1rem;
+}
+
+@media (max-width: 640px) {
+    .card-modal-card.call-card-expanded-detail {
+        max-width: none;
+        padding: 0.78rem;
+    }
+
+    .call-caller-banner,
+    .call-expanded-primary-metric {
+        display: flex;
+        gap: 0.28rem;
+    }
+}

@@ -6120,3 +6120,42 @@ select[data-scroll-select="true"].native-select-hidden {
     padding: 0.3rem 0.62rem;
     font-size: 0.74rem;
 }
+
+/* =========================================================
+   V41 - Coerenza tra Piano del numero e Disponibilità del piano
+   ========================================================= */
+
+/* Le opzioni incompatibili restano visibili, ma sono attenuate e non selezionabili. */
+.custom-select-option.is-disabled,
+.custom-select-option:disabled {
+    background-color: var(--surface-color) !important;
+    color: #9a918b !important;
+    opacity: 0.52;
+    cursor: not-allowed !important;
+}
+
+.custom-select-option.is-disabled:hover,
+.custom-select-option.is-disabled:focus,
+.custom-select-option:disabled:hover,
+.custom-select-option:disabled:focus {
+    background-color: var(--surface-color) !important;
+    color: #9a918b !important;
+    outline: none !important;
+}
+
+/* Quando il piano è determinato dal filtro residuo, la tendina rimane leggibile
+   ma comunica chiaramente che il valore è temporaneamente vincolato. */
+.custom-select.is-dependency-locked .custom-select-button,
+.custom-select.is-dependency-locked .custom-select-button:hover,
+.custom-select.is-dependency-locked .custom-select-button:focus {
+    background-color: #eeeae6 !important;
+    border-color: #d2c9c1 !important;
+    color: #776d66 !important;
+    opacity: 0.78;
+    cursor: not-allowed !important;
+    outline: none !important;
+}
+
+.custom-select.is-dependency-locked .custom-select-arrow {
+    opacity: 0.45;
+}

@@ -216,6 +216,23 @@ if ($search_residuo === 'quasi_esaurito') {
     // Compatibilità con il vecchio collegamento della Panoramica.
     $search_residuo = 'esaurito';
 }
+
+/*
+ * Alcuni filtri sulla disponibilità identificano già in modo univoco il piano:
+ * credito -> ricaricabile, minuti -> a consumo. Normalizziamo anche lato server
+ * eventuali URL o richieste incoerenti, così non possono produrre artificialmente
+ * zero risultati selezionando due criteri logicamente incompatibili.
+ */
+$residual_plan_requirements = [
+    'credito_basso' => 'ricarica',
+    'credito_disponibile' => 'ricarica',
+    'minuti_bassi' => 'consumo',
+    'minuti_disponibili' => 'consumo'
+];
+if (isset($residual_plan_requirements[$search_residuo])) {
+    $search_tipo = $residual_plan_requirements[$search_residuo];
+}
+
 $effective_min_chiamate = 0;
 $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
@@ -433,7 +450,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
+    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results" data-plan-residual-sync="true">
         <div class="form-group phone-number-filter-group">
             <label for="numero">Numero di telefono:</label>
             <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">

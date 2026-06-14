@@ -361,6 +361,133 @@
         });
     }
 
+    var PHONE_RESIDUAL_PLAN_REQUIREMENTS = {
+        credito_basso: 'ricarica',
+        credito_disponibile: 'ricarica',
+        minuti_bassi: 'consumo',
+        minuti_disponibili: 'consumo'
+    };
+
+    function setSelectOptionDisabled(select, values, disabled) {
+        if (!select) {
+            return;
+        }
+        var valueSet = values || [];
+        Array.prototype.forEach.call(select.options, function (option) {
+            if (valueSet.indexOf(option.value) !== -1) {
+                option.disabled = Boolean(disabled);
+            }
+        });
+        updateCustomSelect(select);
+    }
+
+    function setDependencyLocked(select, locked, message) {
+        if (!select) {
+            return;
+        }
+        select.dataset.dependencyLocked = locked ? 'true' : 'false';
+        if (locked) {
+            select.dataset.dependencyMessage = message || '';
+        } else {
+            delete select.dataset.dependencyMessage;
+        }
+        updateCustomSelect(select);
+    }
+
+    function applyPhonePlanResidualDependencies(form, changedField) {
+        if (!form) {
+            return;
+        }
+
+        var planSelect = form.querySelector('#tipo');
+        var residualSelect = form.querySelector('#residuo');
+        if (!planSelect || !residualSelect) {
+            return;
+        }
+
+        var requiredPlan = PHONE_RESIDUAL_PLAN_REQUIREMENTS[residualSelect.value] || '';
+        var wasAutoSet = form.dataset.planAutoSet === 'true';
+
+        if (requiredPlan) {
+            if (!wasAutoSet) {
+                /* Su un caricamento completo il piano è già stato normalizzato dal
+                   server: non è una scelta manuale da conservare. Se invece il
+                   residuo cambia nell'interfaccia, ricordiamo il piano precedente. */
+                form.dataset.planPreviousValue = changedField === residualSelect
+                    ? (planSelect.value || '')
+                    : '';
+            }
+            form.dataset.planAutoSet = 'true';
+            if (planSelect.value !== requiredPlan) {
+                planSelect.value = requiredPlan;
+            }
+
+            /* Il filtro residuo deve restare completamente navigabile: l'utente
+               può passare direttamente da un criterio sui minuti a uno sul credito.
+               È il piano, già determinato dal residuo, a essere temporaneamente bloccato. */
+            setSelectOptionDisabled(residualSelect, [
+                'credito_basso',
+                'credito_disponibile',
+                'minuti_bassi',
+                'minuti_disponibili'
+            ], false);
+            setDependencyLocked(
+                planSelect,
+                true,
+                'Piano impostato automaticamente dal filtro Disponibilità del piano'
+            );
+        } else {
+            if (wasAutoSet) {
+                planSelect.value = form.dataset.planPreviousValue || '';
+                delete form.dataset.planPreviousValue;
+                delete form.dataset.planAutoSet;
+            }
+            setDependencyLocked(planSelect, false);
+
+            /* Quando il piano è scelto manualmente, manteniamo visibili tutte le
+               disponibilità ma rendiamo non selezionabili quelle incompatibili. */
+            setSelectOptionDisabled(
+                residualSelect,
+                ['credito_basso', 'credito_disponibile'],
+                planSelect.value === 'consumo'
+            );
+            setSelectOptionDisabled(
+                residualSelect,
+                ['minuti_bassi', 'minuti_disponibili'],
+                planSelect.value === 'ricarica'
+            );
+
+            var selectedResidualOption = residualSelect.options[residualSelect.selectedIndex];
+            if (selectedResidualOption && selectedResidualOption.disabled) {
+                residualSelect.value = '';
+            }
+        }
+
+        updateCustomSelect(planSelect);
+        updateCustomSelect(residualSelect);
+    }
+
+    function initPhonePlanResidualDependencies(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-plan-residual-sync="true"]:not([data-plan-residual-ready="true"])').forEach(function (form) {
+            form.dataset.planResidualReady = 'true';
+            var planSelect = form.querySelector('#tipo');
+            var residualSelect = form.querySelector('#residuo');
+            if (!planSelect || !residualSelect) {
+                return;
+            }
+
+            applyPhonePlanResidualDependencies(form, null);
+
+            residualSelect.addEventListener('change', function () {
+                applyPhonePlanResidualDependencies(form, residualSelect);
+            });
+            planSelect.addEventListener('change', function () {
+                applyPhonePlanResidualDependencies(form, planSelect);
+            });
+        });
+    }
+
     function initPhoneTrafficOrderControls(root) {
         var scope = root || document;
         scope.querySelectorAll('form.contratti-filter-form:not([data-traffic-order-ready="true"])').forEach(function (form) {
@@ -393,13 +520,34 @@
         }
         wrapper.querySelectorAll('.custom-select-option').forEach(function (optionButton) {
             var isSelected = optionButton.dataset.value === select.value;
+            var nativeOption = Array.prototype.find.call(select.options, function (option) {
+                return option.value === optionButton.dataset.value;
+            });
+            var isDisabled = Boolean(nativeOption && nativeOption.disabled);
             optionButton.classList.toggle('is-selected', isSelected);
+            optionButton.classList.toggle('is-disabled', isDisabled);
+            optionButton.disabled = isDisabled;
             optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            optionButton.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
         });
+
+        var button = wrapper.querySelector('.custom-select-button');
+        var isDependencyLocked = select.dataset.dependencyLocked === 'true';
+        var isNativeDisabled = select.disabled;
+        var isControlDisabled = isDependencyLocked || isNativeDisabled;
+        wrapper.classList.toggle('is-dependency-locked', isDependencyLocked);
+        wrapper.classList.toggle('is-disabled', isNativeDisabled);
+        if (button) {
+            button.disabled = isControlDisabled;
+            button.setAttribute('aria-disabled', isControlDisabled ? 'true' : 'false');
+            button.title = isDependencyLocked
+                ? (select.dataset.dependencyMessage || 'Valore impostato automaticamente da un altro filtro')
+                : '';
+        }
 
         var resetButton = wrapper.querySelector('.custom-select-reset');
         var defaultValue = wrapper.dataset.defaultValue || '';
-        var canReset = select.value !== defaultValue;
+        var canReset = !isControlDisabled && select.value !== defaultValue;
         wrapper.classList.toggle('has-reset-value', canReset);
         if (resetButton) {
             resetButton.classList.toggle('is-visible', canReset);
@@ -455,7 +603,13 @@
                 optionButton.dataset.value = option.value;
                 optionButton.textContent = option.textContent;
                 optionButton.setAttribute('role', 'option');
+                optionButton.disabled = option.disabled;
+                optionButton.classList.toggle('is-disabled', option.disabled);
+                optionButton.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');
                 optionButton.addEventListener('click', function () {
+                    if (optionButton.disabled || option.disabled) {
+                        return;
+                    }
                     select.value = option.value;
                     updateCustomSelect(select);
                     closeCustomSelect(wrapper);
@@ -2281,6 +2435,7 @@
         var scope = root || document;
         initAlerts(scope);
         initScrollableSelects(scope);
+        initPhonePlanResidualDependencies(scope);
         initTrafficThresholdControls(scope);
         initPhoneDateLabelControls(scope);
         initPhoneTrafficOrderControls(scope);

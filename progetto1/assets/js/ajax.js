@@ -282,7 +282,7 @@
             if (container.dataset.loadingRows === 'true') {
                 container.classList.add('table-loading-more');
             }
-        }, 260);
+        }, 520);
 
         var limit = parseInt(container.dataset.limit || '50', 10);
         if (!Number.isFinite(limit) || limit <= 0) {
@@ -290,7 +290,14 @@
         }
 
         var offset = 0;
-        if (loadDirection === 'prev') {
+        var fromEnd = loadDirection === 'prev' && container.dataset.fromEnd === '1';
+        var reverseOffset = 0;
+        if (fromEnd) {
+            reverseOffset = parseInt(container.dataset.reverseOffset || '0', 10);
+            if (!Number.isFinite(reverseOffset) || reverseOffset < 0) {
+                reverseOffset = 0;
+            }
+        } else if (loadDirection === 'prev') {
             var currentPrevOffset = parseInt(container.dataset.prevOffset || '0', 10);
             if (!Number.isFinite(currentPrevOffset) || currentPrevOffset <= 0) {
                 currentPrevOffset = 0;
@@ -310,7 +317,9 @@
             offset: String(offset),
             limit: String(limit),
             direction: loadDirection,
-            skip_count: '1'
+            skip_count: '1',
+            jump_last: fromEnd ? '1' : '0',
+            reverse_offset: String(reverseOffset)
         });
 
         fetch(request.url, request.options)
@@ -352,7 +361,20 @@
                     if (payload && Object.prototype.hasOwnProperty.call(payload, 'has_prev')) {
                         container.dataset.hasPrev = payload.has_prev ? '1' : '0';
                     }
-                    if (payload && Object.prototype.hasOwnProperty.call(payload, 'prev_offset')) {
+                    if (fromEnd) {
+                        var total = parseInt(container.dataset.totalCount || '0', 10);
+                        var consumedFromEnd = payload && Object.prototype.hasOwnProperty.call(payload, 'reverse_offset')
+                            ? parseInt(payload.reverse_offset, 10)
+                            : reverseOffset + (lists[0] ? lists[0].children.length : 0);
+                        if (!Number.isFinite(consumedFromEnd) || consumedFromEnd < 0) {
+                            consumedFromEnd = reverseOffset;
+                        }
+                        container.dataset.reverseOffset = String(consumedFromEnd);
+                        if (Number.isFinite(total) && total > 0) {
+                            container.dataset.prevOffset = String(Math.max(0, total - consumedFromEnd));
+                            container.dataset.nextOffset = String(total);
+                        }
+                    } else if (payload && Object.prototype.hasOwnProperty.call(payload, 'prev_offset') && payload.prev_offset !== null) {
                         container.dataset.prevOffset = String(payload.prev_offset);
                     }
                 } else {
@@ -428,11 +450,12 @@
 
         var request = buildRequest(form, {
             ajax_rows: '1',
-            offset: String(lastOffset),
+            offset: '0',
             limit: String(limit),
             direction: 'next',
             skip_count: '1',
-            jump_last: '1'
+            jump_last: '1',
+            reverse_offset: '0'
         });
 
         return fetch(request.url, request.options)
@@ -455,10 +478,12 @@
 
                 var loadedCount = Math.max(0, lists[0] ? lists[0].children.length : 0);
                 updateContainerMetadataFromPayload(container, payload, loadedCount);
-                container.dataset.prevOffset = String(lastOffset);
-                container.dataset.nextOffset = String(Math.min(total, lastOffset + loadedCount));
-                container.dataset.hasPrev = lastOffset > 0 ? '1' : '0';
+                container.dataset.prevOffset = String(Math.max(0, total - loadedCount));
+                container.dataset.nextOffset = String(total);
+                container.dataset.hasPrev = total > loadedCount ? '1' : '0';
                 container.dataset.hasMore = '0';
+                container.dataset.fromEnd = '1';
+                container.dataset.reverseOffset = String(loadedCount);
                 refreshDynamicBehaviors();
 
                 container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
@@ -535,7 +560,9 @@
 
         container.dataset.resettingRows = 'true';
         container.dataset.loadingRows = 'true';
-        container.dataset.suppressLazyUntil = String(Date.now() + 900);
+        container.dataset.suppressLazyUntil = String(Date.now() + 1200);
+        delete container.dataset.fromEnd;
+        delete container.dataset.reverseOffset;
         container.classList.add('table-loading-more', 'results-returning-top');
 
         var request = buildRequest(form, {
@@ -543,7 +570,9 @@
             offset: '0',
             limit: String(limit),
             direction: 'next',
-            skip_count: '1'
+            skip_count: '1',
+            jump_last: '0',
+            reverse_offset: '0'
         });
 
         return fetch(request.url, request.options)

@@ -1990,7 +1990,10 @@
 
         var canScroll = container.scrollHeight > container.clientHeight + 24;
         var loadedResults = getLoadedResultsCountForView(viewRoot);
-        var shouldShow = canScroll && loadedResults >= 15 && container.scrollTop > getResultsScrollTopThreshold(container);
+        var isRemoteBlock = container.dataset.fromEnd === '1' || parseInt(container.dataset.prevOffset || '0', 10) > 0;
+        var shouldShow = (canScroll || isRemoteBlock)
+            && (loadedResults >= 15 || isRemoteBlock)
+            && (container.scrollTop > getResultsScrollTopThreshold(container) || isRemoteBlock);
         button.classList.toggle('is-visible', shouldShow);
         button.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
         button.tabIndex = shouldShow ? 0 : -1;
@@ -2034,28 +2037,33 @@
                     button.disabled = true;
                     button.classList.add('is-working');
 
-                    var needsFirstBlock = container.dataset.hasPrev === '1' || parseInt(container.dataset.prevOffset || '0', 10) > 0;
-                    var delay = container.scrollTop > 8 ? 460 : 120;
+                    var needsFirstBlock = container.dataset.fromEnd === '1'
+                        || container.dataset.hasPrev === '1'
+                        || parseInt(container.dataset.prevOffset || '0', 10) > 0;
 
-                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                    var resetPromise = Promise.resolve(false);
+                    if (needsFirstBlock && window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function') {
+                        /* Quando siamo molto lontani dall'inizio sostituiamo subito
+                           il blocco corrente: uno scroll animato attraverso milioni
+                           di record attiverebbe caricamenti intermedi inutili. */
+                        resetPromise = window.ProgWeb.resetResultsToFirstBlock(container);
+                    } else {
+                        container.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
 
-                    window.setTimeout(function () {
-                        var resetPromise = Promise.resolve(false);
-                        if (needsFirstBlock && window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function') {
-                            resetPromise = window.ProgWeb.resetResultsToFirstBlock(container);
-                        }
-
-                        resetPromise.finally(function () {
-                            container.scrollTo({ top: 0, behavior: 'smooth' });
-                            window.setTimeout(function () {
-                                delete container.dataset.returningTop;
-                                button.disabled = false;
-                                button.classList.remove('is-working');
-                                updateResultsNavigation(viewRoot);
-                                updateResultsScrollTopControl(viewRoot);
-                            }, 260);
+                    resetPromise.finally(function () {
+                        container.scrollTop = 0;
+                        window.requestAnimationFrame(function () {
+                            container.scrollTop = 0;
                         });
-                    }, delay);
+                        window.setTimeout(function () {
+                            delete container.dataset.returningTop;
+                            button.disabled = false;
+                            button.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                            updateResultsScrollTopControl(viewRoot);
+                        }, 180);
+                    });
                 });
             }
 

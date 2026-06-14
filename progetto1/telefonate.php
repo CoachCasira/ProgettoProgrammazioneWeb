@@ -107,7 +107,8 @@ $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
-$jump_last = (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
+$jump_last = $ajax_rows && (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
+$reverse_offset = max(0, (int)($_POST['reverse_offset'] ?? $_GET['reverse_offset'] ?? 0));
 $count_only = (($_POST['count_only'] ?? $_GET['count_only'] ?? '') === '1');
 
 $search_errors = [];
@@ -271,36 +272,43 @@ if (empty($search_errors)) {
     ];
     $fast_order = $fast_orders[$search_ordine] ?? $fast_orders['recenti'];
 
-    $time_order_index = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_ora_durata')
-        ? 'idx_telefonata_ora_durata'
-        : 'idx_telefonata_data_ora';
+    $duration_date_index = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_durata_data')
+        ? 'idx_telefonata_durata_data'
+        : 'idx_telefonata_durata';
+    $duration_time_date_index = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_durata_ora_data')
+        ? 'idx_telefonata_durata_ora_data'
+        : $duration_date_index;
+    $time_date_index = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_ora_data')
+        ? 'idx_telefonata_ora_data'
+        : (performance_index_exists($conn, 'Telefonata', 'idx_telefonata_ora_durata')
+            ? 'idx_telefonata_ora_durata'
+            : 'idx_telefonata_data_ora');
 
     /* Con il criterio predefinito i filtri definiscono un ordinamento naturale:
-       - durata minima: prima le chiamate più vicine alla soglia;
-       - ora iniziale/finale: prima gli orari più vicini all'inizio dell'intervallo;
-       - a parità dei valori filtrati: prima la telefonata con data più recente.
+       - durata minima: prima il valore piu vicino alla soglia;
+       - filtro orario: prima l'ora piu vicina all'inizio dell'intervallo;
+       - a parita di durata e ora: prima la telefonata piu recente.
 
-       Quando durata e ora sono entrambe presenti, la durata resta il criterio
-       principale: una chiamata di 9 minuti deve precedere una di 9 minuti e
-       20 secondi. L'ora viene usata come secondo criterio e la data come
-       discriminante finale tra chiamate equivalenti. */
+       Gli indici compositi dedicati evitano filesort estesi su milioni di righe.
+       Il fallback mantiene la compatibilita prima dell'importazione dello script
+       di ottimizzazione, ma su grandi volumi risulta inevitabilmente piu lento. */
     if ($duration_filter_active && ($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
         $fast_order = [
             'normal' => 'durata ASC, ora ASC, data DESC, id DESC',
             'reverse' => 'durata DESC, ora DESC, data ASC, id ASC',
-            'index' => 'idx_telefonata_durata'
+            'index' => $duration_time_date_index
         ];
     } elseif ($duration_filter_active && $search_ordine === 'recenti') {
         $fast_order = [
             'normal' => 'durata ASC, data DESC, ora DESC, id DESC',
             'reverse' => 'durata DESC, data ASC, ora ASC, id ASC',
-            'index' => 'idx_telefonata_durata'
+            'index' => $duration_date_index
         ];
     } elseif (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
         $fast_order = [
             'normal' => 'ora ASC, data DESC, id DESC',
             'reverse' => 'ora DESC, data ASC, id ASC',
-            'index' => $time_order_index
+            'index' => $time_date_index
         ];
     }
 
@@ -358,8 +366,9 @@ if (empty($search_errors)) {
 
     $inner_order = $jump_last ? $reverse_order : $normal_order;
     $outer_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 'blocco.$1', $inner_order);
-    $page_size = $jump_last ? $limit : ($limit + 1);
-    $offset_sql = $jump_last ? '' : " OFFSET $offset";
+    $page_size = $limit + 1;
+    $effective_offset = $jump_last ? $reverse_offset : $offset;
+    $offset_sql = " OFFSET $effective_offset";
 
     /* Per la ricerca di un singolo numero ordinata per data esiste un indice
        ancora più selettivo; negli altri casi usiamo l'indice dell'ordinamento. */
@@ -385,6 +394,10 @@ if (empty($search_errors)) {
             $rows[] = $row;
         }
         if ($jump_last) {
+            $has_more_from_end = count($rows) > $limit;
+            if ($has_more_from_end) {
+                $rows = array_slice($rows, 0, $limit);
+            }
             $rows = array_reverse($rows);
             $has_more = false;
         } elseif (count($rows) > $limit) {
@@ -399,9 +412,11 @@ if ($ajax_rows) {
         'html' => render_telefonate_cards($rows),
         'table_html' => render_telefonate_table_rows($rows),
         'has_more' => $has_more,
-        'has_prev' => $offset > 0,
-        'next_offset' => $offset + count($rows),
-        'prev_offset' => $offset
+        'has_prev' => $jump_last ? ($has_more_from_end ?? false) : ($offset > 0),
+        'next_offset' => $jump_last ? null : ($offset + count($rows)),
+        'prev_offset' => $jump_last ? null : $offset,
+        'from_end' => $jump_last,
+        'reverse_offset' => $jump_last ? ($reverse_offset + count($rows)) : 0
     ];
     if ($total_count !== null) {
         $payload['total_count'] = $total_count;
@@ -489,11 +504,11 @@ if ($ajax_rows) {
 <div id="telefonate-results" class="results-view-root" data-results-view-root="true" data-view-key="telefonate" data-current-view="cards">
     <div class="results-actions-row" data-card-modal-exclude="true">
         <div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
-            <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato">⇈</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato"><span class="results-boundary-icon results-boundary-icon-up" aria-hidden="true"></span></button>
             <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti" title="Risultati precedenti">↑</button>
             <span class="results-counter" data-results-counter="true">0 risultati</span>
             <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi" title="Risultati successivi">↓</button>
-            <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato">⇊</button>
+            <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato"><span class="results-boundary-icon results-boundary-icon-down" aria-hidden="true"></span></button>
         </div>
 
         <div class="results-tools" data-card-modal-exclude="true">

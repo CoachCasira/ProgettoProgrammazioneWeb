@@ -6069,3 +6069,54 @@ select[data-scroll-select="true"].native-select-hidden {
         padding: 0.5rem 0.62rem;
     }
 }
+
+
+/* =========================================================
+   V37 - ICONE NAVIGAZIONE CENTRATE E INDICATORE PIU DISCRETO
+   ========================================================= */
+.results-boundary-button {
+    font-size: 0;
+    letter-spacing: 0;
+}
+
+.results-boundary-icon {
+    position: relative;
+    display: block;
+    width: 1rem;
+    height: 1.35rem;
+    color: currentColor;
+}
+
+.results-boundary-icon::before,
+.results-boundary-icon::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    width: 0.52rem;
+    height: 0.52rem;
+    border-top: 0.15rem solid currentColor;
+    border-left: 0.15rem solid currentColor;
+    transform-origin: center;
+}
+
+.results-boundary-icon-up::before,
+.results-boundary-icon-up::after {
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.results-boundary-icon-up::before { top: 0.12rem; }
+.results-boundary-icon-up::after { top: 0.58rem; }
+
+.results-boundary-icon-down::before,
+.results-boundary-icon-down::after {
+    transform: translateX(-50%) rotate(225deg);
+}
+
+.results-boundary-icon-down::before { bottom: 0.12rem; }
+.results-boundary-icon-down::after { bottom: 0.58rem; }
+
+.cards-container.table-loading-more::after {
+    opacity: 0.82;
+    padding: 0.3rem 0.62rem;
+    font-size: 0.74rem;
+}

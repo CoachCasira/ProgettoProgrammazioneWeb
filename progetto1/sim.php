@@ -1048,11 +1048,11 @@ if ($ajax_rows) {
         <div class="sim-toolbar results-actions-row" data-card-modal-exclude="true">
             <div class="sim-toolbar-left">
                 <div class="results-navigation" data-results-navigation="true" aria-label="Navigazione risultati">
-                    <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato">⇈</button>
+                    <button type="button" class="results-page-button results-boundary-button" data-results-first="true" aria-label="Vai al primo risultato" title="Vai al primo risultato"><span class="results-boundary-icon results-boundary-icon-up" aria-hidden="true"></span></button>
                     <button type="button" class="results-page-button" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti" title="Risultati precedenti">↑</button>
                     <span class="results-counter" data-results-counter="true">0 risultati</span>
                     <button type="button" class="results-page-button" data-results-page-next="true" aria-label="Scorri ai risultati successivi" title="Risultati successivi">↓</button>
-                    <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato">⇊</button>
+                    <button type="button" class="results-page-button results-boundary-button" data-results-last="true" aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato"><span class="results-boundary-icon results-boundary-icon-down" aria-hidden="true"></span></button>
                 </div>
                 <div class="sim-toolbar-title"><?= htmlspecialchars(sim_states_title($selected_states)) ?></div>
             </div>

@@ -312,20 +312,15 @@
 
         var oldScrollHeight = container.scrollHeight;
         var oldScrollTop = container.scrollTop;
+        var oldScrollLeft = container.scrollLeft;
 
-        /* Quando si aggiunge un blocco prima dei risultati già visibili,
-           conserviamo come ancora il primo record della vista attiva. Il suo
-           spostamento reale è più affidabile della sola differenza di altezza
-           del contenitore e impedisce il lampo dell'intestazione tabellare. */
-        var viewRootBeforeLoad = container.closest('[data-results-view-root="true"]');
-        var currentViewBeforeLoad = viewRootBeforeLoad && viewRootBeforeLoad.dataset.currentView === 'table' ? 'table' : 'cards';
-        var activeListBeforeLoad = viewRootBeforeLoad
-            ? viewRootBeforeLoad.querySelector('[data-view-panel="' + currentViewBeforeLoad + '"] [data-lazy-list]')
-            : null;
-        var prependAnchor = loadDirection === 'prev' && activeListBeforeLoad
-            ? activeListBeforeLoad.firstElementChild
-            : null;
-        var prependAnchorTop = prependAnchor ? prependAnchor.getBoundingClientRect().top : null;
+        /* Durante l'aggiunta di righe in cima manteniamo la posizione tramite
+           la differenza di altezza del contenuto. L'operazione avviene nello
+           stesso task dell'inserimento, prima del frame successivo: in questo
+           modo la testata non lampeggia e la riga osservata resta immobile. */
+        if (loadDirection === 'prev') {
+            container.classList.add('results-preserving-scroll');
+        }
 
         var request = buildRequest(form, {
             ajax_rows: '1',
@@ -362,24 +357,21 @@
                     });
 
                     if (loadDirection === 'prev') {
-                        var restorePrependPosition = function () {
-                            if (prependAnchor && prependAnchor.isConnected && prependAnchorTop !== null) {
-                                var anchorDelta = prependAnchor.getBoundingClientRect().top - prependAnchorTop;
-                                container.scrollTop += anchorDelta;
-                            } else {
-                                container.scrollTop = oldScrollTop + (container.scrollHeight - oldScrollHeight);
-                            }
-                        };
+                        var insertedHeight = container.scrollHeight - oldScrollHeight;
+                        container.scrollTop = oldScrollTop + Math.max(0, insertedHeight);
+                        container.scrollLeft = oldScrollLeft;
 
-                        /* Il primo ripristino avviene nello stesso task dell'inserimento,
-                           prima del rendering; il secondo assorbe eventuali assestamenti
-                           dovuti al collegamento dei comportamenti dinamici. */
-                        restorePrependPosition();
                         refreshDynamicBehaviors();
-                        restorePrependPosition();
-                        window.requestAnimationFrame(restorePrependPosition);
+
+                        /* Se il collegamento dei comportamenti dinamici modifica di
+                           pochi pixel l'altezza delle righe, compensiamo subito nello
+                           stesso task, senza correzioni ritardate visibili. */
+                        var settledHeight = container.scrollHeight - oldScrollHeight;
+                        container.scrollTop = oldScrollTop + Math.max(0, settledHeight);
+                        container.scrollLeft = oldScrollLeft;
                     } else {
                         refreshDynamicBehaviors();
+                        container.scrollLeft = oldScrollLeft;
                     }
                 }
 
@@ -448,7 +440,7 @@
             .finally(function () {
                 window.clearTimeout(loadingIndicatorTimer);
                 container.dataset.loadingRows = 'false';
-                container.classList.remove('table-loading-more');
+                container.classList.remove('table-loading-more', 'results-preserving-scroll');
             });
     }
 

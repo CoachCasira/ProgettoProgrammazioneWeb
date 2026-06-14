@@ -99,6 +99,9 @@ $search_ora_a = trim($_POST['ora_a'] ?? $_GET['ora_a'] ?? '');
 $search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
 $search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
 $search_costo_max = trim($_POST['costo_max'] ?? $_GET['costo_max'] ?? '');
+$duration_filter_active = ($search_durata_min !== '' || $search_durata_sec !== '');
+$duration_threshold_seconds = (($search_durata_min !== '' ? (int)$search_durata_min : 0) * 60)
+    + ($search_durata_sec !== '' ? (int)$search_durata_sec : 0);
 $limit = max(10, min(80, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
@@ -211,11 +214,8 @@ if (empty($search_errors)) {
         $ora_a = $conn->real_escape_string(time_minutes_for_sql($search_ora_a, true));
         $where_clauses[] = "t.ora <= '$ora_a'";
     }
-    if ($search_durata_min !== '' || $search_durata_sec !== '') {
-        $durata_minuti = $search_durata_min !== '' ? (int)$search_durata_min : 0;
-        $durata_secondi = $search_durata_sec !== '' ? (int)$search_durata_sec : 0;
-        $durata_totale = ($durata_minuti * 60) + $durata_secondi;
-        $where_clauses[] = "t.durata >= $durata_totale";
+    if ($duration_filter_active) {
+        $where_clauses[] = "t.durata >= $duration_threshold_seconds";
     }
     if ($search_costo_max !== '') {
         $costo_max = decimal_for_sql($search_costo_max);
@@ -271,10 +271,19 @@ if (empty($search_errors)) {
     ];
     $fast_order = $fast_orders[$search_ordine] ?? $fast_orders['recenti'];
 
-    /* Se l'utente indica soltanto l'orario iniziale, il primo risultato deve
-       partire da quell'ora e proseguire in avanti. Manteniamo prima le date più
-       recenti e, all'interno di ciascun giorno, ordiniamo l'orario in crescita. */
-    if ($search_ora_da !== '' && $search_ora_a === '' && $search_ordine === 'recenti') {
+    /* Con il criterio predefinito, i filtri numerici definiscono anche il
+       punto di partenza della consultazione. Una durata minima mostra quindi
+       prima le chiamate più vicine alla soglia e poi quelle più lunghe. */
+    if ($duration_filter_active && $search_ordine === 'recenti') {
+        $fast_order = [
+            'normal' => 'durata ASC, id ASC',
+            'reverse' => 'durata DESC, id DESC',
+            'index' => 'idx_telefonata_durata'
+        ];
+    /* Se è compilato almeno uno dei due estremi orari, il range viene letto da
+       sinistra verso destra: dall'ora iniziale (o da mezzanotte, se manca) fino
+       all'ora finale. */
+    } elseif (($search_ora_da !== '' || $search_ora_a !== '') && $search_ordine === 'recenti') {
         $fast_order = [
             'normal' => 'data DESC, ora ASC, id ASC',
             'reverse' => 'data ASC, ora DESC, id DESC',
@@ -408,7 +417,7 @@ if ($ajax_rows) {
             </select>
         </div>
         <div class="form-group period-filter-group range-filter-group">
-            <label>Periodo:</label>
+            <label>Periodo dal/al:</label>
             <div class="range-pair compact-range-pair date-range-pair">
                 <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Dal giorno">
                 <span class="range-separator" aria-hidden="true">–</span>
@@ -430,7 +439,7 @@ if ($ajax_rows) {
             </div>
         </div>
         <div class="form-group time-filter-group range-filter-group">
-            <label>Ora della chiamata:</label>
+            <label>Ora della chiamata da/a:</label>
             <div class="range-pair compact-range-pair time-range-pair">
                 <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata" data-clearable="true">
                 <span class="compound-control-divider" aria-hidden="true"></span>

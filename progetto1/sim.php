@@ -1023,7 +1023,7 @@ if ($ajax_rows) {
             </div>
 
             <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
-                <label>Periodo:</label>
+                <label>Periodo dal/al:</label>
                 <div class="range-pair compact-range-pair date-range-pair">
                     <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
                     <span class="range-separator" aria-hidden="true">–</span>

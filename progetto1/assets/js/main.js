@@ -344,7 +344,7 @@
         if (!label || !status) {
             return;
         }
-        label.textContent = status.value === 'disattivato' ? 'Disattivato:' : 'Attivato:';
+        label.textContent = status.value === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
     }
 
     function initPhoneDateLabelControls(root) {
@@ -364,22 +364,9 @@
     function initPhoneTrafficOrderControls(root) {
         var scope = root || document;
         scope.querySelectorAll('form.contratti-filter-form:not([data-traffic-order-ready="true"])').forEach(function (form) {
-            var threshold = form.querySelector('#min_chiamate');
-            var order = form.querySelector('#ordine');
-
+            /* Il filtro minimo di chiamate e l'ordinamento sono scelte autonome:
+               selezionare una soglia non deve modificare "Mostra prima". */
             form.dataset.trafficOrderReady = 'true';
-            if (!threshold || !order) {
-                return;
-            }
-
-            threshold.addEventListener('change', function () {
-                if (threshold.value !== '') {
-                    order.value = 'chiamate_crescenti';
-                } else if (order.value === 'chiamate_crescenti') {
-                    order.value = 'recenti';
-                }
-                updateCustomSelect(order);
-            });
         });
     }
 
@@ -1177,6 +1164,9 @@
         clone.querySelectorAll('[data-sim-card-modal-ready]').forEach(function (node) {
             node.removeAttribute('data-sim-card-modal-ready');
         });
+        clone.querySelectorAll('[data-sim-history-modal-ready]').forEach(function (node) {
+            node.removeAttribute('data-sim-history-modal-ready');
+        });
         clone.querySelectorAll('[data-table-row-modal-ready]').forEach(function (node) {
             node.removeAttribute('data-table-row-modal-ready');
         });
@@ -1220,6 +1210,7 @@
         content.appendChild(preparedClone);
         initPhoneCardModalLinks(preparedClone);
         initSimCardModalLinks(preparedClone);
+        initSimHistoryModalLinks(preparedClone);
         initClickableDetailTiles(preparedClone);
         initTableRowModals(preparedClone);
     }
@@ -1392,6 +1383,75 @@
             .finally(function () {
                 setPhoneCardLinkLoading(link, false);
             });
+    }
+
+    function openSimHistoryFromLink(link) {
+        if (!window.fetch || !window.URL) {
+            window.location.href = link.href;
+            return;
+        }
+
+        var requestUrl = new URL(link.href, window.location.href);
+        requestUrl.searchParams.set('ajax_rows', '1');
+        requestUrl.searchParams.set('limit', '60');
+        requestUrl.searchParams.set('offset', '0');
+        requestUrl.searchParams.set('stato', 'disattive');
+
+        setPhoneCardLinkLoading(link, true);
+
+        fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = payload && payload.html ? payload.html : '';
+                var simCards = Array.prototype.slice.call(wrapper.querySelectorAll('.sim-card'));
+                if (simCards.length === 0) {
+                    throw new Error('SIM non trovate');
+                }
+
+                var group = document.createElement('div');
+                group.className = 'card-modal-card-group';
+                group.setAttribute('aria-label', 'SIM precedenti collegate al numero');
+                simCards.forEach(function (card) {
+                    card.classList.remove('expandable-card');
+                    card.removeAttribute('data-expandable-card');
+                    card.removeAttribute('tabindex');
+                    card.removeAttribute('role');
+                    card.removeAttribute('aria-label');
+                    group.appendChild(card);
+                });
+                openCardModal(group);
+            })
+            .catch(function () {
+                window.location.href = link.href;
+            })
+            .finally(function () {
+                setPhoneCardLinkLoading(link, false);
+            });
+    }
+
+    function initSimHistoryModalLinks(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-sim-history-modal="true"]:not([data-sim-history-modal-ready="true"])').forEach(function (link) {
+            link.dataset.simHistoryModalReady = 'true';
+            link.addEventListener('click', function (event) {
+                if (shouldKeepDefaultLinkNavigation(event)) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                openSimHistoryFromLink(link);
+            });
+        });
     }
 
     function initPhoneCardModalLinks(root) {
@@ -2212,6 +2272,7 @@
         initSimCrudForms(scope);
         initPhoneCardModalLinks(scope);
         initSimCardModalLinks(scope);
+        initSimHistoryModalLinks(scope);
         initSimReturnLinks(scope);
         initResultsViewControls(scope);
         initClickableDetailTiles(scope);

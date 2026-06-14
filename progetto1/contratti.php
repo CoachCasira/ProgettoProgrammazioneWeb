@@ -68,7 +68,7 @@ function render_disabled_sim_tile(array $row): string
     if ($disabled_count > 1) {
         $href = 'sim.php?stato=disattive&amp;numero=' . urlencode($numero);
         return '<div class="card-detail-tile card-detail-link disabled-sim-tile disabled-sim-tile-multiple' . $single_tile_class . '">'
-            . '<dt><a href="' . $href . '" class="tile-overlay-link" title="Visualizza tutte le SIM precedenti collegate a questo numero">SIM precedenti</a></dt>'
+            . '<dt><a href="' . $href . '" class="tile-overlay-link" title="Visualizza tutte le SIM precedenti collegate a questo numero" data-sim-history-modal="true" data-phone-number="' . htmlspecialchars($numero) . '">SIM precedenti</a></dt>'
             . '<dd>' . htmlspecialchars((string)$disabled_count) . ' SIM disattivate nello storico</dd>'
             . '</div>';
     }
@@ -251,10 +251,6 @@ if (empty($search_errors)) {
         $effective_min_chiamate = (int)$search_min_chiamate;
     }
 
-    if ($effective_min_chiamate > 0 && $search_ordine === 'recenti') {
-        // Una soglia implica naturalmente un ordinamento crescente dalla soglia.
-        $search_ordine = 'chiamate_crescenti';
-    }
 }
 
 $rows = [];
@@ -344,8 +340,7 @@ if (empty($search_errors)) {
     } elseif ($search_residuo === 'minuti_bassi' || $search_residuo === 'minuti_disponibili') {
         // I filtri sui minuti partono dal valore più vicino alla soglia scelta.
         $sql_base .= " ORDER BY c.minutiResidui ASC, c.dataAttivazione DESC, c.numero ASC";
-    } elseif ($search_ordine === 'chiamate_crescenti' || ($effective_min_chiamate > 0 && $search_ordine === 'recenti')) {
-        // Con una soglia attiva il risultato naturale parte dalla soglia e cresce.
+    } elseif ($search_ordine === 'chiamate_crescenti') {
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
         $sql_base .= " ORDER BY num_telefonate DESC, c.dataAttivazione DESC, c.numero ASC";
@@ -416,7 +411,7 @@ if ($ajax_rows) {
     echo json_encode($payload);
     exit;
 }
-$phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato:' : 'Attivato:';
+$phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
 ?>
 <?php include 'includes/header.php'; ?>
 

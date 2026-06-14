@@ -2414,6 +2414,42 @@ body.card-modal-open {
     font-size: 1.7rem;
 }
 
+
+/* Storico di più SIM: le schede vengono mostrate insieme nello stesso overlay. */
+.card-modal-card-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.card-modal-card-group > .sim-card {
+    width: 100%;
+    min-height: 100%;
+    cursor: default;
+    transform: none !important;
+    box-shadow: none;
+}
+
+.card-modal-card-group > .sim-card:hover,
+.card-modal-card-group > .sim-card:focus-within {
+    transform: none;
+    box-shadow: none;
+}
+
+.card-modal-card-group > .sim-card .card-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 760px) {
+    .card-modal-card-group {
+        grid-template-columns: 1fr;
+    }
+}
+
 .card-modal-footer {
     display: flex;
     justify-content: flex-start;

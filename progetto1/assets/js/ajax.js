@@ -444,17 +444,27 @@
         }
 
         var lastOffset = Math.max(0, total - limit);
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        var viewKey = viewRoot ? (viewRoot.dataset.viewKey || '') : '';
+        /* La tabella Telefonata contiene milioni di righe e usa la lettura
+           inversa indicizzata per raggiungere la fine senza un OFFSET enorme.
+           Numeri telefonici e SIM, invece, devono usare l'ordinamento normale
+           con l'offset reale dell'ultimo blocco: in questo modo l'ultima pagina
+           contiene davvero i numeri disattivati e le SIM disattivate, anziche
+           riproporre il primo blocco marcandolo erroneamente come ultimo. */
+        var useReverseLastPage = viewKey === 'telefonate';
+
         container.dataset.jumpingLast = 'true';
         container.dataset.loadingRows = 'true';
         container.classList.add('table-loading-more', 'results-jumping-last');
 
         var request = buildRequest(form, {
             ajax_rows: '1',
-            offset: '0',
+            offset: useReverseLastPage ? '0' : String(lastOffset),
             limit: String(limit),
             direction: 'next',
             skip_count: '1',
-            jump_last: '1',
+            jump_last: useReverseLastPage ? '1' : '0',
             reverse_offset: '0'
         });
 
@@ -478,16 +488,28 @@
 
                 var loadedCount = Math.max(0, lists[0] ? lists[0].children.length : 0);
                 updateContainerMetadataFromPayload(container, payload, loadedCount);
-                container.dataset.prevOffset = String(Math.max(0, total - loadedCount));
                 container.dataset.nextOffset = String(total);
-                container.dataset.hasPrev = total > loadedCount ? '1' : '0';
                 container.dataset.hasMore = '0';
-                container.dataset.fromEnd = '1';
-                container.dataset.reverseOffset = String(loadedCount);
+
+                if (useReverseLastPage) {
+                    /* Telefonate: proseguiamo a ritroso dalla coda, evitando
+                       OFFSET di milioni di righe durante la risalita. */
+                    container.dataset.prevOffset = String(Math.max(0, total - loadedCount));
+                    container.dataset.hasPrev = total > loadedCount ? '1' : '0';
+                    container.dataset.fromEnd = '1';
+                    container.dataset.reverseOffset = String(loadedCount);
+                } else {
+                    /* Numeri e SIM: l'ultimo blocco e stato richiesto mediante
+                       il suo offset reale e rimane nell'ordinamento naturale.
+                       La risalita puo quindi usare la normale paginazione. */
+                    container.dataset.prevOffset = String(lastOffset);
+                    container.dataset.hasPrev = lastOffset > 0 ? '1' : '0';
+                    delete container.dataset.fromEnd;
+                    delete container.dataset.reverseOffset;
+                }
                 refreshDynamicBehaviors();
 
                 container.scrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-                var viewRoot = container.closest('[data-results-view-root="true"]');
                 if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
                     window.ProgWeb.updateResultsNavigation(viewRoot);
                 }

@@ -1077,7 +1077,7 @@ if ($ajax_rows) {
                 </div>
                 <div class="view-panel view-panel-table" data-view-panel="table">
                     <div class="table-container table-container-inner">
-                        <table class="data-table">
+                        <table class="data-table sim-data-table sim-table-state-<?= htmlspecialchars($state) ?>">
                             <thead>
                                 <?= render_sim_table_header($state) ?>
                             </thead>

@@ -161,12 +161,10 @@
         var hasAssociated = hasActive || hasDisabled;
 
         Array.prototype.forEach.call(order.options, function (option) {
-            if (option.value === 'piu_chiamate') {
+            if (option.value === 'piu_chiamate'
+                    || option.value === 'attivate_recenti'
+                    || option.value === 'disattivate_recenti') {
                 option.hidden = !hasAssociated;
-            } else if (option.value === 'attivate_recenti') {
-                option.hidden = !hasActive;
-            } else if (option.value === 'disattivate_recenti') {
-                option.hidden = !hasDisabled;
             }
         });
 
@@ -181,6 +179,81 @@
             group.classList.toggle('is-filter-unavailable', !hasAssociated);
         }
         updateCustomSelect(order);
+    }
+
+    function updateSimDateFilterLabel(form, selectedStates) {
+        if (!form) {
+            return;
+        }
+        var label = form.querySelector('[data-sim-date-label]');
+        if (!label) {
+            return;
+        }
+        var states = Array.isArray(selectedStates) ? selectedStates : getSelectedSimStates(form);
+        var hasActive = states.indexOf('attive') !== -1;
+        var hasDisabled = states.indexOf('disattive') !== -1;
+
+        if (hasActive && !hasDisabled) {
+            label.textContent = 'Attivata dal/al:';
+        } else if (hasDisabled && !hasActive) {
+            label.textContent = 'Disattivata dal/al:';
+        } else if (hasActive && hasDisabled) {
+            label.textContent = 'Attivata/disattivata dal/al:';
+        } else {
+            label.textContent = 'Periodo dal/al:';
+        }
+    }
+
+    function updateSimStateOrderLock(form) {
+        if (!form) {
+            return;
+        }
+        var order = form.querySelector('#ordine_sim');
+        var locked = order && (order.value === 'attivate_recenti' || order.value === 'disattivate_recenti');
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        var button = wrapper ? wrapper.querySelector('.multi-select-button') : null;
+        var reset = wrapper ? wrapper.querySelector('.multi-select-reset') : null;
+
+        if (wrapper) {
+            wrapper.classList.toggle('is-order-locked', Boolean(locked));
+        }
+        if (button) {
+            button.disabled = Boolean(locked);
+            button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+            button.title = locked ? 'Lo stato è determinato dal criterio Mostra prima' : '';
+        }
+        if (reset) {
+            reset.disabled = Boolean(locked);
+        }
+        form.querySelectorAll('[data-sim-state-checkbox], [data-sim-state-all]').forEach(function (checkbox) {
+            checkbox.disabled = Boolean(locked);
+        });
+    }
+
+    function applySimOrderStateConstraint(form) {
+        if (!form) {
+            return;
+        }
+        var order = form.querySelector('#ordine_sim');
+        if (!order) {
+            return;
+        }
+
+        var forcedState = order.value === 'attivate_recenti'
+            ? 'attive'
+            : (order.value === 'disattivate_recenti' ? 'disattive' : '');
+
+        if (forcedState) {
+            form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
+                checkbox.checked = checkbox.value === forcedState;
+            });
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.checked = false;
+            }
+            applySimState(form, [forcedState]);
+        }
+        updateSimStateOrderLock(form);
     }
 
     function applySimState(form, states) {
@@ -230,6 +303,8 @@
         });
 
         updateSimOrderOptions(form, selectedStates);
+        updateSimDateFilterLabel(form, selectedStates);
+        updateSimStateOrderLock(form);
         updateStickyLayout();
     }
 
@@ -303,6 +378,15 @@
 
             initSimMultiSelect(form);
             applySimState(form, getSelectedSimStates(form));
+            applySimOrderStateConstraint(form);
+
+            var orderSelect = form.querySelector('#ordine_sim');
+            if (orderSelect && orderSelect.dataset.simOrderConstraintReady !== 'true') {
+                orderSelect.dataset.simOrderConstraintReady = 'true';
+                orderSelect.addEventListener('change', function () {
+                    applySimOrderStateConstraint(form);
+                });
+            }
 
             if (select) {
                 select.addEventListener('change', function () {

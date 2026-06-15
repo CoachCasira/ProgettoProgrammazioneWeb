@@ -7273,3 +7273,88 @@ select[data-scroll-select="true"].native-select-hidden {
 .sim-filter-form .form-group.is-filter-unavailable .custom-select-button {
     background: var(--surface-muted, #eee9e4) !important;
 }
+
+/* =========================================================
+   V58 - Filtri SIM vincolati, layout e dettagli contestuali
+   ========================================================= */
+
+/* Nella card compatta delle SIM disattivate la data di attivazione non è
+   necessaria; torna visibile esclusivamente nel dettaglio esteso. */
+.sim-activation-modal-only {
+    display: none !important;
+}
+
+.card-modal-card.sim-card .sim-activation-modal-only {
+    display: block !important;
+}
+
+/* Quando l'ordinamento impone uno stato, la tendina resta visibile ma comunica
+   chiaramente che il valore dipende da "Mostra prima". */
+.sim-state-multi-select.is-order-locked .multi-select-button {
+    opacity: 0.58;
+    cursor: not-allowed !important;
+    background: var(--surface-muted, #eee9e4) !important;
+}
+
+/* Desktop SIM: periodo sulla prima riga; Mostra prima più ampio sulla seconda. */
+@media (min-width: 1201px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(16, minmax(0, 1fr)) !important;
+        column-gap: 0.68rem !important;
+        row-gap: 0.72rem !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group  { grid-column: 1 / span 2 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 3 / span 2 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 5 / span 2 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group  { grid-column: 7 / span 2 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-plan-filter-group  { grid-column: 9 / span 2 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group  { grid-column: 11 / span 6 !important; grid-row: 1 !important; }
+
+    .sim-filter-form .sim-order-filter-group { grid-column: 1 / span 8 !important;  grid-row: 2 !important; }
+    .sim-filter-form > .btn-reset-filters    { grid-column: 9 / span 4 !important;  grid-row: 2 !important; }
+    .sim-filter-form > .btn-filter-submit    { grid-column: 13 / span 4 !important; grid-row: 2 !important; }
+}
+
+/* Fascia intermedia SIM: i campi rimangono leggibili e i pulsanti restano
+   affiancati senza ingrandimenti anomali. */
+@media (min-width: 901px) and (max-width: 1200px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        column-gap: 0.62rem !important;
+        row-gap: 0.68rem !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group  { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 5 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group  { grid-column: 7 / span 2 !important; grid-row: 1 !important; }
+
+    .sim-filter-form .sim-plan-filter-group  { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-date-filter-group  { grid-column: 3 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-order-filter-group { grid-column: 6 / span 3 !important; grid-row: 2 !important; }
+
+    .sim-filter-form > .btn-reset-filters    { grid-column: 1 / span 4 !important; grid-row: 3 !important; }
+    .sim-filter-form > .btn-filter-submit    { grid-column: 5 / span 4 !important; grid-row: 3 !important; }
+}
+
+/* Schermo ridotto Numeri: tutti i filtri di selezione stanno sulla stessa riga
+   e l'ultima riga contiene soltanto Azzera filtri e Cerca. */
+@media (min-width: 901px) and (max-width: 1099px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        column-gap: 0.62rem !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-status-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-date-filter-group   { grid-column: 5 / span 4 !important; grid-row: 1 !important; }
+
+    .contratti-filter-form .residual-filter-group     { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .phone-plan-filter-group   { grid-column: 3 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .order-filter-group        { grid-column: 5 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .traffic-filter-group      { grid-column: 7 / span 2 !important; grid-row: 2 !important; }
+
+    .contratti-filter-form > .btn-reset-filters       { grid-column: 1 / span 4 !important; grid-row: 3 !important; }
+    .contratti-filter-form > .btn-filter-submit       { grid-column: 5 / span 4 !important; grid-row: 3 !important; }
+}

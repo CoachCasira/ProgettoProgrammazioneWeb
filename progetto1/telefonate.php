@@ -445,7 +445,7 @@ if ($ajax_rows) {
             </select>
         </div>
         <div class="form-group period-filter-group range-filter-group">
-            <label>Periodo dal/al:</label>
+            <label>Data della chiamata dal/al:</label>
             <div class="range-pair compact-range-pair date-range-pair">
                 <input type="date" id="data_da" name="data_da" value="<?= htmlspecialchars($search_data_da) ?>" aria-label="Dal giorno">
                 <span class="range-separator" aria-hidden="true">–</span>

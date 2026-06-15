@@ -217,15 +217,12 @@ $search_durata_ore = trim($_POST['durata_ore'] ?? $_GET['durata_ore'] ?? '');
 $search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
 $search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
 
-/* Soglie rapide calibrate sulla scala dei totali mostrati nelle card: dai
-   numeri con poche decine di minuti fino alle utenze con molte ore di traffico. */
+/* Soglie rapide essenziali per la durata complessiva dei numeri.
+   I valori meno comuni restano disponibili tramite “Durata personalizzata”. */
 $phone_duration_presets = [
-    '15m' => [0, 15, 0],
     '30m' => [0, 30, 0],
     '1h' => [1, 0, 0],
-    '2h' => [2, 0, 0],
     '5h' => [5, 0, 0],
-    '10h' => [10, 0, 0],
     '24h' => [24, 0, 0]
 ];
 
@@ -602,12 +599,9 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             <div class="duration-smart-control<?= $search_durata_preset === 'custom' ? ' is-custom' : '' ?>" data-duration-control>
                 <select id="durata_preset" name="durata_preset" data-scroll-select="true" data-duration-preset-select>
                     <option value="" <?= $search_durata_preset === '' ? 'selected' : '' ?>>Qualsiasi durata</option>
-                    <option value="15m" <?= $search_durata_preset === '15m' ? 'selected' : '' ?>>Almeno 15 minuti</option>
                     <option value="30m" <?= $search_durata_preset === '30m' ? 'selected' : '' ?>>Almeno 30 minuti</option>
                     <option value="1h" <?= $search_durata_preset === '1h' ? 'selected' : '' ?>>Almeno 1 ora</option>
-                    <option value="2h" <?= $search_durata_preset === '2h' ? 'selected' : '' ?>>Almeno 2 ore</option>
                     <option value="5h" <?= $search_durata_preset === '5h' ? 'selected' : '' ?>>Almeno 5 ore</option>
-                    <option value="10h" <?= $search_durata_preset === '10h' ? 'selected' : '' ?>>Almeno 10 ore</option>
                     <option value="24h" <?= $search_durata_preset === '24h' ? 'selected' : '' ?>>Almeno 24 ore</option>
                     <option value="custom" <?= $search_durata_preset === 'custom' ? 'selected' : '' ?>>Durata personalizzata…</option>
                 </select>
@@ -668,15 +662,15 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="identifier"><span aria-hidden="true">📱</span> Numero di telefono</th>
-                                <th><span aria-hidden="true">🚫</span> Stato</th>
-                                <th><span aria-hidden="true">🗓️</span> Data attivazione</th>
-                                <th><span aria-hidden="true">📋</span> Piano</th>
-                                <th class="numeric"><span aria-hidden="true">⏱️</span> Tempo residuo</th>
-                                <th class="numeric"><span aria-hidden="true">💳</span> Credito residuo</th>
-                                <th class="numeric"><span aria-hidden="true">📞</span> Chiamate registrate</th>
-                                <th class="numeric"><span aria-hidden="true">⏱️</span> Durata totale</th>
-                                <th class="numeric"><span aria-hidden="true">💶</span> Addebiti totali</th>
+                                <th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero di telefono</th>
+                                <th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
+                                <th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
+                                <th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Tempo residuo</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Credito residuo</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-calls" aria-hidden="true"></span>Chiamate registrate</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata totale</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-money" aria-hidden="true"></span>Addebiti totali</th>
                             </tr>
                         </thead>
                         <tbody data-lazy-list="table">

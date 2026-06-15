@@ -1003,6 +1003,16 @@
         return date ? padTwo(date.getDate()) + '/' + padTwo(date.getMonth() + 1) + '/' + date.getFullYear() : '';
     }
 
+    function syncSitePickerOverlayState() {
+        if (!document.body) {
+            return;
+        }
+        document.body.classList.toggle(
+            'site-picker-overlay-active',
+            Boolean(document.querySelector('.site-picker.is-open'))
+        );
+    }
+
     function closeSitePicker(wrapper) {
         if (!wrapper) {
             return;
@@ -1012,6 +1022,7 @@
         if (trigger) {
             trigger.setAttribute('aria-expanded', 'false');
         }
+        syncSitePickerOverlayState();
     }
 
     function closeAllSitePickers(except) {
@@ -1219,6 +1230,7 @@
                 document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
                 wrapper.classList.toggle('is-open', shouldOpen);
                 trigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+                syncSitePickerOverlayState();
                 if (shouldOpen) {
                     renderSiteDateCalendar(input);
                 }
@@ -1446,6 +1458,7 @@
                     syncTimePickerButtons(wrapper);
                     wrapper.classList.add('is-open');
                     trigger.setAttribute('aria-expanded', 'true');
+                    syncSitePickerOverlayState();
                     window.setTimeout(function () {
                         var selectedHour = hours.querySelector('.is-selected');
                         var selectedMinute = minutes.querySelector('.is-selected');

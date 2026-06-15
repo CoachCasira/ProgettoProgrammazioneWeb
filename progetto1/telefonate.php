@@ -157,16 +157,15 @@ $search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
 $search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
 $search_costo_max = trim($_POST['costo_max'] ?? $_GET['costo_max'] ?? '');
 
-/* Soglie rapide per la singola telefonata: includono durate inferiori al
-   minuto, chiamate ordinarie e i casi più lunghi presenti nell'archivio. */
+/* Soglie rapide essenziali per la singola telefonata. Le durate particolari
+   restano impostabili con precisione tramite “Durata personalizzata”. */
 $call_duration_presets = [
     '30s' => [0, 0, 30],
     '1m' => [0, 1, 0],
     '5m' => [0, 5, 0],
-    '15m' => [0, 15, 0],
+    '10m' => [0, 10, 0],
     '30m' => [0, 30, 0],
-    '1h' => [1, 0, 0],
-    '2h' => [2, 0, 0]
+    '1h' => [1, 0, 0]
 ];
 if ($search_durata_preset === ''
         && ($search_durata_ore !== '' || $search_durata_min !== '' || $search_durata_sec !== '')) {
@@ -588,10 +587,9 @@ if ($ajax_rows) {
                     <option value="30s" <?= $search_durata_preset === '30s' ? 'selected' : '' ?>>Almeno 30 secondi</option>
                     <option value="1m" <?= $search_durata_preset === '1m' ? 'selected' : '' ?>>Almeno 1 minuto</option>
                     <option value="5m" <?= $search_durata_preset === '5m' ? 'selected' : '' ?>>Almeno 5 minuti</option>
-                    <option value="15m" <?= $search_durata_preset === '15m' ? 'selected' : '' ?>>Almeno 15 minuti</option>
+                    <option value="10m" <?= $search_durata_preset === '10m' ? 'selected' : '' ?>>Almeno 10 minuti</option>
                     <option value="30m" <?= $search_durata_preset === '30m' ? 'selected' : '' ?>>Almeno 30 minuti</option>
                     <option value="1h" <?= $search_durata_preset === '1h' ? 'selected' : '' ?>>Almeno 1 ora</option>
-                    <option value="2h" <?= $search_durata_preset === '2h' ? 'selected' : '' ?>>Almeno 2 ore</option>
                     <option value="custom" <?= $search_durata_preset === 'custom' ? 'selected' : '' ?>>Durata personalizzata…</option>
                 </select>
                 <div class="duration-custom-editor duration-range-control duration-three-part<?= $search_durata_preset === 'custom' ? '' : ' is-hidden' ?>" data-duration-custom-panel aria-hidden="<?= $search_durata_preset === 'custom' ? 'false' : 'true' ?>">
@@ -682,12 +680,12 @@ if ($ajax_rows) {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="identifier"><span aria-hidden="true">📱</span> Numero chiamante</th>
-                                <th><span aria-hidden="true">🗓️</span> Data</th>
-                                <th><span aria-hidden="true">🕒</span> Ora</th>
-                                <th class="numeric"><span aria-hidden="true">⏱️</span> Durata</th>
-                                <th><span aria-hidden="true">📋</span> Piano</th>
-                                <th class="numeric"><span aria-hidden="true">💳</span> Addebito</th>
+                                <th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero chiamante</th>
+                                <th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data</th>
+                                <th><span class="table-header-icon table-icon-clock" aria-hidden="true"></span>Ora</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata</th>
+                                <th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                                <th class="numeric"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Addebito</th>
                             </tr>
                         </thead>
                         <tbody data-lazy-list="table">

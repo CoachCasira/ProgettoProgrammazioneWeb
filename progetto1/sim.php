@@ -494,15 +494,15 @@ function render_sim_rows(array $rows, string $state): string
 function render_sim_table_header(string $state): string
 {
     if ($state === 'tutte') {
-        return '<tr><th class="identifier">🔢 Codice SIM</th><th>⚙️ Stato</th><th class="identifier">📱 Numero collegato</th><th>🗓️ Data attivazione</th><th>🛑 Data disattivazione</th><th>📐 Formato SIM</th><th>📋 Piano</th><th class="sim-actions-column">⚙️ Azioni</th></tr>';
+        return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
     }
     if ($state === 'attive') {
-        return '<tr><th class="identifier sim-code-cell">🔢 Codice SIM</th><th class="identifier">📱 Numero associato</th><th>🗓️ Data attivazione</th><th>📐 Formato SIM</th><th>📋 Piano</th></tr>';
+        return '<tr><th class="identifier sim-code-cell"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero associato</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th></tr>';
     }
     if ($state === 'disponibili') {
-        return '<tr><th class="identifier">🔢 Codice SIM</th><th>📐 Formato SIM</th><th>⚙️ Stato operativo</th></tr>';
+        return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato operativo</th></tr>';
     }
-    return '<tr><th class="identifier">🔢 Codice SIM</th><th class="identifier">📱 Numero precedente</th><th>🗓️ Data attivazione</th><th>🛑 Data disattivazione</th><th>📐 Formato SIM</th><th>📋 Piano</th><th class="sim-actions-column">⚙️ Azioni</th></tr>';
+    return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero precedente</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
 }
 
 function render_sim_table_rows(array $rows, string $state): string

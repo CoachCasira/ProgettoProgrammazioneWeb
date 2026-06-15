@@ -2361,7 +2361,7 @@
             if (loaded === 0 && (!totalKnown || total === 0)) {
                 counter.textContent = '0 risultati';
             } else if (!totalKnown) {
-                counter.textContent = start + '-' + end + ' risultati';
+                counter.textContent = 'Calcolo totale…';
             } else {
                 counter.textContent = start + '-' + end + ' di ' + total + ' risultati';
             }
@@ -2785,12 +2785,8 @@
 
             var output = layout.querySelector('.dashboard-search-output');
             if (output) {
-                output.remove();
+                output.innerHTML = '<div class="dashboard-search-placeholder">I risultati o gli eventuali suggerimenti di correzione appariranno qui durante la digitazione.</div>';
             }
-
-            layout.querySelectorAll('.dashboard-search-feedback').forEach(function (feedback) {
-                feedback.remove();
-            });
         }
 
         input.addEventListener('input', clearPreviousResultsWhenEmpty);

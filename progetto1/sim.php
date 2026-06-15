@@ -938,8 +938,20 @@ if (!is_digits_or_empty($search_numero)) {
     $label_numero = 'Numero di telefono associato o precedente';
     $search_errors[] = 'Il campo “' . $label_numero . '” può contenere solo cifre. Inserire un numero, anche parziale, e riprovare.';
 }
+if ($search_tipo !== '' && !in_array($search_tipo, ['Nano', 'Micro', 'Standard', 'eSIM'], true)) {
+    $search_errors[] = 'Selezionare un formato SIM valido.';
+}
 if ($search_piano !== '' && !in_array($search_piano, ['consumo', 'ricarica'], true)) {
     $search_errors[] = 'Selezionare un piano associato valido.';
+}
+if (!is_date_or_empty($search_data_da)) {
+    $search_errors[] = 'La data iniziale della SIM non è valida.';
+}
+if (!is_date_or_empty($search_data_a)) {
+    $search_errors[] = 'La data finale della SIM non è valida.';
+}
+if ($search_data_da !== '' && $search_data_a !== '' && is_date_or_empty($search_data_da) && is_date_or_empty($search_data_a) && $search_data_da > $search_data_a) {
+    $search_errors[] = 'La data iniziale della SIM non può essere successiva alla data finale.';
 }
 if (!in_array($search_ordine_sim, ['nessuno', 'piu_chiamate', 'attivate_recenti', 'disattivate_recenti'], true)) {
     $search_errors[] = 'Selezionare un ordinamento delle SIM valido.';
@@ -1339,12 +1351,36 @@ if ($has_active_date_state && !$has_disabled_date_state) {
                         </table>
                     </div>
                 </div>
-            <?php elseif ($search_numero !== ''): ?>
-                <div class="alert alert-error">Nessuna <?= htmlspecialchars($state === 'tutte' ? 'SIM' : strtolower(sim_state_title($state))) ?> trovata per numeri di telefono che contengono “<?= htmlspecialchars($search_numero) ?>”. Controllare il valore digitato oppure modificare gli altri filtri.</div>
-            <?php elseif ($search_codice !== ''): ?>
-                <div class="alert alert-error">Nessuna <?= htmlspecialchars($state === 'tutte' ? 'SIM' : strtolower(sim_state_title($state))) ?> trovata con codici che contengono “<?= htmlspecialchars($search_codice) ?>”. Controllare il valore digitato oppure modificare gli altri filtri.</div>
             <?php else: ?>
-                <div class="alert alert-error">Nessuna <?= htmlspecialchars($state === 'tutte' ? 'SIM' : strtolower(sim_state_title($state))) ?> trovata con i criteri selezionati.</div>
+                <?php
+                $sim_zero_criteria = [];
+                if ($search_codice !== '') {
+                    $sim_zero_criteria[] = 'codice contenente ' . $search_codice;
+                }
+                if ($search_numero !== '') {
+                    $sim_zero_criteria[] = 'numero collegato contenente ' . $search_numero;
+                }
+                if (count($selected_states) < 3) {
+                    $sim_zero_criteria[] = 'stato: ' . strtolower(sim_states_title($selected_states));
+                }
+                if ($search_tipo !== '') {
+                    $sim_zero_criteria[] = 'formato: ' . $search_tipo;
+                }
+                if ($search_piano === 'consumo') {
+                    $sim_zero_criteria[] = 'piano associato: a consumo';
+                } elseif ($search_piano === 'ricarica') {
+                    $sim_zero_criteria[] = 'piano associato: ricaricabile';
+                }
+                if ($search_data_da !== '' || $search_data_a !== '') {
+                    $sim_zero_criteria[] = strtolower(rtrim($sim_date_filter_label, ':')) . ': ' . ($search_data_da !== '' ? format_date_it($search_data_da) : 'inizio archivio') . ' - ' . ($search_data_a !== '' ? format_date_it($search_data_a) : 'oggi');
+                }
+                $sim_zero_message = build_filter_aware_no_results_message(
+                    'Nessuna SIM',
+                    $sim_zero_criteria,
+                    'Non sono presenti SIM consultabili.'
+                );
+                ?>
+                <div class="alert alert-error"><?= htmlspecialchars($sim_zero_message) ?></div>
             <?php endif; ?>
         </div>
     </div>

@@ -5,7 +5,7 @@
     var activeSearchController = null;
     var activeCountController = null;
     var lastCountRequestId = 0;
-    var COUNT_CACHE_PREFIX = 'progweb:telefonate-count:v59:';
+    var COUNT_CACHE_PREFIX = 'progweb:telefonate-count:v60:';
     var firstBlockSnapshots = new WeakMap();
     var lastBlockSnapshots = new WeakMap();
     var lastBlockPrefetches = new WeakMap();
@@ -70,7 +70,7 @@
         }
     }
 
-    function updateFromResponse(html, selector, scrollToTop) {
+    function updateFromResponse(html, selector, scrollToTop, countPayload) {
         var parser = new DOMParser();
         var doc = parser.parseFromString(html, 'text/html');
         var newBlock = doc.querySelector(selector);
@@ -78,6 +78,15 @@
 
         if (!newBlock || !currentBlock) {
             return false;
+        }
+
+        if (countPayload && Object.prototype.hasOwnProperty.call(countPayload, 'total_count')) {
+            var newContainer = newBlock.querySelector('[data-lazy-container="true"]');
+            var total = parseInt(countPayload.total_count, 10);
+            if (newContainer && Number.isFinite(total) && total >= 0) {
+                newContainer.dataset.totalCount = String(total);
+                newContainer.dataset.countPending = '0';
+            }
         }
 
         if (selector === '.content') {
@@ -153,6 +162,7 @@
             'data_a',
             'ora_da',
             'ora_a',
+            'durata_ore',
             'durata_min',
             'durata_sec',
             'costo_max'
@@ -329,24 +339,38 @@
             target.classList.add('ajax-loading');
         }
 
-        fetch(request.url, request.options)
+        var rowsPromise = fetch(request.url, request.options)
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error('Risposta non valida');
                 }
                 return response.text();
+            });
+
+        var completeResponsePromise = preparedCountPromise
+            ? Promise.all([rowsPromise, preparedCountPromise]).then(function (values) {
+                return { html: values[0], countPayload: values[1] };
             })
-            .then(function (html) {
+            : rowsPromise.then(function (html) {
+                return { html: html, countPayload: null };
+            });
+
+        completeResponsePromise
+            .then(function (result) {
                 if (requestId !== lastRequestId) {
                     return;
                 }
 
                 var scrollToTop = !isLiveSearch && targetSelector === '.content';
-                if (!updateFromResponse(html, targetSelector, scrollToTop)) {
+                if (!updateFromResponse(result.html, targetSelector, scrollToTop, result.countPayload)) {
                     showAjaxError(target);
                     return;
                 }
-                refreshDeferredCount(form, targetSelector, requestId, preparedCountPromise);
+                if (result.countPayload && Object.prototype.hasOwnProperty.call(result.countPayload, 'total_count')) {
+                    storeCachedCount(form, parseInt(result.countPayload.total_count, 10));
+                } else {
+                    refreshDeferredCount(form, targetSelector, requestId);
+                }
                 document.dispatchEvent(new CustomEvent('progweb:ajax-results-updated', {
                     detail: {
                         formId: form.id || '',

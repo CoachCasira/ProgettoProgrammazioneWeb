@@ -147,7 +147,7 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
             </div>
         </div>
 
-        <form class="dashboard-global-search" method="GET" action="index.php">
+        <form id="dashboard-search-form" class="dashboard-global-search" method="GET" action="index.php" data-ajax-form="true" data-live-search="true" data-update-target="#dashboard-search-output">
             <div class="form-group">
                 <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
                 <input type="text" id="ricerca_globale" name="ricerca_globale" value="<?= htmlspecialchars($global_query) ?>" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -155,13 +155,14 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
             <button type="submit" class="btn">Cerca</button>
         </form>
 
-        <?php if ($global_error !== ''): ?>
-            <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
-        <?php endif; ?>
     </section>
 
-    <?php if ($global_query !== '' && $global_error === ''): ?>
-        <aside class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
+    <aside id="dashboard-search-output" class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
+        <?php if ($global_error !== ''): ?>
+            <div class="dashboard-search-results">
+                <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
+            </div>
+        <?php elseif ($global_query !== ''): ?>
             <div class="dashboard-search-results">
                 <?php if (!empty($global_phone_results)): ?>
                     <section class="dashboard-result-group" aria-labelledby="phone-results-title">
@@ -218,8 +219,12 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
                     <div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “<?= htmlspecialchars($global_query) ?>”.</div>
                 <?php endif; ?>
             </div>
-        </aside>
-    <?php endif; ?>
+        <?php else: ?>
+            <div class="dashboard-search-placeholder">
+                I risultati o gli eventuali suggerimenti di correzione appariranno qui durante la digitazione.
+            </div>
+        <?php endif; ?>
+    </aside>
 </div>
 
 <section class="stat-grid" aria-label="Indicatori principali">

@@ -212,6 +212,11 @@ $search_tipo = trim($_POST['tipo'] ?? $_GET['tipo'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '');
 $search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
+$search_durata_ore = trim($_POST['durata_ore'] ?? $_GET['durata_ore'] ?? '');
+$search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
+$search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
+$duration_filter_active = ($search_durata_ore !== '' || $search_durata_min !== '' || $search_durata_sec !== '');
+$duration_threshold_seconds = duration_parts_to_seconds($search_durata_ore, $search_durata_min, $search_durata_sec);
 $search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'recenti');
 if ($search_ordine === '' || $search_ordine === 'automatico') {
     // Compatibilità con vecchi link e sessioni: il criterio base è quello recente.
@@ -271,11 +276,29 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
     $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
 }
+if (!is_non_negative_integer_or_empty($search_durata_ore)) {
+    $search_errors[] = 'Il campo “Durata chiamate - ore” deve contenere un numero intero positivo o pari a zero.';
+}
+if (!is_duration_part_or_empty($search_durata_min)) {
+    $search_errors[] = 'Il campo “Durata chiamate - minuti” deve contenere un valore tra 0 e 59.';
+}
+if (!is_seconds_part_or_empty($search_durata_sec)) {
+    $search_errors[] = 'Il campo “Durata chiamate - secondi” deve contenere un valore tra 0 e 59.';
+}
 if (!in_array($search_ordine, ['recenti', 'disattivati_recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
 }
 if ($search_residuo !== '' && !in_array($search_residuo, ['esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
     $search_errors[] = 'Selezionare un filtro di disponibilità residua valido.';
+}
+if (!is_date_or_empty($search_data_da)) {
+    $search_errors[] = 'La data iniziale del filtro non è valida.';
+}
+if (!is_date_or_empty($search_data_a)) {
+    $search_errors[] = 'La data finale del filtro non è valida.';
+}
+if ($search_data_da !== '' && $search_data_a !== '' && is_date_or_empty($search_data_da) && is_date_or_empty($search_data_a) && $search_data_da > $search_data_a) {
+    $search_errors[] = 'La data iniziale non può essere successiva alla data finale.';
 }
 if (empty($search_errors)) {
     if ($search_min_chiamate === 'custom' && $search_min_chiamate_custom !== '') {
@@ -352,6 +375,9 @@ if (empty($search_errors)) {
     }
     if ($effective_min_chiamate > 0) {
         $sql_base .= " AND COALESCE(tf.numeroTelefonate, 0) >= $effective_min_chiamate";
+    }
+    if ($duration_filter_active) {
+        $sql_base .= " AND COALESCE(tf.durataTotale, 0) >= $duration_threshold_seconds";
     }
     $date_filter_column = $search_stato_numero === 'disattivato' ? 'sd.dataDisattivazione' : 'c.dataAttivazione';
     if ($search_data_da !== '') {
@@ -496,14 +522,6 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine">
             </div>
         </div>
-        <div class="form-group phone-plan-filter-group">
-            <label for="tipo">Piano del numero:</label>
-            <select id="tipo" name="tipo">
-                <option value="">Mostra tutti</option>
-                <option value="consumo" <?= $search_tipo == 'consumo' ? 'selected' : '' ?>>A consumo</option>
-                <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
-            </select>
-        </div>
         <div class="form-group residual-filter-group">
             <label for="residuo">Disponibilità del piano:</label>
             <select id="residuo" name="residuo" data-scroll-select="true">
@@ -513,6 +531,14 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>A consumo: minuti &lt; 30</option>
                 <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Ricaricabili: credito ≥ 5 €</option>
                 <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>A consumo: minuti ≥ 30</option>
+            </select>
+        </div>
+        <div class="form-group phone-plan-filter-group">
+            <label for="tipo">Piano del numero:</label>
+            <select id="tipo" name="tipo">
+                <option value="">Mostra tutti</option>
+                <option value="consumo" <?= $search_tipo == 'consumo' ? 'selected' : '' ?>>A consumo</option>
+                <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
             </select>
         </div>
         <div class="form-group order-filter-group">
@@ -537,6 +563,25 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </select>
             <div class="custom-threshold-inline <?= $search_min_chiamate == 'custom' ? '' : 'is-hidden' ?>" data-custom-threshold-container>
                 <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Scrivi numero minimo" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
+            </div>
+        </div>
+        <div class="form-group phone-duration-filter-group">
+            <label>Durata chiamate:</label>
+            <div class="duration-range-control duration-three-part">
+                <div class="duration-segment">
+                    <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_ore) ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in ore">
+                    <span class="duration-unit">h</span>
+                </div>
+                <span class="compound-control-divider" aria-hidden="true"></span>
+                <div class="duration-segment">
+                    <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in minuti">
+                    <span class="duration-unit">min</span>
+                </div>
+                <span class="compound-control-divider" aria-hidden="true"></span>
+                <div class="duration-segment">
+                    <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in secondi">
+                    <span class="duration-unit">sec</span>
+                </div>
             </div>
         </div>
         <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
@@ -594,10 +639,48 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                     </table>
                 </div>
             </div>
-        <?php elseif ($search_numero !== ''): ?>
-            <div class="alert alert-error">Nessun numero telefonico contiene le cifre “<?= htmlspecialchars($search_numero) ?>”. Controllare il valore digitato oppure modificare gli altri filtri.</div>
         <?php else: ?>
-            <div class="alert alert-error">La ricerca non ha prodotto alcun risultato. Modificare i filtri impostati.</div>
+            <?php
+            $contratti_zero_criteria = [];
+            if ($search_numero !== '') {
+                $contratti_zero_criteria[] = 'numero contenente ' . $search_numero;
+            }
+            if ($search_stato_numero === 'attivo') {
+                $contratti_zero_criteria[] = 'stato: numeri attivi';
+            } elseif ($search_stato_numero === 'disattivato') {
+                $contratti_zero_criteria[] = 'stato: numeri disattivati';
+            }
+            if ($search_data_da !== '' || $search_data_a !== '') {
+                $contratti_zero_criteria[] = strtolower(rtrim($phone_date_filter_label, ':')) . ': ' . ($search_data_da !== '' ? format_date_it($search_data_da) : 'inizio archivio') . ' - ' . ($search_data_a !== '' ? format_date_it($search_data_a) : 'oggi');
+            }
+            if ($search_tipo === 'consumo') {
+                $contratti_zero_criteria[] = 'piano: a consumo';
+            } elseif ($search_tipo === 'ricarica') {
+                $contratti_zero_criteria[] = 'piano: ricaricabile';
+            }
+            $residual_labels = [
+                'esaurito' => 'disponibilità: piani esauriti',
+                'credito_basso' => 'disponibilità: credito inferiore a 5 €',
+                'minuti_bassi' => 'disponibilità: meno di 30 minuti',
+                'credito_disponibile' => 'disponibilità: credito di almeno 5 €',
+                'minuti_disponibili' => 'disponibilità: almeno 30 minuti'
+            ];
+            if (isset($residual_labels[$search_residuo])) {
+                $contratti_zero_criteria[] = $residual_labels[$search_residuo];
+            }
+            if ($effective_min_chiamate > 0) {
+                $contratti_zero_criteria[] = 'almeno ' . $effective_min_chiamate . ' chiamate';
+            }
+            if ($duration_filter_active) {
+                $contratti_zero_criteria[] = 'durata chiamate di almeno ' . format_duration_filter_value($duration_threshold_seconds);
+            }
+            $contratti_zero_message = build_filter_aware_no_results_message(
+                'Nessun numero telefonico',
+                $contratti_zero_criteria,
+                'Non sono presenti numeri telefonici consultabili.'
+            );
+            ?>
+            <div class="alert alert-error"><?= htmlspecialchars($contratti_zero_message) ?></div>
         <?php endif; ?>
     </div>
 </div>

@@ -88,6 +88,61 @@ function fast_unfiltered_call_count(mysqli $conn): ?int
     return $row['max_id'] === null ? 0 : (int)$row['max_id'];
 }
 
+
+/**
+ * Conta le chiamate tramite il riepilogo per contratto quando i filtri
+ * riguardano soltanto numero, stato o piano. Evita di scandire Telefonata per
+ * casi comuni come “Piano tariffario: ricaricabile”.
+ */
+function fast_contract_scoped_call_count(
+    mysqli $conn,
+    string $search_contratto,
+    string $search_stato_numero,
+    string $search_piano
+): ?int {
+    if (!performance_table_has_columns(
+        $conn,
+        'StatisticheContratto',
+        ['numero', 'numeroTelefonate']
+    )) {
+        return null;
+    }
+
+    $clauses = ['1=1'];
+
+    if ($search_contratto !== '') {
+        $contratto = $conn->real_escape_string($search_contratto);
+        if (strlen($search_contratto) >= 10) {
+            $clauses[] = "c.numero = '$contratto'";
+        } else {
+            $clauses[] = "c.numero LIKE '$contratto%'";
+        }
+    }
+
+    if ($search_stato_numero === 'attivo') {
+        $clauses[] = 'EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)';
+    } elseif ($search_stato_numero === 'disattivato') {
+        $clauses[] = 'NOT EXISTS (SELECT 1 FROM SIMAttiva sa WHERE sa.associataA = c.numero)';
+        $clauses[] = 'EXISTS (SELECT 1 FROM SIMDisattiva sd WHERE sd.eraAssociataA = c.numero)';
+    }
+
+    if ($search_piano !== '') {
+        $piano = $conn->real_escape_string($search_piano);
+        $clauses[] = "c.tipo = '$piano'";
+    }
+
+    $where = implode(' AND ', $clauses);
+    $result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
+                            FROM ContrattoTelefonico c
+                            LEFT JOIN StatisticheContratto sc ON sc.numero = c.numero
+                            WHERE $where");
+    if (!$result || !($row = $result->fetch_assoc())) {
+        return null;
+    }
+
+    return (int)($row['total_count'] ?? 0);
+}
+
 $search_contratto = trim($_POST['contratto'] ?? $_GET['contratto'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_piano = trim($_POST['piano'] ?? $_GET['piano'] ?? '');
@@ -96,12 +151,12 @@ $search_data_da = trim($_POST['data_da'] ?? $_GET['data_da'] ?? '');
 $search_data_a = trim($_POST['data_a'] ?? $_GET['data_a'] ?? '');
 $search_ora_da = trim($_POST['ora_da'] ?? $_GET['ora_da'] ?? '');
 $search_ora_a = trim($_POST['ora_a'] ?? $_GET['ora_a'] ?? '');
+$search_durata_ore = trim($_POST['durata_ore'] ?? $_GET['durata_ore'] ?? '');
 $search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
 $search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
 $search_costo_max = trim($_POST['costo_max'] ?? $_GET['costo_max'] ?? '');
-$duration_filter_active = ($search_durata_min !== '' || $search_durata_sec !== '');
-$duration_threshold_seconds = (($search_durata_min !== '' ? (int)$search_durata_min : 0) * 60)
-    + ($search_durata_sec !== '' ? (int)$search_durata_sec : 0);
+$duration_filter_active = ($search_durata_ore !== '' || $search_durata_min !== '' || $search_durata_sec !== '');
+$duration_threshold_seconds = duration_parts_to_seconds($search_durata_ore, $search_durata_min, $search_durata_sec);
 $limit = max(10, min(80, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
@@ -110,6 +165,7 @@ $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 $jump_last = $ajax_rows && (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
 $reverse_offset = max(0, (int)($_POST['reverse_offset'] ?? $_GET['reverse_offset'] ?? 0));
 $count_only = (($_POST['count_only'] ?? $_GET['count_only'] ?? '') === '1');
+$is_xhr_request = strtolower((string)($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
 
 $search_errors = [];
 if (!is_digits_or_empty($search_contratto)) {
@@ -124,6 +180,15 @@ if ($search_piano !== '' && !in_array($search_piano, ['consumo', 'ricarica'], tr
 if (!in_array($search_ordine, ['recenti', 'meno_recenti', 'durata_desc', 'durata_asc', 'costo_desc', 'costo_asc'], true)) {
     $search_errors[] = 'Selezionare un criterio di ordinamento valido.';
 }
+if (!is_date_or_empty($search_data_da)) {
+    $search_errors[] = 'La data iniziale della chiamata non è valida.';
+}
+if (!is_date_or_empty($search_data_a)) {
+    $search_errors[] = 'La data finale della chiamata non è valida.';
+}
+if ($search_data_da !== '' && $search_data_a !== '' && is_date_or_empty($search_data_da) && is_date_or_empty($search_data_a) && $search_data_da > $search_data_a) {
+    $search_errors[] = 'La data iniziale della chiamata non può essere successiva alla data finale.';
+}
 if (!is_time_minutes_or_empty($search_ora_da)) {
     $search_errors[] = 'Il campo “Dalle ore” deve contenere un orario valido nel formato ore:minuti.';
 }
@@ -133,8 +198,11 @@ if (!is_time_minutes_or_empty($search_ora_a)) {
 if ($search_ora_da !== '' && $search_ora_a !== '' && is_time_minutes_or_empty($search_ora_da) && is_time_minutes_or_empty($search_ora_a) && $search_ora_da > $search_ora_a) {
     $search_errors[] = 'L’orario iniziale non può essere successivo all’orario finale.';
 }
-if (!is_non_negative_integer_or_empty($search_durata_min)) {
-    $search_errors[] = 'Il campo “Durata minima - minuti” deve contenere un numero intero positivo o pari a zero.';
+if (!is_non_negative_integer_or_empty($search_durata_ore)) {
+    $search_errors[] = 'Il campo “Durata minima - ore” deve contenere un numero intero positivo o pari a zero.';
+}
+if (!is_duration_part_or_empty($search_durata_min)) {
+    $search_errors[] = 'Il campo “Durata minima - minuti” deve contenere un valore tra 0 e 59.';
 }
 if (!is_seconds_part_or_empty($search_durata_sec)) {
     $search_errors[] = 'Il campo “Durata minima - secondi” deve contenere un valore tra 0 e 59.';
@@ -224,6 +292,14 @@ if (empty($search_errors)) {
     }
 
     $where_sql = implode(' AND ', $where_clauses);
+    $has_call_row_filter = $search_data_da !== ''
+        || $search_data_a !== ''
+        || $search_ora_da !== ''
+        || $search_ora_a !== ''
+        || $search_durata_ore !== ''
+        || $search_durata_min !== ''
+        || $search_durata_sec !== ''
+        || $search_costo_max !== '';
     $has_any_filter = $search_contratto !== ''
         || $search_stato_numero !== ''
         || $search_piano !== ''
@@ -231,6 +307,7 @@ if (empty($search_errors)) {
         || $search_data_a !== ''
         || $search_ora_da !== ''
         || $search_ora_a !== ''
+        || $search_durata_ore !== ''
         || $search_durata_min !== ''
         || $search_durata_sec !== ''
         || $search_costo_max !== '';
@@ -313,23 +390,45 @@ if (empty($search_errors)) {
     }
 
     if ($count_only) {
-        $count_result = $conn->query("SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql");
-        $count_value = 0;
-        if ($count_result && ($count_row = $count_result->fetch_assoc())) {
-            $count_value = (int)($count_row['total_count'] ?? 0);
+        $count_value = null;
+
+        if (!$has_call_row_filter) {
+            $count_value = fast_contract_scoped_call_count(
+                $conn,
+                $search_contratto,
+                $search_stato_numero,
+                $search_piano
+            );
         }
+
+        if ($count_value === null) {
+            $count_result = $conn->query("SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql");
+            $count_value = 0;
+            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
+                $count_value = (int)($count_row['total_count'] ?? 0);
+            }
+        }
+
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['total_count' => $count_value]);
         exit;
     }
 
-    /* Il totale senza filtri è immediato. Con filtri viene calcolato da una
-       richiesta separata dopo aver già mostrato il primo blocco, così l'utente
-       vede subito il risultato e non attende il COUNT su milioni di righe. */
+    /* Senza filtri il totale arriva dalla chiave primaria. Nelle ricerche AJAX
+       il COUNT viene eseguito in parallelo dal browser e i risultati vengono
+       mostrati soltanto quando il totale è pronto. Nei caricamenti diretti della
+       pagina lo calcoliamo qui, evitando anche in quel caso un contatore parziale. */
     if (!$has_any_filter) {
         $total_count = fast_unfiltered_call_count($conn);
         if ($total_count === null) {
             $total_count = 0;
+        }
+    } elseif (!$is_xhr_request && !$skip_count) {
+        $total_count = !$has_call_row_filter
+            ? fast_contract_scoped_call_count($conn, $search_contratto, $search_stato_numero, $search_piano)
+            : null;
+        if ($total_count === null) {
+            $total_count = query_total_count($conn, "SELECT t.id FROM Telefonata t WHERE $where_sql");
         }
     } else {
         $total_count = null;
@@ -454,7 +553,12 @@ if ($ajax_rows) {
         </div>
         <div class="form-group duration-filter-group">
             <label>Durata minima chiamata:</label>
-            <div class="duration-range-control">
+            <div class="duration-range-control duration-three-part">
+                <div class="duration-segment">
+                    <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_ore) ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata minima in ore">
+                    <span class="duration-unit">h</span>
+                </div>
+                <span class="compound-control-divider" aria-hidden="true"></span>
                 <div class="duration-segment">
                     <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata minima in minuti">
                     <span class="duration-unit">min</span>
@@ -549,10 +653,41 @@ if ($ajax_rows) {
                     </table>
                 </div>
             </div>
-        <?php elseif ($search_contratto !== ''): ?>
-            <div class="alert alert-error">Nessuna chiamata trovata per numeri di telefono che contengono “<?= htmlspecialchars($search_contratto) ?>”. Controllare il valore digitato oppure modificare gli altri filtri.</div>
         <?php else: ?>
-            <div class="alert alert-error">Non sono presenti chiamate per i criteri selezionati.</div>
+            <?php
+            $telefonate_zero_criteria = [];
+            if ($search_contratto !== '') {
+                $telefonate_zero_criteria[] = 'numero chiamante che inizia con ' . $search_contratto;
+            }
+            if ($search_stato_numero === 'attivo') {
+                $telefonate_zero_criteria[] = 'stato del numero: attivo';
+            } elseif ($search_stato_numero === 'disattivato') {
+                $telefonate_zero_criteria[] = 'stato del numero: disattivato';
+            }
+            if ($search_piano === 'consumo') {
+                $telefonate_zero_criteria[] = 'piano tariffario: a consumo';
+            } elseif ($search_piano === 'ricarica') {
+                $telefonate_zero_criteria[] = 'piano tariffario: ricaricabile';
+            }
+            if ($search_data_da !== '' || $search_data_a !== '') {
+                $telefonate_zero_criteria[] = 'data chiamata: ' . ($search_data_da !== '' ? format_date_it($search_data_da) : 'inizio archivio') . ' - ' . ($search_data_a !== '' ? format_date_it($search_data_a) : 'oggi');
+            }
+            if ($search_ora_da !== '' || $search_ora_a !== '') {
+                $telefonate_zero_criteria[] = 'fascia oraria: ' . ($search_ora_da !== '' ? $search_ora_da : '00:00') . ' - ' . ($search_ora_a !== '' ? $search_ora_a : '23:59');
+            }
+            if ($duration_filter_active) {
+                $telefonate_zero_criteria[] = 'durata minima: ' . format_duration_filter_value($duration_threshold_seconds);
+            }
+            if ($search_costo_max !== '') {
+                $telefonate_zero_criteria[] = 'addebito massimo: € ' . str_replace('.', ',', $search_costo_max);
+            }
+            $telefonate_zero_message = build_filter_aware_no_results_message(
+                'Nessuna chiamata',
+                $telefonate_zero_criteria,
+                'Non sono presenti chiamate registrate.'
+            );
+            ?>
+            <div class="alert alert-error"><?= htmlspecialchars($telefonate_zero_message) ?></div>
         <?php endif; ?>
     </div>
 </div>

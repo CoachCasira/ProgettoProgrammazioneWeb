@@ -9192,3 +9192,41 @@ table.data-table td.table-align-center {
         grid-column: 1 / -1 !important;
     }
 }
+
+/* =========================================================
+   V68 - Placeholder data leggibile e scrollbar SIM coerente
+   ========================================================= */
+
+/* Il placeholder/data del calendario contiene lettere con discendente, come
+   la "g" di "gg/mm/aaaa". L'overflow verticale precedente ne tagliava la
+   parte inferiore: lasciamo quindi visibile il glifo e lo solleviamo appena. */
+.site-date-picker .site-picker-value {
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.38 !important;
+    padding-bottom: 0.08rem;
+    transform: translateY(-1px);
+}
+
+/* La vista tabellare SIM usa la stessa scrollbar sottile delle tabelle
+   Chiamate e Numeri, pur mantenendo lo scorrimento orizzontale. */
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container {
+    scrollbar-width: thin !important;
+    scrollbar-color: var(--secondary-color) #F0ECE8 !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar {
+    width: 0.7rem;
+    height: 0.7rem;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar-track {
+    background-color: #F0ECE8;
+    border-radius: 999px;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar-thumb {
+    background-color: var(--secondary-color);
+    border: 0;
+    border-radius: 999px;
+}

@@ -9316,3 +9316,194 @@ table.data-table td.table-align-center {
         grid-row: 5 !important;
     }
 }
+
+
+/* =========================================================
+   V70 - Responsive definitivo per finestre desktop ridotte
+   Il browser del progetto può avere un viewport CSS inferiore a 761 px
+   quando la finestra è ridotta o lo zoom/scaling di sistema è maggiore
+   del 100%. Per questo Numeri e SIM mantengono due colonne fino a 541 px,
+   come la pagina Chiamate, e passano a una sola colonna solo sugli schermi
+   realmente stretti.
+   ========================================================= */
+@media (min-width: 541px) and (max-width: 1180px) {
+    .compact-filter-form.contratti-filter-form,
+    .compact-filter-form.sim-filter-form {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        grid-auto-flow: row !important;
+        grid-auto-rows: auto !important;
+        gap: 0.9rem 1rem !important;
+        align-items: end !important;
+    }
+
+    .compact-filter-form.contratti-filter-form > *,
+    .compact-filter-form.sim-filter-form > * {
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    .compact-filter-form.contratti-filter-form .form-group,
+    .compact-filter-form.sim-filter-form .form-group {
+        display: block !important;
+        position: relative !important;
+    }
+
+    .compact-filter-form.contratti-filter-form .form-group > label,
+    .compact-filter-form.sim-filter-form .form-group > label {
+        min-height: 1.35rem !important;
+        margin: 0 0 0.42rem !important;
+        line-height: 1.2 !important;
+    }
+
+    .compact-filter-form.contratti-filter-form input,
+    .compact-filter-form.contratti-filter-form select,
+    .compact-filter-form.contratti-filter-form .custom-select,
+    .compact-filter-form.contratti-filter-form .custom-select-button,
+    .compact-filter-form.contratti-filter-form .duration-smart-control,
+    .compact-filter-form.sim-filter-form input,
+    .compact-filter-form.sim-filter-form select,
+    .compact-filter-form.sim-filter-form .custom-select,
+    .compact-filter-form.sim-filter-form .custom-select-button,
+    .compact-filter-form.sim-filter-form .multi-select-filter,
+    .compact-filter-form.sim-filter-form .multi-select-button {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Numeri telefonici: disposizione stabile a due colonne. */
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 1 / -1 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 3 !important;
+    }
+
+    .contratti-filter-form .residual-filter-group {
+        grid-column: 2 !important;
+        grid-row: 3 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 1 !important;
+        grid-row: 4 !important;
+    }
+
+    .contratti-filter-form .phone-duration-filter-group {
+        grid-column: 2 !important;
+        grid-row: 4 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 1 / -1 !important;
+        grid-row: 5 !important;
+    }
+
+    .contratti-filter-form > .btn-reset-filters {
+        grid-column: 1 !important;
+        grid-row: 6 !important;
+    }
+
+    .contratti-filter-form > .btn-filter-submit {
+        grid-column: 2 !important;
+        grid-row: 6 !important;
+    }
+
+    /* SIM: disposizione stabile a due colonne. */
+    .sim-filter-form .sim-code-filter-group {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-phone-filter-group {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+    }
+
+    .sim-filter-form .sim-state-filter-group {
+        grid-column: 1 !important;
+        grid-row: 2 !important;
+    }
+
+    .sim-filter-form .sim-type-filter-group {
+        grid-column: 2 !important;
+        grid-row: 2 !important;
+    }
+
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 1 / -1 !important;
+        grid-row: 3 !important;
+    }
+
+    .sim-filter-form .sim-plan-filter-group {
+        grid-column: 1 !important;
+        grid-row: 4 !important;
+    }
+
+    .sim-filter-form .sim-order-filter-group {
+        grid-column: 2 !important;
+        grid-row: 4 !important;
+    }
+
+    .sim-filter-form > .btn-reset-filters {
+        grid-column: 1 !important;
+        grid-row: 5 !important;
+    }
+
+    .sim-filter-form > .btn-filter-submit {
+        grid-column: 2 !important;
+        grid-row: 5 !important;
+    }
+
+    /* I range data usano tutta la cella e non comprimono le icone. */
+    .contratti-filter-form .compact-range-pair,
+    .sim-filter-form .compact-range-pair {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+        gap: 0.55rem !important;
+        width: 100% !important;
+        align-items: center !important;
+    }
+}
+
+/* Solo su viewport realmente piccoli i filtri diventano monocolonna. */
+@media (max-width: 540px) {
+    .compact-filter-form.contratti-filter-form,
+    .compact-filter-form.sim-filter-form {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 0.85rem !important;
+    }
+
+    .compact-filter-form.contratti-filter-form > *,
+    .compact-filter-form.sim-filter-form > * {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+        min-width: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
+    .contratti-filter-form .compact-range-pair,
+    .sim-filter-form .compact-range-pair {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    }
+}

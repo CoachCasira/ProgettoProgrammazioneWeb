@@ -958,29 +958,51 @@ if ($action === 'list' && empty($search_errors)) {
        record a ogni click. Il fallback mantiene la compatibilità con database
        sui quali lo script di ottimizzazione non è ancora stato importato. */
     $needs_sim_call_count = $search_ordine_sim === 'piu_chiamate';
-    $use_sim_statistics = $needs_sim_call_count && performance_table_exists($conn, 'StatisticheSIM');
+    $use_sim_statistics = $needs_sim_call_count
+        && performance_table_has_columns($conn, 'StatisticheSIM', ['codice', 'stato', 'numeroChiamate']);
+    /* Compatibilità con installazioni che non hanno ancora importato la tabella
+       StatisticheSIM. Se è disponibile il riepilogo per contratto lo usiamo
+       come fallback rapido, evitando centinaia di COUNT correlati sulla tabella
+       Telefonata. La tabella specifica per SIM rimane comunque la fonte esatta
+       e preferita. */
+    $use_contract_statistics = $needs_sim_call_count
+        && !$use_sim_statistics
+        && performance_table_has_columns($conn, 'StatisticheContratto', ['numero', 'numeroTelefonate']);
     $call_index_name = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_utenza_data')
         ? 'idx_telefonata_utenza_data'
         : (performance_index_exists($conn, 'Telefonata', 'idx_telefonata_utenza') ? 'idx_telefonata_utenza' : '');
     $call_index_hint = $call_index_name !== '' ? " FORCE INDEX (`$call_index_name`)" : '';
 
+    /* BINARY rende il confronto indipendente dalla collation con cui è stata
+       creata la tabella di riepilogo. In precedenza una collation differente da
+       quella delle tabelle SIM poteva far fallire soltanto l'ordinamento
+       "SIM con più chiamate", lasciando correttamente disponibile il totale ma
+       restituendo zero righe. */
     $active_statistics_join = $use_sim_statistics
-        ? " LEFT JOIN StatisticheSIM ss ON ss.codice = s.codice AND ss.stato = 'attive'"
-        : '';
+        ? " LEFT JOIN StatisticheSIM ss ON BINARY ss.codice = BINARY s.codice AND ss.stato = 'attive'"
+        : ($use_contract_statistics
+            ? " LEFT JOIN StatisticheContratto sc ON BINARY sc.numero = BINARY s.associataA"
+            : '');
     $disabled_statistics_join = $use_sim_statistics
-        ? " LEFT JOIN StatisticheSIM ss ON ss.codice = s.codice AND ss.stato = 'disattive'"
-        : '';
+        ? " LEFT JOIN StatisticheSIM ss ON BINARY ss.codice = BINARY s.codice AND ss.stato = 'disattive'"
+        : ($use_contract_statistics
+            ? " LEFT JOIN StatisticheContratto sc ON BINARY sc.numero = BINARY s.eraAssociataA"
+            : '');
 
     $active_call_count_sql = !$needs_sim_call_count
         ? "0"
         : ($use_sim_statistics
             ? "COALESCE(ss.numeroChiamate, 0)"
-            : "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.associataA AND t.data >= s.dataAttivazione)");
+            : ($use_contract_statistics
+                ? "COALESCE(sc.numeroTelefonate, 0)"
+                : "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.associataA AND t.data >= s.dataAttivazione)"));
     $disabled_call_count_sql = !$needs_sim_call_count
         ? "0"
         : ($use_sim_statistics
             ? "COALESCE(ss.numeroChiamate, 0)"
-            : "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.eraAssociataA AND t.data BETWEEN s.dataAttivazione AND s.dataDisattivazione)");
+            : ($use_contract_statistics
+                ? "COALESCE(sc.numeroTelefonate, 0)"
+                : "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.eraAssociataA AND t.data BETWEEN s.dataAttivazione AND s.dataDisattivazione)"));
 
     $sql_union = "
                     SELECT 'attive' AS _sim_state,

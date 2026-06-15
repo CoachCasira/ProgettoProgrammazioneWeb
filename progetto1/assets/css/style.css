@@ -7358,3 +7358,90 @@ select[data-scroll-select="true"].native-select-hidden {
     .contratti-filter-form > .btn-reset-filters       { grid-column: 1 / span 4 !important; grid-row: 3 !important; }
     .contratti-filter-form > .btn-filter-submit       { grid-column: 5 / span 4 !important; grid-row: 3 !important; }
 }
+
+/* =========================================================
+   V59 - Campi orari più leggibili nella ricerca chiamate
+   ========================================================= */
+
+/* Ogni metà del controllo orario mantiene spazio sufficiente per HH:MM,
+   icona nativa dell'orologio e pulsante di azzeramento. */
+.telefonate-filter-form .time-range-pair {
+    grid-template-columns: minmax(8rem, 1fr) auto minmax(8rem, 1fr) !important;
+}
+
+.telefonate-filter-form .time-range-pair .clearable-input {
+    position: relative;
+    overflow: hidden;
+}
+
+.telefonate-filter-form .time-range-pair .clearable-input input[type="time"] {
+    box-sizing: border-box;
+    padding-left: 0.72rem !important;
+    padding-right: 4.15rem !important;
+    text-align: left !important;
+    text-align-last: left !important;
+}
+
+.telefonate-filter-form .time-range-pair input[type="time"]::-webkit-datetime-edit {
+    width: auto;
+    min-width: 4.45rem;
+    text-align: left;
+}
+
+.telefonate-filter-form .time-range-pair input[type="time"]::-webkit-datetime-edit-fields-wrapper {
+    display: flex;
+    justify-content: flex-start;
+    width: auto;
+}
+
+.telefonate-filter-form .time-range-pair input[type="time"]::-webkit-calendar-picker-indicator {
+    margin: 0 0.28rem 0 auto;
+    flex: 0 0 auto;
+}
+
+.telefonate-filter-form .time-range-pair .clear-input-button {
+    right: 2.35rem;
+}
+
+/* Sul desktop il campo orario riceve una colonna in più; il piano tariffario
+   resta comunque abbastanza ampio per tutte le sue opzioni. */
+@media (min-width: 1181px) {
+    .telefonate-filter-form .time-filter-group {
+        grid-column: 1 / span 5 !important;
+    }
+
+    .telefonate-filter-form .call-plan-filter-group {
+        grid-column: 6 / span 3 !important;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 9 / span 3 !important;
+    }
+
+    .telefonate-filter-form .call-order-filter-group {
+        grid-column: 12 / span 3 !important;
+    }
+
+    .telefonate-filter-form > .btn-reset-filters {
+        grid-column: 15 / span 2 !important;
+    }
+
+    .telefonate-filter-form > .btn-filter-submit {
+        grid-column: 17 / span 2 !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .telefonate-filter-form .time-range-pair {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
+    }
+
+    .telefonate-filter-form .time-range-pair .clearable-input input[type="time"] {
+        padding-left: 0.48rem !important;
+        padding-right: 3.8rem !important;
+    }
+
+    .telefonate-filter-form .time-range-pair .clear-input-button {
+        right: 2.08rem;
+    }
+}

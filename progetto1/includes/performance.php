@@ -23,6 +23,62 @@ function performance_table_exists(mysqli $conn, string $table): bool
     return $cache[$table];
 }
 
+/**
+ * Verifica che una tabella di supporto contenga tutte le colonne richieste.
+ * Il controllo evita di usare tabelle di riepilogo create con versioni
+ * precedenti o importazioni incomplete, che altrimenti farebbero fallire la
+ * query principale e mostrerebbero un elenco vuoto.
+ */
+function performance_table_has_columns(mysqli $conn, string $table, array $columns): bool
+{
+    static $cache = [];
+
+    if (!preg_match('/^[A-Za-z0-9_]+$/', $table)) {
+        return false;
+    }
+
+    $normalized_columns = array_values(array_unique(array_filter(array_map(
+        static function ($column) {
+            $column = (string)$column;
+            return preg_match('/^[A-Za-z0-9_]+$/', $column) ? $column : null;
+        },
+        $columns
+    ))));
+
+    if (empty($normalized_columns) || !performance_table_exists($conn, $table)) {
+        return false;
+    }
+
+    sort($normalized_columns);
+    $cache_key = $table . ':' . implode(',', $normalized_columns);
+    if (array_key_exists($cache_key, $cache)) {
+        return $cache[$cache_key];
+    }
+
+    $result = $conn->query("SHOW COLUMNS FROM `$table`");
+    if (!$result) {
+        $cache[$cache_key] = false;
+        return false;
+    }
+
+    $available = [];
+    while ($row = $result->fetch_assoc()) {
+        if (isset($row['Field'])) {
+            $available[(string)$row['Field']] = true;
+        }
+    }
+
+    foreach ($normalized_columns as $column) {
+        if (!isset($available[$column])) {
+            $cache[$cache_key] = false;
+            return false;
+        }
+    }
+
+    $cache[$cache_key] = true;
+    return true;
+}
+
 
 function performance_index_exists(mysqli $conn, string $table, string $index): bool
 {

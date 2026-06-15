@@ -213,6 +213,13 @@
                     return;
                 }
                 refreshDeferredCount(form, targetSelector, requestId);
+                document.dispatchEvent(new CustomEvent('progweb:ajax-results-updated', {
+                    detail: {
+                        formId: form.id || '',
+                        targetSelector: targetSelector,
+                        liveSearch: Boolean(isLiveSearch)
+                    }
+                }));
             })
             .catch(function (error) {
                 if (error && error.name === 'AbortError') {
@@ -690,6 +697,130 @@
             });
     }
 
+
+    function restoreResultsBlock(container, position) {
+        var formSelector = container ? container.dataset.lazyForm : '';
+        var form = formSelector ? document.querySelector(formSelector) : null;
+        var lists = container ? container.querySelectorAll('[data-lazy-list]') : [];
+
+        if (!container || !form || lists.length === 0 || !window.fetch || !window.FormData) {
+            return Promise.resolve({ ok: false, startOffset: 0 });
+        }
+        if (container.dataset.loadingRows === 'true') {
+            return Promise.resolve({ ok: false, startOffset: parseInt(container.dataset.prevOffset || '0', 10) || 0 });
+        }
+
+        var anchorOffset = Math.max(0, parseInt((position && position.anchorOffset) || '0', 10) || 0);
+        var limit = parseInt(container.dataset.limit || '50', 10);
+        if (!Number.isFinite(limit) || limit <= 0) {
+            limit = 50;
+        }
+
+        var total = parseInt(container.dataset.totalCount || ((position && position.totalCount) || '0'), 10);
+        if (!Number.isFinite(total) || total < 0) {
+            total = 0;
+        }
+
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        var viewKey = viewRoot ? (viewRoot.dataset.viewKey || '') : '';
+        var useReverse = viewKey === 'telefonate' && position && position.fromEnd && total > 0;
+        var reverseOffset = useReverse ? Math.max(0, total - anchorOffset - limit) : 0;
+
+        container.dataset.loadingRows = 'true';
+        container.dataset.restoringSessionRows = 'true';
+        container.dataset.suppressLazyUntil = String(Date.now() + 1200);
+        container.classList.add('table-loading-more', 'results-restoring-session');
+
+        var request = buildRequest(form, {
+            ajax_rows: '1',
+            offset: useReverse ? '0' : String(anchorOffset),
+            limit: String(limit),
+            direction: 'next',
+            skip_count: '1',
+            jump_last: useReverse ? '1' : '0',
+            reverse_offset: String(reverseOffset)
+        });
+
+        return fetch(request.url, request.options)
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                if (!payload || (!payload.html && !payload.table_html)) {
+                    return { ok: false, startOffset: anchorOffset };
+                }
+
+                lists.forEach(function (list) {
+                    var listType = list.dataset.lazyList || 'cards';
+                    var fragment = listType === 'table' ? (payload.table_html || '') : (payload.html || '');
+                    list.innerHTML = fragment;
+                });
+
+                var loadedCount = Math.max(0, lists[0] ? lists[0].children.length : 0);
+                var startOffset;
+
+                if (useReverse) {
+                    startOffset = Math.max(0, total - reverseOffset - loadedCount);
+                    container.dataset.prevOffset = String(startOffset);
+                    container.dataset.nextOffset = String(Math.min(total, startOffset + loadedCount));
+                    container.dataset.hasPrev = payload.has_prev ? '1' : (startOffset > 0 ? '1' : '0');
+                    container.dataset.hasMore = startOffset + loadedCount < total ? '1' : '0';
+                    container.dataset.fromEnd = '1';
+                    container.dataset.reverseOffset = String(
+                        Object.prototype.hasOwnProperty.call(payload, 'reverse_offset')
+                            ? payload.reverse_offset
+                            : reverseOffset + loadedCount
+                    );
+                } else {
+                    startOffset = Object.prototype.hasOwnProperty.call(payload, 'prev_offset') && payload.prev_offset !== null
+                        ? Math.max(0, parseInt(payload.prev_offset, 10) || 0)
+                        : anchorOffset;
+                    container.dataset.prevOffset = String(startOffset);
+                    container.dataset.nextOffset = String(
+                        Object.prototype.hasOwnProperty.call(payload, 'next_offset') && payload.next_offset !== null
+                            ? payload.next_offset
+                            : startOffset + loadedCount
+                    );
+                    container.dataset.hasPrev = payload.has_prev ? '1' : (startOffset > 0 ? '1' : '0');
+                    container.dataset.hasMore = payload.has_more ? '1' : '0';
+                    delete container.dataset.fromEnd;
+                    delete container.dataset.reverseOffset;
+                }
+
+                if (Object.prototype.hasOwnProperty.call(payload, 'total_count')) {
+                    container.dataset.totalCount = String(payload.total_count);
+                } else if (total > 0) {
+                    container.dataset.totalCount = String(total);
+                }
+
+                container.scrollTop = 0;
+                refreshDynamicBehaviors();
+
+                if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
+                    window.ProgWeb.updateResultsNavigation(viewRoot);
+                }
+                if (window.ProgWeb && typeof window.ProgWeb.updateResultsScrollTopControl === 'function') {
+                    window.ProgWeb.updateResultsScrollTopControl(viewRoot);
+                }
+
+                return { ok: true, startOffset: startOffset };
+            })
+            .catch(function () {
+                return { ok: false, startOffset: anchorOffset };
+            })
+            .finally(function () {
+                container.dataset.loadingRows = 'false';
+                container.dataset.restoringSessionRows = 'false';
+                container.classList.remove('table-loading-more', 'results-restoring-session');
+                window.setTimeout(function () {
+                    delete container.dataset.suppressLazyUntil;
+                }, 900);
+            });
+    }
+
     function initLazyTables(root) {
         var scope = root || document;
         scope.querySelectorAll('[data-lazy-container="true"]:not([data-lazy-ready="true"])').forEach(function (container) {
@@ -777,6 +908,7 @@
     window.ProgWeb.loadMoreRows = loadMoreRows;
     window.ProgWeb.resetResultsToFirstBlock = resetResultsToFirstBlock;
     window.ProgWeb.jumpResultsToLastBlock = jumpResultsToLastBlock;
+    window.ProgWeb.restoreResultsBlock = restoreResultsBlock;
     document.addEventListener('DOMContentLoaded', function () {
         initLazyTables(document);
         var form = document.querySelector('#telefonate-filter');

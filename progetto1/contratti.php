@@ -450,7 +450,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results" data-plan-residual-sync="true">
+    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="POST" action="contratti.php" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results" data-plan-residual-sync="true" data-filter-session-key="contratti">
         <div class="form-group phone-number-filter-group">
             <label for="numero">Numero di telefono:</label>
             <input type="text" id="numero" name="numero" value="<?= htmlspecialchars($search_numero) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -513,7 +513,8 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="<?= htmlspecialchars($search_min_chiamate == 'custom' ? $search_min_chiamate_custom : '') ?>" placeholder="Scrivi numero minimo" inputmode="numeric" autocomplete="off" data-custom-threshold-input <?= $search_min_chiamate == 'custom' ? '' : 'disabled' ?>>
             </div>
         </div>
-        <button type="submit" class="btn">Cerca</button>
+        <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
+        <button type="submit" class="btn btn-filter-submit">Cerca</button>
     </form>
 </div>
 

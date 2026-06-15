@@ -984,7 +984,7 @@ if ($ajax_rows) {
 
     <div class="sticky-data-panel">
     <div class="search-filter">
-        <form id="sim-filter" class="compact-filter-form sim-filter-form" method="POST" action="sim.php" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" data-sim-state-filter="true">
+        <form id="sim-filter" class="compact-filter-form sim-filter-form" method="POST" action="sim.php" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" data-sim-state-filter="true" data-filter-session-key="sim">
             <div class="form-group sim-code-filter-group">
                 <label for="codice">Codice SIM:</label>
                 <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -1040,7 +1040,8 @@ if ($ajax_rows) {
                     <option value="eSIM" <?= $search_tipo == 'eSIM' ? 'selected' : '' ?>>Virtuale eSIM</option>
                 </select>
             </div>
-            <button type="submit" class="btn">Cerca SIM</button>
+            <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
+            <button type="submit" class="btn btn-filter-submit">Cerca SIM</button>
         </form>
     </div>
 

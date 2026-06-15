@@ -6895,3 +6895,261 @@ select[data-scroll-select="true"].native-select-hidden {
         gap: 0.28rem;
     }
 }
+
+/* =========================================================
+   V55 - Filtri persistenti, azzeramento e toolbar responsive
+   ========================================================= */
+
+.btn-reset-filters {
+    background-color: #A89A91;
+    color: #FFFFFF;
+    border-color: #A89A91;
+    min-height: 2.74rem;
+    padding-inline: 0.85rem;
+}
+
+.btn-reset-filters:hover,
+.btn-reset-filters:focus-visible {
+    background-color: #8F8178;
+    border-color: #8F8178;
+}
+
+.btn-reset-filters:disabled,
+.btn-reset-filters.is-disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.compact-filter-form > .btn-reset-filters,
+.compact-filter-form > .btn-filter-submit {
+    width: 100%;
+    min-width: 0;
+    align-self: end;
+}
+
+/* Desktop Numeri: Azzera filtri precede Cerca senza creare una terza riga. */
+@media (min-width: 1100px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-status-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-date-filter-group { grid-column: 5 / span 4 !important; grid-row: 1 !important; }
+    .contratti-filter-form .residual-filter-group { grid-column: 9 / span 4 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-plan-filter-group { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .order-filter-group { grid-column: 3 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .traffic-filter-group { grid-column: 6 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form > .btn-reset-filters { grid-column: 9 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form > .btn-filter-submit { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+}
+
+/* Desktop Chiamate: reset immediatamente prima dell'azione di ricerca. */
+@media (min-width: 1181px) {
+    .telefonate-filter-form {
+        grid-template-columns: repeat(18, minmax(0, 1fr)) !important;
+    }
+
+    .telefonate-filter-form .call-number-filter-group { grid-column: 1 / span 4 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .call-state-filter-group { grid-column: 5 / span 4 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .period-filter-group { grid-column: 9 / span 5 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .duration-filter-group { grid-column: 14 / span 5 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .time-filter-group { grid-column: 1 / span 4 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-plan-filter-group { grid-column: 5 / span 4 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .cost-filter-group { grid-column: 9 / span 3 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-order-filter-group { grid-column: 12 / span 3 !important; grid-row: 2 !important; }
+    .telefonate-filter-form > .btn-reset-filters { grid-column: 15 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form > .btn-filter-submit { grid-column: 17 / span 2 !important; grid-row: 2 !important; }
+}
+
+/* Desktop SIM: tutti i controlli restano su una sola riga. */
+@media (min-width: 1201px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(20, minmax(0, 1fr)) !important;
+        column-gap: 0.7rem !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 4 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 7 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 10 / span 5 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 15 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form > .btn-reset-filters { grid-column: 17 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form > .btn-filter-submit { grid-column: 19 / span 2 !important; grid-row: 1 !important; }
+
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) {
+        grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+    }
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-code-filter-group { grid-column: 1 / span 3 !important; }
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-state-filter-group { grid-column: 4 / span 3 !important; }
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) .sim-type-filter-group { grid-column: 7 / span 2 !important; }
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn-reset-filters { grid-column: 9 / span 2 !important; }
+    .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn-filter-submit { grid-column: 11 / span 2 !important; }
+}
+
+/* Fascia intermedia Numeri: disposizione compatta su tre righe, senza pulsanti isolati. */
+@media (min-width: 901px) and (max-width: 1099px) {
+    .contratti-filter-form {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+    .contratti-filter-form .phone-number-filter-group { grid-column: 1 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-status-filter-group { grid-column: 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-date-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .residual-filter-group { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .phone-plan-filter-group { grid-column: 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .order-filter-group { grid-column: 4 !important; grid-row: 2 !important; }
+    .contratti-filter-form .traffic-filter-group { grid-column: 1 / span 2 !important; grid-row: 3 !important; }
+    .contratti-filter-form > .btn-reset-filters { grid-column: 3 !important; grid-row: 3 !important; }
+    .contratti-filter-form > .btn-filter-submit { grid-column: 4 !important; grid-row: 3 !important; }
+}
+
+/* Fascia intermedia Chiamate: reset e ricerca rimangono affiancati. */
+@media (min-width: 901px) and (max-width: 1180px) {
+    .telefonate-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+    .telefonate-filter-form .form-group,
+    .telefonate-filter-form > .btn-reset-filters,
+    .telefonate-filter-form > .btn-filter-submit {
+        grid-column: span 1 !important;
+        grid-row: auto !important;
+    }
+}
+
+/* Fascia intermedia SIM: periodo piu compatto e reset sulla stessa riga di Cerca. */
+@media (min-width: 901px) and (max-width: 1200px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        column-gap: 0.65rem !important;
+    }
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 5 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 7 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 1 / span 4 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn-reset-filters { grid-column: 5 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn-filter-submit { grid-column: 7 / span 2 !important; grid-row: 2 !important; }
+}
+
+@media (max-width: 900px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .contratti-filter-form .form-group,
+    .telefonate-filter-form .form-group,
+    .sim-filter-form .form-group {
+        grid-column: span 1 !important;
+        grid-row: auto !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group,
+    .contratti-filter-form .residual-filter-group,
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .duration-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 1 / -1 !important;
+    }
+
+    .compact-filter-form > .btn-reset-filters {
+        grid-column: 1 !important;
+        grid-row: auto !important;
+    }
+    .compact-filter-form > .btn-filter-submit {
+        grid-column: 2 !important;
+        grid-row: auto !important;
+    }
+}
+
+@media (max-width: 560px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        grid-template-columns: 1fr !important;
+    }
+    .contratti-filter-form .form-group,
+    .telefonate-filter-form .form-group,
+    .sim-filter-form .form-group,
+    .compact-filter-form > .btn-reset-filters,
+    .compact-filter-form > .btn-filter-submit {
+        grid-column: 1 !important;
+    }
+}
+
+/* Toolbar SIM: nella fascia ridotta resta su una sola riga; su mobile i
+   comandi vengono prima e la navigazione risultati subito sotto. */
+@media (min-width: 761px) and (max-width: 1100px) {
+    .sim-toolbar.results-actions-row {
+        flex-wrap: nowrap !important;
+        gap: 0.55rem !important;
+    }
+
+    .sim-toolbar-left {
+        flex: 1 1 auto;
+        flex-wrap: nowrap !important;
+        gap: 0.45rem !important;
+        min-width: 0;
+    }
+
+    .sim-toolbar-left .sim-toolbar-title {
+        display: none;
+    }
+
+    .sim-toolbar .results-navigation {
+        gap: 0.35rem;
+        white-space: nowrap;
+    }
+
+    .sim-results-tools {
+        display: flex;
+        flex: 0 0 auto;
+        flex-wrap: nowrap !important;
+        gap: 0.45rem !important;
+        width: auto !important;
+    }
+
+    .sim-results-tools .btn {
+        min-height: 2.55rem;
+        padding: 0.58rem 0.72rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 760px) {
+    .sim-toolbar.results-actions-row {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.65rem;
+    }
+
+    .sim-toolbar .sim-results-tools {
+        order: 1;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0.45rem;
+        width: 100%;
+    }
+
+    .sim-toolbar .sim-results-tools .btn {
+        width: 100%;
+        min-width: 0;
+        padding-inline: 0.4rem;
+        font-size: 0.76rem;
+    }
+
+    .sim-toolbar .sim-toolbar-left {
+        order: 2;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .sim-toolbar-left .sim-toolbar-title {
+        display: none;
+    }
+}

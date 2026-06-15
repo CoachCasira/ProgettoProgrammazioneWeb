@@ -431,7 +431,7 @@ if ($ajax_rows) {
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="telefonate-filter" class="compact-filter-form telefonate-filter-form" method="POST" action="telefonate.php" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results">
+    <form id="telefonate-filter" class="compact-filter-form telefonate-filter-form" method="POST" action="telefonate.php" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results" data-filter-session-key="telefonate">
         <div class="form-group call-number-filter-group">
             <label for="contratto">Numero chiamante:</label>
             <input type="text" id="contratto" name="contratto" value="<?= htmlspecialchars($search_contratto) ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -497,7 +497,8 @@ if ($ajax_rows) {
                 <option value="costo_asc" <?= $search_ordine === 'costo_asc' ? 'selected' : '' ?>>Addebito minore</option>
             </select>
         </div>
-        <button type="submit" class="btn">Filtra chiamate</button>
+        <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
+        <button type="submit" class="btn btn-filter-submit">Filtra chiamate</button>
     </form>
 </div>
 

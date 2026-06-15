@@ -2631,8 +2631,539 @@
         input.addEventListener('change', clearPreviousResultsWhenEmpty);
     }
 
+
+    /* =========================================================
+       Stato dei filtri e posizione dei risultati nella sessione
+       ========================================================= */
+    var FILTER_SESSION_PREFIX = 'progweb:filter-session:v1:';
+    var filterDefaultStates = new WeakMap();
+    var pendingFilterRestores = Object.create(null);
+    var filterSaveTimers = new WeakMap();
+    var filterSessionGlobalsReady = false;
+
+    function getFilterSessionStorageKey(form) {
+        var key = form ? (form.dataset.filterSessionKey || '') : '';
+        return key ? FILTER_SESSION_PREFIX + key : '';
+    }
+
+    function readFilterSessionState(form) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return null;
+        }
+        try {
+            var parsed = JSON.parse(window.sessionStorage.getItem(key) || 'null');
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (error) {
+            window.sessionStorage.removeItem(key);
+            return null;
+        }
+    }
+
+    function writeFilterSessionState(form, state) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(key, JSON.stringify(state));
+        } catch (error) {
+            /* Il sito resta pienamente utilizzabile anche se lo storage non e disponibile. */
+        }
+    }
+
+    function removeFilterSessionState(form) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.removeItem(key);
+        } catch (error) {
+            /* Nessuna azione necessaria. */
+        }
+    }
+
+    function isPersistableFilterControl(control) {
+        if (!control || !control.name || control.matches('[data-export-submit="true"]')) {
+            return false;
+        }
+        var type = (control.type || '').toLowerCase();
+        return ['submit', 'button', 'reset', 'image', 'file'].indexOf(type) === -1;
+    }
+
+    function captureFilterValues(form) {
+        var values = Object.create(null);
+        if (!form) {
+            return values;
+        }
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (!isPersistableFilterControl(control)) {
+                return;
+            }
+            var name = control.name;
+            if (!Object.prototype.hasOwnProperty.call(values, name)) {
+                values[name] = [];
+            }
+
+            var type = (control.type || '').toLowerCase();
+            if (type === 'checkbox' || type === 'radio') {
+                if (control.checked) {
+                    values[name].push(control.value);
+                }
+                return;
+            }
+
+            if (control instanceof HTMLSelectElement && control.multiple) {
+                Array.prototype.forEach.call(control.options, function (option) {
+                    if (option.selected) {
+                        values[name].push(option.value);
+                    }
+                });
+                return;
+            }
+
+            values[name] = [control.value || ''];
+        });
+
+        return values;
+    }
+
+    function applyFilterValues(form, values) {
+        if (!form || !values || typeof values !== 'object') {
+            return;
+        }
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (!isPersistableFilterControl(control) || !Object.prototype.hasOwnProperty.call(values, control.name)) {
+                return;
+            }
+            var savedValues = Array.isArray(values[control.name]) ? values[control.name] : [values[control.name]];
+            var type = (control.type || '').toLowerCase();
+
+            if (type === 'checkbox' || type === 'radio') {
+                control.checked = savedValues.indexOf(control.value) !== -1;
+                return;
+            }
+
+            if (control instanceof HTMLSelectElement && control.multiple) {
+                Array.prototype.forEach.call(control.options, function (option) {
+                    option.selected = savedValues.indexOf(option.value) !== -1;
+                });
+                return;
+            }
+
+            control.value = savedValues.length ? savedValues[0] : '';
+        });
+    }
+
+    function stableFilterValuesString(values) {
+        var normalized = {};
+        Object.keys(values || {}).sort().forEach(function (key) {
+            normalized[key] = (values[key] || []).slice().sort();
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function updateFilterResetButton(form) {
+        if (!form) {
+            return;
+        }
+        var button = form.querySelector('[data-filter-reset="true"]');
+        var defaults = filterDefaultStates.get(form);
+        if (!button || !defaults) {
+            return;
+        }
+        var isDefault = stableFilterValuesString(captureFilterValues(form)) === stableFilterValuesString(defaults);
+        button.disabled = isDefault;
+        button.classList.toggle('is-disabled', isDefault);
+        button.setAttribute('aria-disabled', isDefault ? 'true' : 'false');
+    }
+
+    function getResultsRootForFilterForm(form) {
+        var selector = form ? (form.dataset.updateTarget || '') : '';
+        return selector ? document.querySelector(selector) : null;
+    }
+
+    function getActiveLazyList(container) {
+        if (!container) {
+            return null;
+        }
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        var currentView = viewRoot ? (viewRoot.dataset.currentView || 'cards') : 'cards';
+        var listType = currentView === 'table' ? 'table' : 'cards';
+        return container.querySelector('[data-view-panel="' + currentView + '"] [data-lazy-list="' + listType + '"]')
+            || container.querySelector('[data-lazy-list="' + listType + '"]');
+    }
+
+    function getResultsContentTop(container) {
+        var rect = container.getBoundingClientRect();
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        if (viewRoot && viewRoot.dataset.currentView === 'table') {
+            var head = container.querySelector('[data-view-panel="table"] thead');
+            if (head) {
+                return rect.top + head.getBoundingClientRect().height;
+            }
+        }
+        return rect.top;
+    }
+
+    function captureFilterResultsPosition(form) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container) {
+            return {
+                anchorOffset: 0,
+                anchorViewportOffset: 0,
+                scrollTop: 0,
+                scrollLeft: 0,
+                windowScrollX: window.pageXOffset || 0,
+                windowScrollY: window.pageYOffset || 0
+            };
+        }
+
+        var list = getActiveLazyList(container);
+        var items = list ? Array.prototype.slice.call(list.children) : [];
+        var contentTop = getResultsContentTop(container);
+        var containerRect = container.getBoundingClientRect();
+        var anchorIndex = 0;
+        var anchorViewportOffset = 0;
+
+        for (var index = 0; index < items.length; index += 1) {
+            var itemRect = items[index].getBoundingClientRect();
+            if (itemRect.bottom > contentTop + 1 && itemRect.top < containerRect.bottom) {
+                anchorIndex = index;
+                anchorViewportOffset = itemRect.top - contentTop;
+                break;
+            }
+        }
+
+        var loadedStart = parseInt(container.dataset.prevOffset || '0', 10);
+        if (!Number.isFinite(loadedStart) || loadedStart < 0) {
+            loadedStart = 0;
+        }
+        var totalCount = parseInt(container.dataset.totalCount || '0', 10);
+
+        return {
+            anchorOffset: loadedStart + anchorIndex,
+            anchorViewportOffset: anchorViewportOffset,
+            scrollTop: container.scrollTop,
+            scrollLeft: container.scrollLeft,
+            windowScrollX: window.pageXOffset || 0,
+            windowScrollY: window.pageYOffset || 0,
+            fromEnd: container.dataset.fromEnd === '1',
+            totalCount: Number.isFinite(totalCount) ? totalCount : 0
+        };
+    }
+
+    function saveFilterSessionState(form, preserveStoredPosition) {
+        if (!form || form.dataset.sessionResetting === 'true') {
+            return;
+        }
+        var previous = readFilterSessionState(form) || {};
+        var position = preserveStoredPosition && previous.position
+            ? previous.position
+            : captureFilterResultsPosition(form);
+        writeFilterSessionState(form, {
+            fields: captureFilterValues(form),
+            position: position,
+            savedAt: Date.now()
+        });
+        updateFilterResetButton(form);
+    }
+
+    function scheduleFilterSessionSave(form) {
+        if (!form || form.dataset.sessionRestoring === 'true' || form.dataset.sessionResetting === 'true') {
+            return;
+        }
+        var previousTimer = filterSaveTimers.get(form);
+        if (previousTimer) {
+            window.clearTimeout(previousTimer);
+        }
+        var timer = window.setTimeout(function () {
+            filterSaveTimers.delete(form);
+            saveFilterSessionState(form, false);
+        }, 180);
+        filterSaveTimers.set(form, timer);
+    }
+
+    function synchronizeFilterFormUi(form) {
+        if (!form) {
+            return;
+        }
+
+        if (form.matches('.contratti-filter-form')) {
+            delete form.dataset.planAutoSet;
+            delete form.dataset.planPreviousValue;
+            var plan = form.querySelector('#tipo');
+            var residual = form.querySelector('#residuo');
+            if (plan) {
+                setDependencyLocked(plan, false);
+            }
+            if (residual) {
+                setSelectOptionDisabled(residual, [
+                    'credito_basso',
+                    'credito_disponibile',
+                    'minuti_bassi',
+                    'minuti_disponibili'
+                ], false);
+            }
+            applyPhonePlanResidualDependencies(form, null);
+            updatePhoneDateLabel(form);
+            var threshold = form.querySelector('[data-custom-threshold-select]');
+            if (threshold) {
+                toggleCustomThreshold(threshold, false);
+            }
+        }
+
+        if (form.matches('.sim-filter-form')) {
+            applySimState(form, getSelectedSimStates(form));
+        }
+
+        form.querySelectorAll('select').forEach(function (select) {
+            updateCustomSelect(select);
+        });
+        form.querySelectorAll('input[data-clearable="true"]').forEach(function (input) {
+            updateClearButton(input);
+        });
+        updateFilterResetButton(form);
+        updateStickyLayout();
+    }
+
+    function positionRestoredResults(form, position, startOffset) {
+        return new Promise(function (resolve) {
+            var resultsRoot = getResultsRootForFilterForm(form);
+            var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+            if (!container || !position) {
+                resolve(false);
+                return;
+            }
+
+            var list = getActiveLazyList(container);
+            var items = list ? Array.prototype.slice.call(list.children) : [];
+            var firstOffset = Number.isFinite(startOffset) ? startOffset : parseInt(container.dataset.prevOffset || '0', 10);
+            var itemIndex = Math.max(0, Math.min(items.length - 1, (parseInt(position.anchorOffset || '0', 10) || 0) - firstOffset));
+
+            container.scrollTop = 0;
+            container.scrollLeft = parseInt(position.scrollLeft || '0', 10) || 0;
+
+            window.requestAnimationFrame(function () {
+                if (items.length && items[itemIndex]) {
+                    var contentTop = getResultsContentTop(container);
+                    var currentOffset = items[itemIndex].getBoundingClientRect().top - contentTop;
+                    var desiredOffset = Number(position.anchorViewportOffset || 0);
+                    container.scrollTop = Math.max(0, container.scrollTop + currentOffset - desiredOffset);
+                } else {
+                    container.scrollTop = Math.max(0, parseInt(position.scrollTop || '0', 10) || 0);
+                }
+                container.scrollLeft = Math.max(0, parseInt(position.scrollLeft || '0', 10) || 0);
+                window.scrollTo(
+                    Math.max(0, parseInt(position.windowScrollX || '0', 10) || 0),
+                    Math.max(0, parseInt(position.windowScrollY || '0', 10) || 0)
+                );
+
+                window.requestAnimationFrame(function () {
+                    container.scrollLeft = Math.max(0, parseInt(position.scrollLeft || '0', 10) || 0);
+                    window.scrollTo(
+                        Math.max(0, parseInt(position.windowScrollX || '0', 10) || 0),
+                        Math.max(0, parseInt(position.windowScrollY || '0', 10) || 0)
+                    );
+                    resolve(true);
+                });
+            });
+        });
+    }
+
+    function restoreFilterResultsPosition(form, position) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container || !position) {
+            return Promise.resolve(false);
+        }
+
+        var anchorOffset = Math.max(0, parseInt(position.anchorOffset || '0', 10) || 0);
+        var restorePromise;
+        if (anchorOffset > 0 && window.ProgWeb && typeof window.ProgWeb.restoreResultsBlock === 'function') {
+            restorePromise = window.ProgWeb.restoreResultsBlock(container, position);
+        } else {
+            restorePromise = Promise.resolve({ ok: true, startOffset: 0 });
+        }
+
+        return restorePromise.then(function (result) {
+            var startOffset = result && Number.isFinite(result.startOffset) ? result.startOffset : 0;
+            return positionRestoredResults(form, position, startOffset).then(function () {
+                return Boolean(result && result.ok !== false);
+            });
+        });
+    }
+
+    function handleFilterReset(form) {
+        var defaults = filterDefaultStates.get(form);
+        if (!defaults) {
+            return;
+        }
+
+        form.dataset.sessionResetting = 'true';
+        form.dataset.sessionRestoring = 'false';
+        delete pendingFilterRestores[form.id];
+        removeFilterSessionState(form);
+        applyFilterValues(form, defaults);
+        synchronizeFilterFormUi(form);
+
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else {
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        }
+    }
+
+    function prepareFilterSessionForms(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-filter-session-key]:not([data-filter-session-ready="true"])').forEach(function (form) {
+            form.dataset.filterSessionReady = 'true';
+            filterDefaultStates.set(form, captureFilterValues(form));
+
+            var saved = readFilterSessionState(form);
+            if (saved && saved.fields) {
+                applyFilterValues(form, saved.fields);
+                pendingFilterRestores[form.id] = saved.position || null;
+                form.dataset.sessionRestoring = 'true';
+                form.dataset.filterSessionNeedsSync = 'true';
+            }
+
+            form.addEventListener('input', function () {
+                updateFilterResetButton(form);
+                scheduleFilterSessionSave(form);
+            });
+            form.addEventListener('change', function () {
+                updateFilterResetButton(form);
+                scheduleFilterSessionSave(form);
+            });
+            form.addEventListener('submit', function () {
+                if (form.dataset.sessionResetting === 'true') {
+                    return;
+                }
+                saveFilterSessionState(form, form.dataset.sessionRestoring === 'true');
+            });
+
+            var resetButton = form.querySelector('[data-filter-reset="true"]');
+            if (resetButton) {
+                resetButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    handleFilterReset(form);
+                });
+            }
+        });
+    }
+
+    function attachFilterPositionTracking(form) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container || container.dataset.filterPositionReady === 'true') {
+            return;
+        }
+        container.dataset.filterPositionReady = 'true';
+        container.addEventListener('scroll', function () {
+            scheduleFilterSessionSave(form);
+        }, { passive: true });
+    }
+
+    function finalizeFilterSessionForms(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-filter-session-key]').forEach(function (form) {
+            if (form.dataset.filterSessionNeedsSync === 'true') {
+                synchronizeFilterFormUi(form);
+                delete form.dataset.filterSessionNeedsSync;
+            } else {
+                updateFilterResetButton(form);
+            }
+            attachFilterPositionTracking(form);
+
+            if (Object.prototype.hasOwnProperty.call(pendingFilterRestores, form.id)
+                    && form.dataset.filterSessionRestoreStarted !== 'true') {
+                form.dataset.filterSessionRestoreStarted = 'true';
+                window.setTimeout(function () {
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                    }
+                }, 0);
+            }
+        });
+    }
+
+    function saveAllFilterSessionStates() {
+        document.querySelectorAll('form[data-filter-session-key]').forEach(function (form) {
+            if (form.dataset.sessionRestoring !== 'true' && form.dataset.sessionResetting !== 'true') {
+                saveFilterSessionState(form, false);
+            }
+        });
+    }
+
+    function ensureFilterSessionGlobalListeners() {
+        if (filterSessionGlobalsReady) {
+            return;
+        }
+        filterSessionGlobalsReady = true;
+
+        document.addEventListener('progweb:ajax-results-updated', function (event) {
+            var detail = event.detail || {};
+            var form = detail.formId ? document.getElementById(detail.formId) : null;
+            if (!form || !form.matches('[data-filter-session-key]')) {
+                return;
+            }
+
+            attachFilterPositionTracking(form);
+
+            if (form.dataset.sessionResetting === 'true') {
+                var resetRoot = getResultsRootForFilterForm(form);
+                var resetContainer = resetRoot ? resetRoot.querySelector('[data-lazy-container="true"]') : null;
+                if (resetContainer) {
+                    resetContainer.scrollTop = 0;
+                    resetContainer.scrollLeft = 0;
+                }
+                form.dataset.sessionResetting = 'false';
+                delete form.dataset.filterSessionRestoreStarted;
+                removeFilterSessionState(form);
+                updateFilterResetButton(form);
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(pendingFilterRestores, form.id)) {
+                var position = pendingFilterRestores[form.id];
+                delete pendingFilterRestores[form.id];
+                restoreFilterResultsPosition(form, position).finally(function () {
+                    form.dataset.sessionRestoring = 'false';
+                    delete form.dataset.filterSessionRestoreStarted;
+                    saveFilterSessionState(form, false);
+                });
+                return;
+            }
+
+            saveFilterSessionState(form, false);
+        });
+
+        var windowScrollTimer = null;
+        window.addEventListener('scroll', function () {
+            if (windowScrollTimer) {
+                window.clearTimeout(windowScrollTimer);
+            }
+            windowScrollTimer = window.setTimeout(saveAllFilterSessionStates, 220);
+        }, { passive: true });
+        window.addEventListener('pagehide', saveAllFilterSessionStates);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                saveAllFilterSessionStates();
+            }
+        });
+    }
+
     function initDynamicBehaviors(root) {
         var scope = root || document;
+        ensureFilterSessionGlobalListeners();
+        prepareFilterSessionForms(scope);
         initAlerts(scope);
         initScrollableSelects(scope);
         initPhonePlanResidualDependencies(scope);
@@ -2660,6 +3191,7 @@
         if (window.ProgWeb && typeof window.ProgWeb.initLazyTables === 'function') {
             window.ProgWeb.initLazyTables(scope);
         }
+        finalizeFilterSessionForms(scope);
     }
 
     window.ProgWeb = window.ProgWeb || {};

@@ -212,9 +212,36 @@ $search_tipo = trim($_POST['tipo'] ?? $_GET['tipo'] ?? '');
 $search_stato_numero = trim($_POST['stato_numero'] ?? $_GET['stato_numero'] ?? '');
 $search_min_chiamate = trim($_POST['min_chiamate'] ?? $_GET['min_chiamate'] ?? '');
 $search_min_chiamate_custom = trim($_POST['min_chiamate_custom'] ?? $_GET['min_chiamate_custom'] ?? '');
+$search_durata_preset = trim($_POST['durata_preset'] ?? $_GET['durata_preset'] ?? '');
 $search_durata_ore = trim($_POST['durata_ore'] ?? $_GET['durata_ore'] ?? '');
 $search_durata_min = trim($_POST['durata_min'] ?? $_GET['durata_min'] ?? '');
 $search_durata_sec = trim($_POST['durata_sec'] ?? $_GET['durata_sec'] ?? '');
+
+/* Soglie rapide calibrate sulla scala dei totali mostrati nelle card: dai
+   numeri con poche decine di minuti fino alle utenze con molte ore di traffico. */
+$phone_duration_presets = [
+    '15m' => [0, 15, 0],
+    '30m' => [0, 30, 0],
+    '1h' => [1, 0, 0],
+    '2h' => [2, 0, 0],
+    '5h' => [5, 0, 0],
+    '10h' => [10, 0, 0],
+    '24h' => [24, 0, 0]
+];
+
+/* Compatibilità con link e sessioni della v60: una durata già composta viene
+   interpretata come personalizzata quando il nuovo selettore non è presente. */
+if ($search_durata_preset === ''
+        && ($search_durata_ore !== '' || $search_durata_min !== '' || $search_durata_sec !== '')) {
+    $search_durata_preset = 'custom';
+}
+if (isset($phone_duration_presets[$search_durata_preset])) {
+    [$preset_hours, $preset_minutes, $preset_seconds] = $phone_duration_presets[$search_durata_preset];
+    $search_durata_ore = (string)$preset_hours;
+    $search_durata_min = (string)$preset_minutes;
+    $search_durata_sec = (string)$preset_seconds;
+}
+
 $duration_filter_active = ($search_durata_ore !== '' || $search_durata_min !== '' || $search_durata_sec !== '');
 $duration_threshold_seconds = duration_parts_to_seconds($search_durata_ore, $search_durata_min, $search_durata_sec);
 $search_ordine = trim($_POST['ordine'] ?? $_GET['ordine'] ?? 'recenti');
@@ -275,6 +302,11 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
 }
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
     $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
+}
+if ($search_durata_preset !== ''
+        && $search_durata_preset !== 'custom'
+        && !isset($phone_duration_presets[$search_durata_preset])) {
+    $search_errors[] = 'Selezionare una soglia di durata valida.';
 }
 if (!is_non_negative_integer_or_empty($search_durata_ore)) {
     $search_errors[] = 'Il campo “Durata chiamate - ore” deve contenere un numero intero positivo o pari a zero.';
@@ -566,21 +598,35 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </div>
         </div>
         <div class="form-group phone-duration-filter-group">
-            <label>Durata chiamate:</label>
-            <div class="duration-range-control duration-three-part">
-                <div class="duration-segment">
-                    <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_ore) ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in ore">
-                    <span class="duration-unit">h</span>
-                </div>
-                <span class="compound-control-divider" aria-hidden="true"></span>
-                <div class="duration-segment">
-                    <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_min) ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in minuti">
-                    <span class="duration-unit">min</span>
-                </div>
-                <span class="compound-control-divider" aria-hidden="true"></span>
-                <div class="duration-segment">
-                    <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_sec) ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in secondi">
-                    <span class="duration-unit">sec</span>
+            <label for="durata_preset">Durata chiamate:</label>
+            <div class="duration-smart-control<?= $search_durata_preset === 'custom' ? ' is-custom' : '' ?>" data-duration-control>
+                <select id="durata_preset" name="durata_preset" data-scroll-select="true" data-duration-preset-select>
+                    <option value="" <?= $search_durata_preset === '' ? 'selected' : '' ?>>Qualsiasi durata</option>
+                    <option value="15m" <?= $search_durata_preset === '15m' ? 'selected' : '' ?>>Almeno 15 minuti</option>
+                    <option value="30m" <?= $search_durata_preset === '30m' ? 'selected' : '' ?>>Almeno 30 minuti</option>
+                    <option value="1h" <?= $search_durata_preset === '1h' ? 'selected' : '' ?>>Almeno 1 ora</option>
+                    <option value="2h" <?= $search_durata_preset === '2h' ? 'selected' : '' ?>>Almeno 2 ore</option>
+                    <option value="5h" <?= $search_durata_preset === '5h' ? 'selected' : '' ?>>Almeno 5 ore</option>
+                    <option value="10h" <?= $search_durata_preset === '10h' ? 'selected' : '' ?>>Almeno 10 ore</option>
+                    <option value="24h" <?= $search_durata_preset === '24h' ? 'selected' : '' ?>>Almeno 24 ore</option>
+                    <option value="custom" <?= $search_durata_preset === 'custom' ? 'selected' : '' ?>>Durata personalizzata…</option>
+                </select>
+                <div class="duration-custom-editor duration-range-control duration-three-part<?= $search_durata_preset === 'custom' ? '' : ' is-hidden' ?>" data-duration-custom-panel aria-hidden="<?= $search_durata_preset === 'custom' ? 'false' : 'true' ?>">
+                    <div class="duration-segment">
+                        <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_ore : '') ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in ore" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <span class="duration-unit">h</span>
+                    </div>
+                    <span class="compound-control-divider" aria-hidden="true"></span>
+                    <div class="duration-segment">
+                        <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_min : '') ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in minuti" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <span class="duration-unit">min</span>
+                    </div>
+                    <span class="compound-control-divider" aria-hidden="true"></span>
+                    <div class="duration-segment">
+                        <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_sec : '') ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in secondi" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <span class="duration-unit">sec</span>
+                    </div>
+                    <button type="button" class="duration-custom-back" data-duration-custom-back aria-label="Torna alle soglie rapide" title="Torna alle soglie rapide">↩</button>
                 </div>
             </div>
         </div>

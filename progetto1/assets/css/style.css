@@ -7658,3 +7658,619 @@ select[data-scroll-select="true"].native-select-hidden {
         grid-template-columns: minmax(0, 1fr) 2px minmax(0, 1fr) 2px minmax(0, 1fr) !important;
     }
 }
+
+/* =========================================================
+   V61 - Layout SIM, soglie durata e picker coordinati al sito
+   ========================================================= */
+
+/* Le frecce delle tendine sono ancorate al margine destro; la X occupa uno
+   spazio separato e non può più sovrapporsi né uscire dal controllo. */
+.custom-select-button,
+.multi-select-button {
+    position: relative !important;
+    width: 100% !important;
+    padding-left: 0.72rem !important;
+    padding-right: 2.85rem !important;
+    overflow: hidden;
+}
+
+.custom-select-current,
+.multi-select-button .custom-select-current {
+    display: block;
+    min-width: 0;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.custom-select-arrow {
+    position: absolute !important;
+    top: 50% !important;
+    right: 0.82rem !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+}
+
+.custom-select.has-reset-value .custom-select-button,
+.multi-select-filter.has-reset-value .multi-select-button {
+    padding-right: 4.55rem !important;
+}
+
+.custom-select-reset,
+.multi-select-reset {
+    top: 50% !important;
+    right: 2.28rem !important;
+    width: 1.42rem !important;
+    height: 1.42rem !important;
+    min-width: 1.42rem !important;
+    transform: translateY(-50%) !important;
+}
+
+/* Nella soglia personalizzata la freccia rimane nella propria area, mentre la
+   X appartiene esclusivamente al campo numerico. */
+.traffic-filter-group.threshold-is-custom .custom-select-reset {
+    display: none !important;
+}
+
+.traffic-filter-group .custom-threshold-inline {
+    right: 2.72rem !important;
+}
+
+.traffic-filter-group .custom-threshold-inline .clearable-input,
+.traffic-filter-group .custom-threshold-inline .clearable-input input {
+    width: 100% !important;
+}
+
+.traffic-filter-group .custom-threshold-inline .clearable-input input {
+    padding-right: 2.15rem !important;
+}
+
+.traffic-filter-group .custom-threshold-inline .clear-input-button,
+.traffic-filter-group .custom-threshold-inline .clear-input-button:hover,
+.traffic-filter-group .custom-threshold-inline .clear-input-button:focus {
+    right: 0.42rem !important;
+}
+
+/* Gestione SIM: l'ordine visuale coincide con quello del form. La prima riga
+   contiene i quattro dati identificativi; la seconda mantiene piano, periodo,
+   ordinamento e azioni con larghezze sufficienti per leggere ogni valore. */
+@media (min-width: 1201px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(20, minmax(0, 1fr)) !important;
+        column-gap: 0.72rem !important;
+        row-gap: 0.78rem !important;
+        align-items: end;
+    }
+
+    .sim-filter-form .sim-code-filter-group  { grid-column: 1 / span 5 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 6 / span 5 !important;  grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 11 / span 5 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group  { grid-column: 16 / span 5 !important; grid-row: 1 !important; }
+
+    .sim-filter-form .sim-plan-filter-group  { grid-column: 1 / span 4 !important;  grid-row: 2 !important; }
+    .sim-filter-form .sim-date-filter-group  { grid-column: 5 / span 7 !important;  grid-row: 2 !important; max-width: none !important; }
+    .sim-filter-form .sim-order-filter-group { grid-column: 12 / span 5 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn-reset-filters    { grid-column: 17 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form > .btn-filter-submit    { grid-column: 19 / span 2 !important; grid-row: 2 !important; }
+}
+
+@media (min-width: 901px) and (max-width: 1200px) {
+    .sim-filter-form {
+        grid-template-columns: repeat(8, minmax(0, 1fr)) !important;
+        column-gap: 0.66rem !important;
+        row-gap: 0.74rem !important;
+    }
+
+    .sim-filter-form .sim-code-filter-group  { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 5 / span 2 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group  { grid-column: 7 / span 2 !important; grid-row: 1 !important; }
+
+    .sim-filter-form .sim-plan-filter-group  { grid-column: 1 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-date-filter-group  { grid-column: 3 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-order-filter-group { grid-column: 6 / span 3 !important; grid-row: 2 !important; }
+
+    .sim-filter-form > .btn-reset-filters    { grid-column: 1 / span 4 !important; grid-row: 3 !important; }
+    .sim-filter-form > .btn-filter-submit    { grid-column: 5 / span 4 !important; grid-row: 3 !important; }
+}
+
+/* Il filtro durata usa inizialmente soglie rapide. Se viene scelta la modalità
+   personalizzata, lo stesso spazio viene sostituito dall'editor ore/minuti/secondi. */
+.duration-smart-control {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.duration-smart-control > .custom-select {
+    width: 100%;
+}
+
+.duration-smart-control.is-custom > .custom-select {
+    display: none !important;
+}
+
+.duration-custom-editor.is-hidden,
+.duration-smart-control:not(.is-custom) .duration-custom-editor {
+    display: none !important;
+}
+
+.telefonate-filter-form .duration-custom-editor.duration-range-control,
+.contratti-filter-form .duration-custom-editor.duration-range-control {
+    display: grid !important;
+    grid-template-columns:
+        minmax(0, 1fr) 2px
+        minmax(0, 1fr) 2px
+        minmax(0, 1fr) 2.45rem !important;
+    width: 100%;
+    min-width: 0;
+    height: 2.74rem;
+    overflow: hidden;
+}
+
+.duration-custom-back {
+    display: grid;
+    place-items: center;
+    min-width: 2.45rem;
+    width: 2.45rem;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-left: 1px solid var(--border-color);
+    background: var(--row-alt);
+    color: var(--primary-color);
+    font-family: inherit;
+    font-size: 1.12rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.duration-custom-back:hover,
+.duration-custom-back:focus {
+    background: var(--secondary-color);
+    color: var(--primary-color);
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+/* Componente comune per calendario e orologio. I pannelli si aprono sempre
+   verso l'alto, quindi non coprono schede e tabelle sottostanti. */
+.site-picker {
+    position: relative;
+    display: block;
+    width: 100%;
+    min-width: 0;
+}
+
+.site-picker > input[type="hidden"] {
+    display: none !important;
+}
+
+.site-picker-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+    width: 100%;
+    min-width: 0;
+    height: 2.74rem;
+    padding: 0.62rem 2.75rem 0.62rem 0.72rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--surface-color);
+    color: var(--muted-text);
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.2;
+    text-align: left;
+    cursor: pointer;
+}
+
+.site-picker-trigger.has-value {
+    color: var(--text-color);
+}
+
+.site-picker-trigger:hover,
+.site-picker-trigger:focus,
+.site-picker.is-open .site-picker-trigger {
+    border-color: var(--primary-color);
+    outline: 2px solid var(--accent-color);
+    outline-offset: 0;
+}
+
+.site-picker-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.site-picker-icon {
+    position: absolute;
+    top: 50%;
+    right: 0.78rem;
+    width: 1rem;
+    height: 1rem;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.site-calendar-icon {
+    border: 1.8px solid currentColor;
+    border-radius: 2px;
+}
+
+.site-calendar-icon::before {
+    content: "";
+    position: absolute;
+    left: -1.8px;
+    right: -1.8px;
+    top: 0.22rem;
+    border-top: 1.8px solid currentColor;
+}
+
+.site-calendar-icon::after {
+    content: "";
+    position: absolute;
+    left: 0.18rem;
+    right: 0.18rem;
+    top: -0.24rem;
+    height: 0.34rem;
+    border-left: 1.8px solid currentColor;
+    border-right: 1.8px solid currentColor;
+}
+
+.site-clock-icon {
+    border: 1.8px solid currentColor;
+    border-radius: 50%;
+}
+
+.site-clock-icon::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0.16rem;
+    width: 1.5px;
+    height: 0.34rem;
+    background: currentColor;
+    transform: translateX(-50%);
+    transform-origin: bottom center;
+}
+
+.site-clock-icon::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 0.3rem;
+    height: 1.5px;
+    background: currentColor;
+    transform: translateY(-50%) rotate(25deg);
+    transform-origin: left center;
+}
+
+.site-picker-clear {
+    position: absolute;
+    top: 50%;
+    right: 2.12rem;
+    z-index: 3;
+    display: none;
+    place-items: center;
+    width: 1.38rem;
+    height: 1.38rem;
+    min-width: 1.38rem;
+    padding: 0;
+    transform: translateY(-50%);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--row-alt);
+    color: var(--primary-color);
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.site-picker-clear.is-visible {
+    display: grid;
+}
+
+.site-picker-clear:hover,
+.site-picker-clear:focus {
+    background: var(--secondary-color);
+    outline: 2px solid var(--accent-color);
+}
+
+.site-picker-panel {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + 0.48rem);
+    z-index: 700;
+    display: none;
+    width: 100%;
+    min-width: 100%;
+    box-sizing: border-box;
+    padding: 0.72rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--surface-color);
+    color: var(--text-color);
+    box-shadow: 0 12px 28px rgba(51, 45, 41, 0.2);
+}
+
+.site-picker.is-range-end .site-picker-panel {
+    right: 0;
+    left: auto;
+}
+
+.site-picker.is-open .site-picker-panel {
+    display: block;
+}
+
+.site-picker.is-disabled .site-picker-trigger {
+    cursor: not-allowed;
+    background: var(--surface-muted, #eee9e4);
+    opacity: 0.7;
+}
+
+.site-picker-header,
+.site-time-header,
+.site-picker-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem;
+}
+
+.site-picker-header {
+    margin-bottom: 0.55rem;
+}
+
+.site-picker-title {
+    color: var(--primary-color);
+    font-size: 0.84rem;
+    text-align: center;
+    text-transform: capitalize;
+}
+
+.site-picker-nav {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: var(--row-alt);
+    color: var(--primary-color);
+    font-size: 1.35rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.site-picker-nav:hover,
+.site-picker-nav:focus {
+    background: var(--secondary-color);
+    outline: 2px solid var(--accent-color);
+}
+
+.site-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.16rem;
+    width: 100%;
+}
+
+.site-calendar-weekday {
+    display: grid;
+    place-items: center;
+    min-height: 1.3rem;
+    color: var(--primary-color);
+    font-size: 0.68rem;
+    font-weight: 800;
+}
+
+.site-calendar-day {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.72rem;
+    cursor: pointer;
+}
+
+.site-calendar-day:hover,
+.site-calendar-day:focus {
+    background: var(--row-alt);
+    outline: 2px solid var(--accent-color);
+}
+
+.site-calendar-day.is-outside-month {
+    color: var(--muted-text);
+    opacity: 0.48;
+}
+
+.site-calendar-day.is-today {
+    box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+
+.site-calendar-day.is-selected {
+    background: var(--primary-color);
+    color: #fff;
+    font-weight: 800;
+    box-shadow: none;
+}
+
+.site-calendar-day:disabled {
+    opacity: 0.28;
+    cursor: not-allowed;
+}
+
+.site-picker-footer {
+    margin-top: 0.58rem;
+    padding-top: 0.52rem;
+    border-top: 1px solid var(--row-alt);
+}
+
+.site-picker-text-button {
+    padding: 0.28rem 0.42rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--primary-color);
+    font-family: inherit;
+    font-size: 0.76rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.site-picker-text-button:hover,
+.site-picker-text-button:focus {
+    background: var(--row-alt);
+    outline: 2px solid var(--accent-color);
+}
+
+.site-picker-text-button.is-primary {
+    background: var(--primary-color);
+    color: #fff;
+}
+
+/* Il calendario usa esattamente la larghezza del campo che lo ha aperto. */
+.site-date-panel {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* L'orologio necessita di due colonne ma resta ancorato al relativo mezzo campo. */
+.site-time-panel {
+    width: max(100%, 15.5rem);
+    min-width: 15.5rem;
+}
+
+.site-time-header {
+    margin-bottom: 0.42rem;
+    color: var(--primary-color);
+    font-size: 0.82rem;
+}
+
+.site-time-preview {
+    padding: 0.22rem 0.45rem;
+    border-radius: 5px;
+    background: var(--row-alt);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.site-time-column-labels,
+.site-time-columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.48rem;
+}
+
+.site-time-column-labels {
+    margin-bottom: 0.28rem;
+    color: var(--muted-text);
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+.site-time-column {
+    max-height: 9.4rem;
+    overflow-y: auto;
+    padding: 0.18rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-color);
+    scrollbar-width: thin;
+    overscroll-behavior: contain;
+}
+
+.site-time-column button {
+    display: block;
+    width: 100%;
+    min-height: 1.9rem;
+    padding: 0.24rem;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+}
+
+.site-time-column button:hover,
+.site-time-column button:focus {
+    background: var(--row-alt);
+    outline: 2px solid var(--accent-color);
+}
+
+.site-time-column button.is-selected {
+    background: var(--primary-color);
+    color: #fff;
+    font-weight: 800;
+}
+
+/* I wrapper sostituiscono gli input nativi senza alterare la griglia dei range. */
+.compact-range-pair > .site-picker,
+.telefonate-filter-form .time-range-pair > .site-picker {
+    min-width: 0;
+    width: 100%;
+}
+
+.telefonate-filter-form .time-range-pair {
+    overflow: visible !important;
+}
+
+.telefonate-filter-form .time-range-pair .site-picker-trigger {
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.telefonate-filter-form .time-range-pair .site-picker:first-child .site-picker-trigger {
+    border-radius: 5px 0 0 5px;
+}
+
+.telefonate-filter-form .time-range-pair .site-picker:last-child .site-picker-trigger {
+    border-radius: 0 5px 5px 0;
+}
+
+.telefonate-filter-form .time-range-pair .site-picker-trigger:hover,
+.telefonate-filter-form .time-range-pair .site-picker-trigger:focus,
+.telefonate-filter-form .time-range-pair .site-picker.is-open .site-picker-trigger {
+    box-shadow: inset 0 0 0 2px var(--accent-color);
+    outline: 0;
+}
+
+@media (max-width: 560px) {
+    .site-time-panel {
+        width: min(15.5rem, calc(100vw - 2rem));
+        min-width: min(15.5rem, calc(100vw - 2rem));
+    }
+
+    .telefonate-filter-form .duration-custom-editor.duration-range-control,
+    .contratti-filter-form .duration-custom-editor.duration-range-control {
+        grid-template-columns:
+            minmax(0, 1fr) 1px
+            minmax(0, 1fr) 1px
+            minmax(0, 1fr) 2.2rem !important;
+    }
+
+    .duration-custom-back {
+        width: 2.2rem;
+        min-width: 2.2rem;
+    }
+}

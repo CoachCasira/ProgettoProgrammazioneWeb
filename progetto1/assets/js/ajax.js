@@ -1276,7 +1276,9 @@
         }
 
         var type = (field.getAttribute('type') || '').toLowerCase();
-        if (type === 'date' || type === 'time') {
+        if (type === 'date' || type === 'time'
+                || field.hasAttribute('data-custom-date-value')
+                || field.hasAttribute('data-custom-time-value')) {
             scheduleLiveSearch(form, 120);
         }
     });

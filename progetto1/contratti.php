@@ -124,10 +124,16 @@ function render_contratti_cards(array $rows): string
             </div>
 
             <dl class="card-detail-grid phone-detail-grid">
-                <div class="card-detail-tile">
-                    <dt>Data attivazione</dt>
-                    <dd><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></dd>
+                <div class="card-detail-tile<?= $is_currently_disabled ? ' phone-disabled-date-tile' : '' ?>">
+                    <dt><?= $is_currently_disabled ? 'Data disattivazione' : 'Data attivazione' ?></dt>
+                    <dd><?= htmlspecialchars(format_date_it($is_currently_disabled ? ($row['simDisattivaDataDisattivazione'] ?? '') : $row['dataAttivazione'])) ?></dd>
                 </div>
+                <?php if ($is_currently_disabled): ?>
+                    <div class="card-detail-tile phone-activation-modal-only">
+                        <dt>Data attivazione</dt>
+                        <dd><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></dd>
+                    </div>
+                <?php endif; ?>
                 <?php if ($num_telefonate > 0): ?>
                     <div class="card-detail-tile card-detail-link phone-calls-tile">
                         <dt>
@@ -211,6 +217,16 @@ if ($search_ordine === '' || $search_ordine === 'automatico') {
     // Compatibilità con vecchi link e sessioni: il criterio base è quello recente.
     $search_ordine = 'recenti';
 }
+
+/* L'ordinamento temporale predefinito segue lo stato richiesto: per i numeri
+   disattivati è più utile la data di disattivazione, mentre per quelli attivi
+   resta significativa la data di attivazione. Con "Mostra tutti" entrambi i
+   criteri rimangono disponibili e vengono scelti esplicitamente dall'utente. */
+if ($search_stato_numero === 'disattivato' && $search_ordine === 'recenti') {
+    $search_ordine = 'disattivati_recenti';
+} elseif ($search_stato_numero === 'attivo' && $search_ordine === 'disattivati_recenti') {
+    $search_ordine = 'recenti';
+}
 $search_residuo = trim($_POST['residuo'] ?? $_GET['residuo'] ?? '');
 if ($search_residuo === 'quasi_esaurito') {
     // Compatibilità con il vecchio collegamento della Panoramica.
@@ -255,7 +271,7 @@ if ($search_min_chiamate !== '' && !in_array($search_min_chiamate, ['1', '50', '
 if ($search_min_chiamate_custom !== '' && !is_non_negative_integer_or_empty($search_min_chiamate_custom)) {
     $search_errors[] = 'Il numero minimo di chiamate deve essere un valore intero positivo o pari a zero.';
 }
-if (!in_array($search_ordine, ['recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
+if (!in_array($search_ordine, ['recenti', 'disattivati_recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
 }
 if ($search_residuo !== '' && !in_array($search_residuo, ['esaurito', 'credito_basso', 'minuti_bassi', 'credito_disponibile', 'minuti_disponibili'], true)) {
@@ -356,6 +372,15 @@ if (empty($search_errors)) {
            di partenza naturale è la soglia stessa. Un ordinamento scelto
            esplicitamente in "Mostra prima" mantiene invece la precedenza. */
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
+    } elseif ($search_ordine === 'disattivati_recenti') {
+        /* Con tutti gli stati visibili, questo criterio porta prima i numeri
+           attualmente disattivati e li ordina dalla disattivazione più recente.
+           I numeri ancora attivi seguono, ordinati per attivazione recente. */
+        $sql_base .= " ORDER BY
+                        CASE WHEN sa.codice IS NULL AND COALESCE(sdc.simDisattivaCount, 0) > 0 THEN 0 ELSE 1 END ASC,
+                        CASE WHEN sa.codice IS NULL THEN sd.dataDisattivazione ELSE NULL END DESC,
+                        c.dataAttivazione DESC,
+                        c.numero ASC";
     } elseif ($search_ordine === 'chiamate_crescenti') {
         $sql_base .= " ORDER BY num_telefonate ASC, c.dataAttivazione DESC, c.numero ASC";
     } elseif ($search_ordine === 'piu_chiamate') {
@@ -494,6 +519,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             <label for="ordine">Mostra prima:</label>
             <select id="ordine" name="ordine" data-scroll-select="true">
                 <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
+                <option value="disattivati_recenti" <?= $search_ordine == 'disattivati_recenti' ? 'selected' : '' ?>>Numeri disattivati più di recente</option>
                 <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Numeri con meno chiamate</option>
                 <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Numeri con più chiamate</option>
                 <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Numeri con più ore di chiamata</option>

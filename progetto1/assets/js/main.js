@@ -347,15 +347,46 @@
         label.textContent = status.value === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
     }
 
+    function updatePhoneOrderOptions(form) {
+        var status = form ? form.querySelector('#stato_numero') : null;
+        var order = form ? form.querySelector('#ordine') : null;
+        if (!status || !order) {
+            return;
+        }
+
+        var activeRecent = Array.prototype.find.call(order.options, function (option) {
+            return option.value === 'recenti';
+        });
+        var disabledRecent = Array.prototype.find.call(order.options, function (option) {
+            return option.value === 'disattivati_recenti';
+        });
+        if (!activeRecent || !disabledRecent) {
+            return;
+        }
+
+        activeRecent.hidden = status.value === 'disattivato';
+        disabledRecent.hidden = status.value === 'attivo';
+
+        if (status.value === 'disattivato' && order.value === 'recenti') {
+            order.value = 'disattivati_recenti';
+        } else if (status.value === 'attivo' && order.value === 'disattivati_recenti') {
+            order.value = 'recenti';
+        }
+
+        updateCustomSelect(order);
+    }
+
     function initPhoneDateLabelControls(root) {
         var scope = root || document;
         scope.querySelectorAll('form.contratti-filter-form:not([data-phone-date-label-ready="true"])').forEach(function (form) {
             form.dataset.phoneDateLabelReady = 'true';
             updatePhoneDateLabel(form);
+            updatePhoneOrderOptions(form);
             var status = form.querySelector('#stato_numero');
             if (status) {
                 status.addEventListener('change', function () {
                     updatePhoneDateLabel(form);
+                    updatePhoneOrderOptions(form);
                 });
             }
         });
@@ -524,6 +555,8 @@
                 return option.value === optionButton.dataset.value;
             });
             var isDisabled = Boolean(nativeOption && nativeOption.disabled);
+            var isHidden = Boolean(nativeOption && nativeOption.hidden);
+            optionButton.hidden = isHidden;
             optionButton.classList.toggle('is-selected', isSelected);
             optionButton.classList.toggle('is-disabled', isDisabled);
             optionButton.disabled = isDisabled;
@@ -603,6 +636,7 @@
                 optionButton.dataset.value = option.value;
                 optionButton.textContent = option.textContent;
                 optionButton.setAttribute('role', 'option');
+                optionButton.hidden = option.hidden;
                 optionButton.disabled = option.disabled;
                 optionButton.classList.toggle('is-disabled', option.disabled);
                 optionButton.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');
@@ -2911,6 +2945,7 @@
             }
             applyPhonePlanResidualDependencies(form, null);
             updatePhoneDateLabel(form);
+            updatePhoneOrderOptions(form);
             var threshold = form.querySelector('[data-custom-threshold-select]');
             if (threshold) {
                 toggleCustomThreshold(threshold, false);

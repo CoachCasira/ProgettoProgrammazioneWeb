@@ -8959,3 +8959,236 @@ table.data-table td.table-align-center {
 .results-view-root[data-view-key="sim"] td.sim-phone-table-cell {
     text-align: right !important;
 }
+
+/* =========================================================
+   V67 - Ordine coerente dei filtri e tabella SIM scorrevole
+   ========================================================= */
+
+/* Desktop ampio: ogni pagina usa due righe leggibili e con i pulsanti
+   finali della stessa larghezza. L'ordine visivo coincide con il DOM. */
+@media (min-width: 1200px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        display: grid !important;
+        grid-template-columns: repeat(14, minmax(0, 1fr)) !important;
+        column-gap: 0.78rem !important;
+        row-gap: 0.86rem !important;
+        align-items: end !important;
+    }
+
+    /* Numeri: numero, stato, periodo, piano, disponibilita; poi traffico,
+       durata, ordinamento e azioni. */
+    .contratti-filter-form .phone-number-filter-group { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-status-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-date-filter-group { grid-column: 5 / span 4 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-plan-filter-group { grid-column: 9 / span 3 !important; grid-row: 1 !important; }
+    .contratti-filter-form .residual-filter-group { grid-column: 12 / span 3 !important; grid-row: 1 !important; }
+    .contratti-filter-form .traffic-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .phone-duration-filter-group { grid-column: 4 / span 4 !important; grid-row: 2 !important; }
+    .contratti-filter-form .order-filter-group { grid-column: 8 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    /* Chiamate: numero, stato, periodo e fascia oraria; poi durata minima,
+       piano, addebito, ordinamento e azioni. Mostra prima riceve piu spazio. */
+    .telefonate-filter-form .call-number-filter-group { grid-column: 1 / span 3 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .call-state-filter-group { grid-column: 4 / span 3 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .period-filter-group { grid-column: 7 / span 4 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .time-filter-group { grid-column: 11 / span 4 !important; grid-row: 1 !important; max-width: none !important; }
+    .telefonate-filter-form .duration-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-plan-filter-group { grid-column: 4 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .cost-filter-group { grid-column: 6 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-order-filter-group { grid-column: 8 / span 3 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    /* SIM: codice, numero, stato e periodo; poi formato, piano,
+       ordinamento e azioni. */
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 4 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 7 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 10 / span 5 !important; grid-row: 1 !important; max-width: none !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-plan-filter-group { grid-column: 4 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-order-filter-group { grid-column: 7 / span 4 !important; grid-row: 2 !important; }
+    .sim-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    .contratti-filter-form > .btn,
+    .telefonate-filter-form > .btn,
+    .sim-filter-form > .btn {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
+/* Tablet e finestre desktop strette: due colonne, mantenendo l'ordine logico
+   dei campi e collocando i pulsanti in fondo. */
+@media (min-width: 761px) and (max-width: 1199px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.82rem 0.9rem !important;
+        align-items: end !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group,
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 1 / -1 !important;
+        max-width: none !important;
+    }
+
+    .contratti-filter-form > .btn,
+    .telefonate-filter-form > .btn,
+    .sim-filter-form > .btn {
+        grid-row: auto !important;
+        width: 100% !important;
+    }
+}
+
+/* Vista tabellare SIM: lo stesso elemento gestisce scroll verticale e
+   orizzontale, quindi la barra destra/sinistra resta raggiungibile in fondo
+   all'area dei risultati e il Codice SIM rimane fisso durante lo spostamento. */
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container {
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .table-container-inner {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+    isolation: isolate;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table {
+    width: max-content !important;
+    table-layout: auto !important;
+    border-collapse: collapse;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-tutte {
+    min-width: 1510px !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-attive {
+    min-width: 1080px !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-disattive {
+    min-width: 1320px !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-table-state-disponibili {
+    min-width: 780px !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table th,
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table td {
+    box-sizing: border-box;
+    min-width: 0 !important;
+    padding: 0.72rem 0.78rem !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    line-height: 1.35;
+}
+
+/* Tutte le SIM: larghezze reali, sufficienti per intestazioni e valori. */
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(1),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(1) { width: 235px !important; min-width: 235px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(2),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(2) { width: 145px !important; min-width: 145px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(3),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(3) { width: 190px !important; min-width: 190px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(4),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(4) { width: 180px !important; min-width: 180px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(5),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(5) { width: 195px !important; min-width: 195px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(6),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(6) { width: 150px !important; min-width: 150px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(7),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(7) { width: 145px !important; min-width: 145px !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(8),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(8) { width: 220px !important; min-width: 220px !important; }
+
+/* Prima colonna fissa per ogni vista SIM, come nella tabella Numeri. */
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table th:first-child,
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table td:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 18;
+    min-width: 235px !important;
+    width: 235px !important;
+    max-width: 235px !important;
+    overflow: visible !important;
+    background-clip: padding-box !important;
+    box-shadow: 8px 0 11px -10px rgba(51, 45, 41, 0.9);
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table thead th:first-child {
+    z-index: 35 !important;
+    background-color: var(--secondary-color) !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table tbody tr:nth-child(odd) td:first-child {
+    background-color: var(--surface-color) !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table tbody tr:nth-child(even) td:first-child {
+    background-color: var(--row-alt) !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table tbody tr:hover td:first-child,
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table tbody tr:focus-within td:first-child {
+    background-color: #F3EEE9 !important;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] table.sim-data-table td:first-child {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Barra orizzontale evidente e coerente con la palette del sito. */
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container {
+    scrollbar-color: #8F8177 #E9E3DE;
+    scrollbar-width: auto;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar:horizontal {
+    height: 12px;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar-track:horizontal {
+    background: #E9E3DE;
+    border-radius: 999px;
+}
+
+.results-view-root[data-view-key="sim"][data-current-view="table"] .results-data-container::-webkit-scrollbar-thumb:horizontal {
+    background: #8F8177;
+    border: 2px solid #E9E3DE;
+    border-radius: 999px;
+}
+
+@media (min-width: 761px) and (max-width: 1199px) {
+    .contratti-filter-form > .form-group,
+    .telefonate-filter-form > .form-group,
+    .sim-filter-form > .form-group {
+        grid-column: auto !important;
+        grid-row: auto !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group,
+    .telefonate-filter-form .period-filter-group,
+    .telefonate-filter-form .time-filter-group,
+    .sim-filter-form .sim-date-filter-group {
+        grid-column: 1 / -1 !important;
+    }
+}

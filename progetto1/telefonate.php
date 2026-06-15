@@ -579,6 +579,14 @@ if ($ajax_rows) {
                 <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Al giorno">
             </div>
         </div>
+        <div class="form-group time-filter-group range-filter-group">
+            <label>Ora della chiamata da/a:</label>
+            <div class="range-pair compact-range-pair time-range-pair">
+                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata">
+                <span class="compound-control-divider" aria-hidden="true"></span>
+                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Ora finale della chiamata">
+            </div>
+        </div>
         <div class="form-group duration-filter-group">
             <label for="durata_preset">Durata minima chiamata:</label>
             <div class="duration-smart-control<?= $search_durata_preset === 'custom' ? ' is-custom' : '' ?>" data-duration-control>
@@ -609,14 +617,6 @@ if ($ajax_rows) {
                     </div>
                     <button type="button" class="duration-custom-back" data-duration-custom-back aria-label="Torna alle soglie rapide" title="Torna alle soglie rapide">↩</button>
                 </div>
-            </div>
-        </div>
-        <div class="form-group time-filter-group range-filter-group">
-            <label>Ora della chiamata da/a:</label>
-            <div class="range-pair compact-range-pair time-range-pair">
-                <input type="time" id="ora_da" name="ora_da" value="<?= htmlspecialchars($search_ora_da) ?>" aria-label="Ora iniziale della chiamata">
-                <span class="compound-control-divider" aria-hidden="true"></span>
-                <input type="time" id="ora_a" name="ora_a" value="<?= htmlspecialchars($search_ora_a) ?>" aria-label="Ora finale della chiamata">
             </div>
         </div>
         <div class="form-group call-plan-filter-group">

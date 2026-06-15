@@ -1268,6 +1268,14 @@ if ($has_active_date_state && !$has_disabled_date_state) {
                 </div>
             </div>
 
+            <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
+                <label data-sim-date-label><?= htmlspecialchars($sim_date_filter_label) ?></label>
+                <div class="range-pair compact-range-pair date-range-pair">
+                    <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+                    <span class="range-separator" aria-hidden="true">–</span>
+                    <input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+                </div>
+            </div>
             <div class="form-group sim-type-filter-group">
                 <label for="tipoSIM">Formato SIM:</label>
                 <select id="tipoSIM" name="tipoSIM" data-scroll-select="true">
@@ -1285,14 +1293,6 @@ if ($has_active_date_state && !$has_disabled_date_state) {
                     <option value="consumo" <?= $search_piano === 'consumo' ? 'selected' : '' ?>>A consumo</option>
                     <option value="ricarica" <?= $search_piano === 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
                 </select>
-            </div>
-            <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
-                <label data-sim-date-label><?= htmlspecialchars($sim_date_filter_label) ?></label>
-                <div class="range-pair compact-range-pair date-range-pair">
-                    <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
-                    <span class="range-separator" aria-hidden="true">–</span>
-                    <input type="date" id="data_a_sim" name="data_a" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_a : '') ?>" aria-label="Data fino al" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
-                </div>
             </div>
             <div class="form-group sim-order-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
                 <label for="ordine_sim">Mostra prima:</label>

@@ -551,6 +551,14 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <input type="date" id="data_a" name="data_a" value="<?= htmlspecialchars($search_data_a) ?>" aria-label="Data fine">
             </div>
         </div>
+        <div class="form-group phone-plan-filter-group">
+            <label for="tipo">Piano del numero:</label>
+            <select id="tipo" name="tipo">
+                <option value="">Mostra tutti</option>
+                <option value="consumo" <?= $search_tipo == 'consumo' ? 'selected' : '' ?>>A consumo</option>
+                <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
+            </select>
+        </div>
         <div class="form-group residual-filter-group">
             <label for="residuo">Disponibilità del piano:</label>
             <select id="residuo" name="residuo" data-scroll-select="true">
@@ -560,25 +568,6 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <option value="minuti_bassi" <?= $search_residuo === 'minuti_bassi' ? 'selected' : '' ?>>A consumo: minuti &lt; 30</option>
                 <option value="credito_disponibile" <?= $search_residuo === 'credito_disponibile' ? 'selected' : '' ?>>Ricaricabili: credito ≥ 5 €</option>
                 <option value="minuti_disponibili" <?= $search_residuo === 'minuti_disponibili' ? 'selected' : '' ?>>A consumo: minuti ≥ 30</option>
-            </select>
-        </div>
-        <div class="form-group phone-plan-filter-group">
-            <label for="tipo">Piano del numero:</label>
-            <select id="tipo" name="tipo">
-                <option value="">Mostra tutti</option>
-                <option value="consumo" <?= $search_tipo == 'consumo' ? 'selected' : '' ?>>A consumo</option>
-                <option value="ricarica" <?= $search_tipo == 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
-            </select>
-        </div>
-        <div class="form-group order-filter-group">
-            <label for="ordine">Mostra prima:</label>
-            <select id="ordine" name="ordine" data-scroll-select="true">
-                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
-                <option value="disattivati_recenti" <?= $search_ordine == 'disattivati_recenti' ? 'selected' : '' ?>>Numeri disattivati più di recente</option>
-                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Numeri con meno chiamate</option>
-                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Numeri con più chiamate</option>
-                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Numeri con più ore di chiamata</option>
-                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Numeri con maggior addebito</option>
             </select>
         </div>
         <div class="form-group traffic-filter-group">
@@ -623,6 +612,17 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                     <button type="button" class="duration-custom-back" data-duration-custom-back aria-label="Torna alle soglie rapide" title="Torna alle soglie rapide">↩</button>
                 </div>
             </div>
+        </div>
+        <div class="form-group order-filter-group">
+            <label for="ordine">Mostra prima:</label>
+            <select id="ordine" name="ordine" data-scroll-select="true">
+                <option value="recenti" <?= $search_ordine == 'recenti' ? 'selected' : '' ?>>Numeri attivati più di recente</option>
+                <option value="disattivati_recenti" <?= $search_ordine == 'disattivati_recenti' ? 'selected' : '' ?>>Numeri disattivati più di recente</option>
+                <option value="chiamate_crescenti" <?= $search_ordine == 'chiamate_crescenti' ? 'selected' : '' ?>>Numeri con meno chiamate</option>
+                <option value="piu_chiamate" <?= $search_ordine == 'piu_chiamate' ? 'selected' : '' ?>>Numeri con più chiamate</option>
+                <option value="maggiore_durata" <?= $search_ordine == 'maggiore_durata' ? 'selected' : '' ?>>Numeri con più ore di chiamata</option>
+                <option value="maggiore_spesa" <?= $search_ordine == 'maggiore_spesa' ? 'selected' : '' ?>>Numeri con maggior addebito</option>
+            </select>
         </div>
         <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
         <button type="submit" class="btn btn-filter-submit">Cerca</button>

@@ -1049,23 +1049,65 @@
         };
     }
 
-    function shiftSiteDateYearWindow(input, direction) {
+    function setSiteDateYearWindow(input, requestedStart) {
         var wrapper = input.closest('.site-date-picker');
         if (!wrapper || wrapper.dataset.calendarMode !== 'years') {
             return;
         }
         var limits = getSiteDateYearLimits(input);
         var latestStart = Math.max(limits.min, limits.max - 11);
+        var nextStart = Math.max(limits.min, Math.min(latestStart, Math.round(requestedStart)));
         var currentStart = Number(wrapper.dataset.yearBlockStart);
-        if (!Number.isFinite(currentStart)) {
-            currentStart = limits.min;
-        }
-        var nextStart = Math.max(limits.min, Math.min(latestStart, currentStart + direction));
-        if (nextStart === currentStart) {
+        if (Number.isFinite(currentStart) && nextStart === currentStart) {
             return;
         }
         wrapper.dataset.yearBlockStart = String(nextStart);
         renderSiteDateYearSelector(input);
+    }
+
+    function shiftSiteDateYearWindow(input, direction) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || wrapper.dataset.calendarMode !== 'years') {
+            return;
+        }
+        var limits = getSiteDateYearLimits(input);
+        var currentStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(currentStart)) {
+            currentStart = limits.min;
+        }
+        setSiteDateYearWindow(input, currentStart + direction);
+    }
+
+    function updateSiteDateYearScrollbar(input) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || !wrapper._sitePicker || !wrapper._sitePicker.yearScrollbar) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        var limits = getSiteDateYearLimits(input);
+        var latestStart = Math.max(limits.min, limits.max - 11);
+        var blockStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(blockStart)) {
+            blockStart = limits.min;
+        }
+        var totalYears = Math.max(1, limits.max - limits.min + 1);
+        var visibleYears = Math.min(12, totalYears);
+        var thumbPercent = Math.max(18, Math.min(100, (visibleYears / totalYears) * 100));
+        var travelPercent = 100 - thumbPercent;
+        var progress = latestStart > limits.min
+            ? (blockStart - limits.min) / (latestStart - limits.min)
+            : 0;
+        var topPercent = Math.max(0, Math.min(travelPercent, progress * travelPercent));
+
+        ui.yearScrollbarThumb.style.height = thumbPercent.toFixed(3) + '%';
+        ui.yearScrollbarThumb.style.top = topPercent.toFixed(3) + '%';
+        ui.yearScrollbar.setAttribute('aria-valuemin', String(limits.min));
+        ui.yearScrollbar.setAttribute('aria-valuemax', String(latestStart));
+        ui.yearScrollbar.setAttribute('aria-valuenow', String(blockStart));
+        ui.yearScrollbar.setAttribute(
+            'aria-valuetext',
+            blockStart + '–' + Math.min(blockStart + 11, limits.max)
+        );
     }
 
     function renderSiteDateYearSelector(input) {
@@ -1093,7 +1135,12 @@
 
         ui.grid.classList.add('is-hidden');
         ui.yearGrid.classList.remove('is-hidden');
-        ui.yearGrid.innerHTML = '';
+        ui.yearGrid.querySelectorAll('.site-calendar-year').forEach(function (button) {
+            button.remove();
+        });
+        if (!ui.yearGrid.contains(ui.yearScrollbar)) {
+            ui.yearGrid.appendChild(ui.yearScrollbar);
+        }
 
         var blockEnd = Math.min(blockStart + 11, limits.max);
         wrapper.classList.add('is-year-mode');
@@ -1123,6 +1170,7 @@
             });
             ui.yearGrid.appendChild(button);
         }
+        updateSiteDateYearScrollbar(input);
     }
 
     function renderSiteDateCalendar(input) {
@@ -1308,6 +1356,18 @@
             yearGrid.setAttribute('role', 'listbox');
             yearGrid.setAttribute('aria-label', 'Seleziona l’anno');
 
+            var yearScrollbar = document.createElement('div');
+            yearScrollbar.className = 'site-calendar-year-scrollbar';
+            yearScrollbar.setAttribute('role', 'scrollbar');
+            yearScrollbar.setAttribute('aria-label', 'Scorri l’intervallo degli anni');
+            yearScrollbar.setAttribute('aria-orientation', 'vertical');
+            yearScrollbar.tabIndex = 0;
+            var yearScrollbarThumb = document.createElement('span');
+            yearScrollbarThumb.className = 'site-calendar-year-scrollbar-thumb';
+            yearScrollbarThumb.setAttribute('aria-hidden', 'true');
+            yearScrollbar.appendChild(yearScrollbarThumb);
+            yearGrid.appendChild(yearScrollbar);
+
             var footer = document.createElement('div');
             footer.className = 'site-picker-footer';
             var clearFooter = document.createElement('button');
@@ -1331,6 +1391,7 @@
             wrapper._sitePicker = {
                 trigger: trigger, value: value, clear: clear, panel: panel,
                 title: title, grid: grid, yearGrid: yearGrid,
+                yearScrollbar: yearScrollbar, yearScrollbarThumb: yearScrollbarThumb,
                 previous: previous, next: next
             };
 
@@ -1396,6 +1457,82 @@
                 wrapper.dataset.viewYear = String(year);
                 wrapper.dataset.viewMonth = String(month);
                 renderSiteDateCalendar(input);
+            });
+            yearScrollbar.addEventListener('click', function (event) {
+                event.stopPropagation();
+                if (event.target === yearScrollbarThumb || wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                var limits = getSiteDateYearLimits(input);
+                var latestStart = Math.max(limits.min, limits.max - 11);
+                var rect = yearScrollbar.getBoundingClientRect();
+                var ratio = rect.height > 0
+                    ? Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+                    : 0;
+                setSiteDateYearWindow(input, limits.min + ratio * (latestStart - limits.min));
+            });
+            yearScrollbar.addEventListener('keydown', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                var limits = getSiteDateYearLimits(input);
+                var latestStart = Math.max(limits.min, limits.max - 11);
+                var handled = true;
+                if (event.key === 'ArrowUp') {
+                    shiftSiteDateYearWindow(input, -1);
+                } else if (event.key === 'ArrowDown') {
+                    shiftSiteDateYearWindow(input, 1);
+                } else if (event.key === 'PageUp') {
+                    shiftSiteDateYearWindow(input, -12);
+                } else if (event.key === 'PageDown') {
+                    shiftSiteDateYearWindow(input, 12);
+                } else if (event.key === 'Home') {
+                    setSiteDateYearWindow(input, limits.min);
+                } else if (event.key === 'End') {
+                    setSiteDateYearWindow(input, latestStart);
+                } else {
+                    handled = false;
+                }
+                if (handled) {
+                    event.preventDefault();
+                }
+            });
+            yearScrollbarThumb.addEventListener('pointerdown', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                var trackRect = yearScrollbar.getBoundingClientRect();
+                var thumbRect = yearScrollbarThumb.getBoundingClientRect();
+                var dragOffset = event.clientY - thumbRect.top;
+                yearScrollbarThumb.setPointerCapture(event.pointerId);
+                yearScrollbarThumb.classList.add('is-dragging');
+
+                function moveThumb(moveEvent) {
+                    var limits = getSiteDateYearLimits(input);
+                    var latestStart = Math.max(limits.min, limits.max - 11);
+                    var available = Math.max(1, trackRect.height - thumbRect.height);
+                    var top = Math.max(0, Math.min(available, moveEvent.clientY - trackRect.top - dragOffset));
+                    var ratio = top / available;
+                    setSiteDateYearWindow(input, limits.min + ratio * (latestStart - limits.min));
+                }
+
+                function stopDragging(stopEvent) {
+                    yearScrollbarThumb.classList.remove('is-dragging');
+                    try {
+                        yearScrollbarThumb.releasePointerCapture(stopEvent.pointerId);
+                    } catch (error) {
+                        // Il puntatore può essere già stato rilasciato dal browser.
+                    }
+                    yearScrollbarThumb.removeEventListener('pointermove', moveThumb);
+                    yearScrollbarThumb.removeEventListener('pointerup', stopDragging);
+                    yearScrollbarThumb.removeEventListener('pointercancel', stopDragging);
+                }
+
+                yearScrollbarThumb.addEventListener('pointermove', moveThumb);
+                yearScrollbarThumb.addEventListener('pointerup', stopDragging);
+                yearScrollbarThumb.addEventListener('pointercancel', stopDragging);
             });
             panel.addEventListener('wheel', function (event) {
                 if (wrapper.dataset.calendarMode !== 'years' || event.deltaY === 0) {

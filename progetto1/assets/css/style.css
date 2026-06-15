@@ -8708,3 +8708,119 @@ table.data-table th .table-header-icon {
     line-height: 1.18;
     overflow: visible;
 }
+
+/* =========================================================
+   V65 - Intestazioni calendario leggibili e indicatore verticale anni
+   ========================================================= */
+
+/* Le frecce restano facilmente cliccabili ma occupano meno spazio, così il
+   titolo completo (es. "Giugno 2026" o "2016–2027") non viene troncato. */
+.site-date-panel {
+    padding: 0.56rem;
+}
+
+.site-date-panel .site-picker-header {
+    grid-template-columns: 1.42rem minmax(0, 1fr) 1.42rem;
+    gap: 0.2rem;
+    margin-bottom: 0.46rem;
+}
+
+.site-date-panel .site-picker-nav {
+    width: 1.42rem;
+    height: 1.42rem;
+    min-width: 1.42rem;
+    border-radius: 5px;
+    font-size: 0.98rem;
+    line-height: 1;
+}
+
+.site-date-panel .site-picker-title,
+.site-date-picker.is-year-mode .site-picker-title {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    padding: 0.18rem 0.08rem;
+    overflow: visible;
+    text-overflow: unset;
+    white-space: nowrap;
+    font-size: 0.75rem;
+    letter-spacing: -0.018em;
+    line-height: 1.12;
+}
+
+.site-date-picker.is-year-mode .site-picker-nav {
+    font-size: 0.9rem;
+}
+
+/* La griglia degli anni conserva la disposizione attuale e mostra a destra
+   una barra verticale analoga a quella dei selettori orari. */
+.site-date-panel .site-calendar-year-grid {
+    position: relative;
+    padding-right: 0.62rem;
+}
+
+.site-calendar-year-scrollbar {
+    position: absolute;
+    top: 0.12rem;
+    right: 0.04rem;
+    bottom: 0.12rem;
+    width: 0.38rem;
+    border-radius: 999px;
+    background: #e4ded8;
+    box-shadow: inset 0 0 0 1px rgba(109, 91, 78, 0.12);
+    cursor: pointer;
+    touch-action: none;
+}
+
+.site-calendar-year-scrollbar:focus {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+.site-calendar-year-scrollbar-thumb {
+    position: absolute;
+    top: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    min-height: 1.75rem;
+    border-radius: 999px;
+    background: var(--primary-color);
+    box-shadow: 0 1px 3px rgba(51, 45, 41, 0.22);
+    cursor: grab;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.site-calendar-year-scrollbar:hover .site-calendar-year-scrollbar-thumb,
+.site-calendar-year-scrollbar:focus .site-calendar-year-scrollbar-thumb,
+.site-calendar-year-scrollbar-thumb.is-dragging {
+    background: var(--secondary-color);
+    box-shadow: 0 1px 4px rgba(51, 45, 41, 0.3);
+}
+
+.site-calendar-year-scrollbar-thumb.is-dragging {
+    cursor: grabbing;
+}
+
+@media (max-width: 560px) {
+    .site-date-panel {
+        padding-inline: 0.48rem;
+    }
+
+    .site-date-panel .site-picker-header {
+        grid-template-columns: 1.34rem minmax(0, 1fr) 1.34rem;
+        gap: 0.16rem;
+    }
+
+    .site-date-panel .site-picker-nav {
+        width: 1.34rem;
+        height: 1.34rem;
+        min-width: 1.34rem;
+    }
+
+    .site-date-panel .site-picker-title,
+    .site-date-picker.is-year-mode .site-picker-title {
+        font-size: 0.71rem;
+        letter-spacing: -0.025em;
+    }
+}

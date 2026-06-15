@@ -47,16 +47,16 @@ function render_telefonate_table_rows(array $rows): string
     ob_start();
     foreach ($rows as $row): ?>
         <tr>
-            <td class="identifier">
+            <td class="identifier table-align-right">
                 <a href="contratti.php?numero=<?= urlencode($row['effettuataDa']) ?>" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['effettuataDa']) ?>">
                     <?= htmlspecialchars($row['effettuataDa']) ?>
                 </a>
             </td>
-            <td><?= htmlspecialchars(format_date_it($row['data'])) ?></td>
-            <td><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></td>
-            <td class="numeric duration-value"><?= htmlspecialchars(format_duration_seconds($row['durata'])) ?></td>
-            <td><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></td>
-            <td class="numeric"><?= htmlspecialchars(format_euro($row['costo'])) ?></td>
+            <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['data'])) ?></td>
+            <td class="table-align-right"><?= htmlspecialchars(format_time_minutes($row['ora'])) ?></td>
+            <td class="numeric duration-value table-align-right"><?= htmlspecialchars(format_duration_seconds($row['durata'])) ?></td>
+            <td class="table-align-left"><?= ucfirst(htmlspecialchars($row['tipoContratto'])) ?></td>
+            <td class="numeric table-align-right"><?= htmlspecialchars(format_euro($row['costo'])) ?></td>
         </tr>
     <?php endforeach;
     return ob_get_clean();
@@ -680,12 +680,12 @@ if ($ajax_rows) {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero chiamante</th>
-                                <th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data</th>
-                                <th><span class="table-header-icon table-icon-clock" aria-hidden="true"></span>Ora</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata</th>
-                                <th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Addebito</th>
+                                <th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero chiamante</th>
+                                <th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data</th>
+                                <th class="table-align-right"><span class="table-header-icon table-icon-clock" aria-hidden="true"></span>Ora</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata</th>
+                                <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Addebito</th>
                             </tr>
                         </thead>
                         <tbody data-lazy-list="table">

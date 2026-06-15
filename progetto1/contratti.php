@@ -179,19 +179,19 @@ function render_contratti_table_rows(array $rows): string
         $is_currently_disabled = contratto_is_currently_disabled($row);
         ?>
         <tr>
-            <td class="identifier"><?= htmlspecialchars($row['numero']) ?></td>
-            <td>
+            <td class="identifier table-align-right"><?= htmlspecialchars($row['numero']) ?></td>
+            <td class="table-align-left">
                 <?php if ($is_currently_disabled): ?>
                     <span class="status-pill status-pill-number-disabled">Numero disattivato</span>
                 <?php else: ?>
                     <span class="status-pill status-pill-number-active">Numero attivo</span>
                 <?php endif; ?>
             </td>
-            <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
-            <td><?= $is_consumo ? 'A consumo' : 'Ricaricabile' ?></td>
-            <td class="numeric duration-value"><?= htmlspecialchars($tempo) ?></td>
-            <td class="numeric"><?= htmlspecialchars($credito) ?></td>
-            <td class="numeric">
+            <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
+            <td class="table-align-left"><?= $is_consumo ? 'A consumo' : 'Ricaricabile' ?></td>
+            <td class="numeric duration-value table-align-right"><?= htmlspecialchars($tempo) ?></td>
+            <td class="numeric table-align-right"><?= htmlspecialchars($credito) ?></td>
+            <td class="numeric table-align-right">
                 <?php if ($num_telefonate > 0): ?>
                     <a href="telefonate.php?contratto=<?= urlencode($row['numero']) ?>" title="Visualizza le chiamate di questo numero telefonico">
                         <?= htmlspecialchars((string) $num_telefonate) ?> chiamate
@@ -200,8 +200,8 @@ function render_contratti_table_rows(array $rows): string
                     0
                 <?php endif; ?>
             </td>
-            <td class="numeric duration-value"><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></td>
-            <td class="numeric"><?= htmlspecialchars(format_euro($costo_totale)) ?></td>
+            <td class="numeric duration-value table-align-right"><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></td>
+            <td class="numeric table-align-right"><?= htmlspecialchars(format_euro($costo_totale)) ?></td>
         </tr>
     <?php endforeach;
     return ob_get_clean();
@@ -306,13 +306,13 @@ if ($search_durata_preset !== ''
     $search_errors[] = 'Selezionare una soglia di durata valida.';
 }
 if (!is_non_negative_integer_or_empty($search_durata_ore)) {
-    $search_errors[] = 'Il campo “Durata minima chiamate totali - ore” deve contenere un numero intero positivo o pari a zero.';
+    $search_errors[] = 'Il campo “Durata minima chiamate - ore” deve contenere un numero intero positivo o pari a zero.';
 }
 if (!is_duration_part_or_empty($search_durata_min)) {
-    $search_errors[] = 'Il campo “Durata minima chiamate totali - minuti” deve contenere un valore tra 0 e 59.';
+    $search_errors[] = 'Il campo “Durata minima chiamate - minuti” deve contenere un valore tra 0 e 59.';
 }
 if (!is_seconds_part_or_empty($search_durata_sec)) {
-    $search_errors[] = 'Il campo “Durata minima chiamate totali - secondi” deve contenere un valore tra 0 e 59.';
+    $search_errors[] = 'Il campo “Durata minima chiamate - secondi” deve contenere un valore tra 0 e 59.';
 }
 if (!in_array($search_ordine, ['recenti', 'disattivati_recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
@@ -595,7 +595,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </div>
         </div>
         <div class="form-group phone-duration-filter-group">
-            <label for="durata_preset">Durata minima chiamate totali:</label>
+            <label for="durata_preset">Durata minima chiamate:</label>
             <div class="duration-smart-control<?= $search_durata_preset === 'custom' ? ' is-custom' : '' ?>" data-duration-control>
                 <select id="durata_preset" name="durata_preset" data-scroll-select="true" data-duration-preset-select>
                     <option value="" <?= $search_durata_preset === '' ? 'selected' : '' ?>>Qualsiasi durata</option>
@@ -662,15 +662,15 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero di telefono</th>
-                                <th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
-                                <th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
-                                <th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Tempo residuo</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Credito residuo</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-calls" aria-hidden="true"></span>Chiamate registrate</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata totale</th>
-                                <th class="numeric"><span class="table-header-icon table-icon-money" aria-hidden="true"></span>Addebiti totali</th>
+                                <th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero di telefono</th>
+                                <th class="table-align-left"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
+                                <th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
+                                <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Tempo residuo</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Credito residuo</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-calls" aria-hidden="true"></span>Chiamate registrate</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata totale</th>
+                                <th class="numeric table-align-right"><span class="table-header-icon table-icon-money" aria-hidden="true"></span>Addebiti totali</th>
                             </tr>
                         </thead>
                         <tbody data-lazy-list="table">

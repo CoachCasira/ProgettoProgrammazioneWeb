@@ -8824,3 +8824,138 @@ table.data-table th .table-header-icon {
         letter-spacing: -0.025em;
     }
 }
+
+
+/* =========================================================
+   V66 - Griglie filtri coerenti e allineamenti semantici tabelle
+   ========================================================= */
+
+/* Le colonne delle due righe usano una griglia comune. I due pulsanti finali
+   hanno la stessa larghezza e non alterano l'allineamento dei filtri. */
+@media (min-width: 1200px) {
+    .contratti-filter-form,
+    .telefonate-filter-form,
+    .sim-filter-form {
+        display: grid !important;
+        grid-template-columns: repeat(14, minmax(0, 1fr)) !important;
+        column-gap: 0.72rem !important;
+        row-gap: 0.82rem !important;
+        align-items: end !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group { grid-column: 1 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-status-filter-group { grid-column: 3 / span 2 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-date-filter-group { grid-column: 5 / span 4 !important; grid-row: 1 !important; }
+    .contratti-filter-form .residual-filter-group { grid-column: 9 / span 3 !important; grid-row: 1 !important; }
+    .contratti-filter-form .phone-plan-filter-group { grid-column: 12 / span 3 !important; grid-row: 1 !important; }
+    .contratti-filter-form .order-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .traffic-filter-group { grid-column: 4 / span 3 !important; grid-row: 2 !important; }
+    .contratti-filter-form .phone-duration-filter-group { grid-column: 7 / span 4 !important; grid-row: 2 !important; }
+    .contratti-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .contratti-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    .telefonate-filter-form .call-number-filter-group { grid-column: 1 / span 3 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .call-state-filter-group { grid-column: 4 / span 3 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .period-filter-group { grid-column: 7 / span 4 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .duration-filter-group { grid-column: 11 / span 4 !important; grid-row: 1 !important; }
+    .telefonate-filter-form .time-filter-group { grid-column: 1 / span 4 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-plan-filter-group { grid-column: 5 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .cost-filter-group { grid-column: 7 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .call-order-filter-group { grid-column: 9 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .telefonate-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    .sim-filter-form .sim-code-filter-group { grid-column: 1 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-phone-filter-group { grid-column: 4 / span 3 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-state-filter-group { grid-column: 7 / span 4 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-type-filter-group { grid-column: 11 / span 4 !important; grid-row: 1 !important; }
+    .sim-filter-form .sim-plan-filter-group { grid-column: 1 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-date-filter-group { grid-column: 4 / span 4 !important; grid-row: 2 !important; }
+    .sim-filter-form .sim-order-filter-group { grid-column: 8 / span 3 !important; grid-row: 2 !important; }
+    .sim-filter-form .btn-reset-filters { grid-column: 11 / span 2 !important; grid-row: 2 !important; }
+    .sim-filter-form .btn-filter-submit { grid-column: 13 / span 2 !important; grid-row: 2 !important; }
+
+    .contratti-filter-form > .btn,
+    .telefonate-filter-form > .btn,
+    .sim-filter-form > .btn {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+}
+
+/* L'intestazione segue l'allineamento semantico dei dati della colonna. */
+table.data-table th.table-align-left,
+table.data-table td.table-align-left {
+    text-align: left !important;
+}
+
+table.data-table th.table-align-right,
+table.data-table td.table-align-right {
+    text-align: right !important;
+}
+
+table.data-table th.table-align-center,
+table.data-table td.table-align-center {
+    text-align: center !important;
+}
+
+/* Nessuna intestazione può essere abbreviata o tagliata. Se le colonne non
+   entrano nel contenitore, la tabella usa lo scorrimento orizzontale. */
+.results-view-root .table-container-inner {
+    overflow-x: auto !important;
+    overflow-y: visible;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+}
+
+.results-view-root table.data-table {
+    width: max-content !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
+}
+
+.results-view-root table.data-table th,
+.results-view-root table.data-table td {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte {
+    min-width: 1460px !important;
+}
+
+.results-view-root[data-view-key="sim"] table.sim-table-state-attive {
+    min-width: 980px !important;
+}
+
+.results-view-root[data-view-key="sim"] table.sim-table-state-disattive {
+    min-width: 1280px !important;
+}
+
+.results-view-root[data-view-key="sim"] table.sim-table-state-disponibili {
+    min-width: 720px !important;
+}
+
+/* Larghezze minime calibrate sul contenuto completo delle intestazioni SIM. */
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(1),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(1) { min-width: 230px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(2),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(2) { min-width: 145px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(3),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(3) { min-width: 190px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(4),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(4),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(5),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(5) { min-width: 185px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(6),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(6) { min-width: 150px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(7),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(7) { min-width: 130px !important; width: auto !important; }
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte th:nth-child(8),
+.results-view-root[data-view-key="sim"] table.sim-table-state-tutte td:nth-child(8) { min-width: 210px !important; width: auto !important; }
+
+/* Il trattino dei numeri non associati mantiene lo stesso allineamento dei numeri. */
+.results-view-root[data-view-key="sim"] td.sim-phone-table-cell {
+    text-align: right !important;
+}

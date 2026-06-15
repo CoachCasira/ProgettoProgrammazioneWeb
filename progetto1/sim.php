@@ -494,15 +494,15 @@ function render_sim_rows(array $rows, string $state): string
 function render_sim_table_header(string $state): string
 {
     if ($state === 'tutte') {
-        return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
+        return '<tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-center"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
     }
     if ($state === 'attive') {
-        return '<tr><th class="identifier sim-code-cell"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero associato</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th></tr>';
+        return '<tr><th class="identifier sim-code-cell table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero associato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th></tr>';
     }
     if ($state === 'disponibili') {
-        return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato operativo</th></tr>';
+        return '<tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato operativo</th></tr>';
     }
-    return '<tr><th class="identifier"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero precedente</th><th><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
+    return '<tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero precedente</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>';
 }
 
 function render_sim_table_rows(array $rows, string $state): string
@@ -514,22 +514,22 @@ function render_sim_table_rows(array $rows, string $state): string
         ?>
         <?php if ($state === 'tutte'): ?>
             <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
-                <td class="identifier sim-code-cell"><?= htmlspecialchars($row['codice']) ?></td>
-                <td><span class="status-pill <?= htmlspecialchars(sim_state_badge_class($row_state)) ?>"><?= htmlspecialchars(sim_state_badge_label($row_state)) ?></span></td>
-                <td class="identifier sim-phone-table-cell">
+                <td class="identifier sim-code-cell table-align-right"><?= htmlspecialchars($row['codice']) ?></td>
+                <td class="table-align-center"><span class="status-pill <?= htmlspecialchars(sim_state_badge_class($row_state)) ?>"><?= htmlspecialchars(sim_state_badge_label($row_state)) ?></span></td>
+                <td class="identifier sim-phone-table-cell table-align-right">
                     <?php if ($row_state === 'attive'): ?>
                         <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['associataA']) ?>"><?= htmlspecialchars($row['associataA']) ?></a>
                     <?php elseif ($row_state === 'disattive'): ?>
                         <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" title="Apri il dettaglio del numero telefonico precedentemente associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['eraAssociataA']) ?>"><?= htmlspecialchars($row['eraAssociataA']) ?></a>
                     <?php else: ?>
-                        Non associata
+                        -
                     <?php endif; ?>
                 </td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'] ?? '')) ?></td>
-                <td><?= $row_state === 'disattive' ? htmlspecialchars(format_date_it($row['dataDisattivazione'])) : '-' ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
-                <td><?= ($row['tipoContratto'] ?? null) !== null ? ucfirst(htmlspecialchars((string)$row['tipoContratto'])) : '-' ?></td>
-                <td class="sim-actions-column">
+                <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['dataAttivazione'] ?? '')) ?></td>
+                <td class="table-align-right"><?= $row_state === 'disattive' ? htmlspecialchars(format_date_it($row['dataDisattivazione'])) : '-' ?></td>
+                <td class="table-align-left"><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td class="table-align-left"><?= ($row['tipoContratto'] ?? null) !== null ? ucfirst(htmlspecialchars((string)$row['tipoContratto'])) : '-' ?></td>
+                <td class="sim-actions-column table-align-center">
                     <?php if ($row_state === 'attive'): ?>
                         <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=<?= urlencode($return_state) ?>" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
                     <?php elseif ($row_state === 'disattive'): ?>
@@ -544,40 +544,40 @@ function render_sim_table_rows(array $rows, string $state): string
             </tr>
         <?php elseif ($row_state === 'attive'): ?>
             <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
-                <td class="identifier sim-code-cell">
+                <td class="identifier sim-code-cell table-align-right">
                     <div class="sim-code-actions">
                         <a href="sim.php?stato=disattive&amp;action=create&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=<?= urlencode($return_state) ?>" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>
                         <span class="sim-code-value"><?= htmlspecialchars($row['codice']) ?></span>
                     </div>
                 </td>
-                <td class="identifier sim-phone-table-cell">
+                <td class="identifier sim-phone-table-cell table-align-right">
                     <a href="contratti.php?numero=<?= urlencode($row['associataA']) ?>" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['associataA']) ?>">
                         <?= htmlspecialchars($row['associataA']) ?>
                     </a>
                 </td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
-                <td><?= ucfirst(htmlspecialchars((string)$row['tipoContratto'])) ?></td>
+                <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
+                <td class="table-align-left"><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td class="table-align-left"><?= ucfirst(htmlspecialchars((string)$row['tipoContratto'])) ?></td>
             </tr>
         <?php elseif ($row_state === 'disponibili'): ?>
             <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
-                <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
-                <td>Non associata a un numero</td>
+                <td class="identifier table-align-right"><?= htmlspecialchars($row['codice']) ?></td>
+                <td class="table-align-left"><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td class="table-align-left">Non associata a un numero</td>
             </tr>
         <?php else: ?>
             <tr data-sim-code="<?= htmlspecialchars($row['codice']) ?>">
-                <td class="identifier"><?= htmlspecialchars($row['codice']) ?></td>
-                <td class="identifier sim-phone-table-cell">
+                <td class="identifier table-align-right"><?= htmlspecialchars($row['codice']) ?></td>
+                <td class="identifier sim-phone-table-cell table-align-right">
                     <a href="contratti.php?numero=<?= urlencode($row['eraAssociataA']) ?>" title="Apri il dettaglio del numero telefonico precedentemente associato" data-phone-card-modal="true" data-phone-number="<?= htmlspecialchars($row['eraAssociataA']) ?>">
                         <?= htmlspecialchars($row['eraAssociataA']) ?>
                     </a>
                 </td>
-                <td><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
-                <td><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
-                <td><?= htmlspecialchars($row['tipoSIM']) ?></td>
-                <td><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars((string)$row['tipoContratto'])) : '-' ?></td>
-                <td class="sim-actions-column">
+                <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['dataAttivazione'])) ?></td>
+                <td class="table-align-right"><?= htmlspecialchars(format_date_it($row['dataDisattivazione'])) ?></td>
+                <td class="table-align-left"><?= htmlspecialchars($row['tipoSIM']) ?></td>
+                <td class="table-align-left"><?= $row['tipoContratto'] !== null ? ucfirst(htmlspecialchars((string)$row['tipoContratto'])) : '-' ?></td>
+                <td class="sim-actions-column table-align-center">
                     <div class="table-action-group">
                         <a href="sim.php?stato=disattive&amp;action=edit&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=<?= urlencode($return_state) ?>" class="action-edit action-edit-sim">Modifica</a>
                         <a href="sim.php?stato=disattive&amp;action=confirm_delete&amp;codice=<?= urlencode($row['codice']) ?>&amp;return_stato=<?= urlencode($return_state) ?>" class="action-delete action-delete-sim">Elimina</a>

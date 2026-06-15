@@ -8617,3 +8617,94 @@ table.data-table th .table-header-icon {
         font-size: 0.72rem;
     }
 }
+
+
+/* =========================================================
+   V64 - Chiarezza durata totale e navigazione estesa calendario
+   ========================================================= */
+
+/* La durata mostrata nelle card rappresenta la somma di tutte le chiamate.
+   L'etichetta abbreviata resta su una sola riga anche nelle card più strette. */
+.phone-card .phone-duration-tile dt {
+    white-space: nowrap;
+    font-size: 0.68rem;
+    letter-spacing: -0.015em;
+}
+
+/* L'intestazione del calendario usa tre colonne stabili: le frecce non
+   comprimono né mandano a capo il mese o l'intervallo degli anni. */
+.site-date-panel .site-picker-header {
+    display: grid;
+    grid-template-columns: 1.9rem minmax(0, 1fr) 1.9rem;
+    align-items: center;
+}
+
+.site-date-panel .site-picker-title {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 0.18rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: clip;
+    line-height: 1.15;
+}
+
+.site-date-picker.is-year-mode .site-picker-title {
+    font-size: 0.78rem;
+    letter-spacing: -0.02em;
+}
+
+.site-date-picker.is-year-mode .site-picker-nav {
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+/* Vista mensile e selezione degli anni occupano esattamente la stessa area,
+   quindi il pannello non cambia altezza quando si cambia modalità. */
+.site-date-panel .site-calendar-grid,
+.site-date-panel .site-calendar-year-grid {
+    width: 100%;
+    height: 10.5rem;
+    min-height: 10.5rem;
+    box-sizing: border-box;
+}
+
+.site-date-panel .site-calendar-grid {
+    grid-template-rows: 1.9rem repeat(6, minmax(0, 1fr));
+    align-content: stretch;
+}
+
+.site-date-panel .site-calendar-day {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+}
+
+.site-date-panel .site-calendar-year-grid {
+    grid-template-rows: repeat(4, minmax(0, 1fr));
+    align-content: stretch;
+    gap: 0.26rem;
+}
+
+.site-date-panel .site-calendar-year {
+    min-height: 0;
+    height: 100%;
+    padding-block: 0.18rem;
+}
+
+/* Altezza e line-height esplicite evitano che la parte inferiore della G di GI
+   venga tagliata dal rendering compatto del browser. */
+.site-date-panel .site-calendar-weekday {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.9rem;
+    min-height: 1.9rem;
+    padding: 0.2rem 0.02rem 0.38rem;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 0.69rem;
+    line-height: 1.18;
+    overflow: visible;
+}

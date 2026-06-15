@@ -1044,9 +1044,28 @@
         var maximum = parseIsoDate(input.dataset.pickerMax || '');
         var currentYear = new Date().getFullYear();
         return {
-            min: minimum ? minimum.getFullYear() : 1900,
-            max: maximum ? maximum.getFullYear() : currentYear + 20
+            min: minimum ? minimum.getFullYear() : 1980,
+            max: maximum ? maximum.getFullYear() : Math.max(2037, currentYear + 10)
         };
+    }
+
+    function shiftSiteDateYearWindow(input, direction) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || wrapper.dataset.calendarMode !== 'years') {
+            return;
+        }
+        var limits = getSiteDateYearLimits(input);
+        var latestStart = Math.max(limits.min, limits.max - 11);
+        var currentStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(currentStart)) {
+            currentStart = limits.min;
+        }
+        var nextStart = Math.max(limits.min, Math.min(latestStart, currentStart + direction));
+        if (nextStart === currentStart) {
+            return;
+        }
+        wrapper.dataset.yearBlockStart = String(nextStart);
+        renderSiteDateYearSelector(input);
     }
 
     function renderSiteDateYearSelector(input) {
@@ -1064,7 +1083,7 @@
 
         var limits = getSiteDateYearLimits(input);
         var blockStart = Number(wrapper.dataset.yearBlockStart);
-        if (!Number.isFinite(blockStart) || viewYear < blockStart || viewYear > blockStart + 11) {
+        if (!Number.isFinite(blockStart)) {
             blockStart = Math.floor(viewYear / 12) * 12;
         }
         var latestStart = Math.max(limits.min, limits.max - 11);
@@ -1077,13 +1096,16 @@
         ui.yearGrid.innerHTML = '';
 
         var blockEnd = Math.min(blockStart + 11, limits.max);
-        ui.title.textContent = blockStart === blockEnd ? String(blockStart) : blockStart + ' – ' + blockEnd;
+        wrapper.classList.add('is-year-mode');
+        ui.title.textContent = blockStart === blockEnd ? String(blockStart) : blockStart + '–' + blockEnd;
         ui.title.setAttribute('aria-expanded', 'true');
         ui.title.setAttribute('aria-label', 'Torna alla visualizzazione del mese');
-        ui.previous.setAttribute('aria-label', 'Intervallo di anni precedente');
-        ui.next.setAttribute('aria-label', 'Intervallo di anni successivo');
+        ui.previous.textContent = '↑';
+        ui.next.textContent = '↓';
+        ui.previous.setAttribute('aria-label', 'Scorri verso gli anni precedenti');
+        ui.next.setAttribute('aria-label', 'Scorri verso gli anni successivi');
         ui.previous.disabled = blockStart <= limits.min;
-        ui.next.disabled = blockEnd >= limits.max;
+        ui.next.disabled = blockStart >= latestStart;
 
         var selected = parseIsoDate(input.value);
         for (var year = blockStart; year <= blockEnd; year += 1) {
@@ -1125,13 +1147,17 @@
             wrapper.dataset.viewMonth = String(viewMonth);
         }
 
+        var limits = getSiteDateYearLimits(input);
+        wrapper.classList.remove('is-year-mode');
         ui.title.textContent = SITE_DATE_MONTHS[viewMonth] + ' ' + viewYear;
         ui.title.setAttribute('aria-expanded', 'false');
         ui.title.setAttribute('aria-label', 'Scegli rapidamente l’anno');
+        ui.previous.textContent = '‹';
+        ui.next.textContent = '›';
         ui.previous.setAttribute('aria-label', 'Mese precedente');
         ui.next.setAttribute('aria-label', 'Mese successivo');
-        ui.previous.disabled = false;
-        ui.next.disabled = false;
+        ui.previous.disabled = viewYear <= limits.min && viewMonth === 0;
+        ui.next.disabled = viewYear >= limits.max && viewMonth === 11;
         ui.grid.innerHTML = '';
 
         SITE_DATE_WEEKDAYS.forEach(function (weekday) {
@@ -1337,15 +1363,13 @@
                 if (wrapper.dataset.calendarMode === 'years') {
                     renderSiteDateCalendar(input);
                 } else {
+                    delete wrapper.dataset.yearBlockStart;
                     renderSiteDateYearSelector(input);
                 }
             });
             previous.addEventListener('click', function () {
                 if (wrapper.dataset.calendarMode === 'years') {
-                    var limits = getSiteDateYearLimits(input);
-                    var blockStart = Number(wrapper.dataset.yearBlockStart) - 12;
-                    wrapper.dataset.yearBlockStart = String(Math.max(limits.min, blockStart));
-                    renderSiteDateYearSelector(input);
+                    shiftSiteDateYearWindow(input, -1);
                     return;
                 }
                 var year = Number(wrapper.dataset.viewYear);
@@ -1360,11 +1384,7 @@
             });
             next.addEventListener('click', function () {
                 if (wrapper.dataset.calendarMode === 'years') {
-                    var limits = getSiteDateYearLimits(input);
-                    var blockStart = Number(wrapper.dataset.yearBlockStart) + 12;
-                    var latestStart = Math.max(limits.min, limits.max - 11);
-                    wrapper.dataset.yearBlockStart = String(Math.min(latestStart, blockStart));
-                    renderSiteDateYearSelector(input);
+                    shiftSiteDateYearWindow(input, 1);
                     return;
                 }
                 var year = Number(wrapper.dataset.viewYear);
@@ -1377,6 +1397,20 @@
                 wrapper.dataset.viewMonth = String(month);
                 renderSiteDateCalendar(input);
             });
+            panel.addEventListener('wheel', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years' || event.deltaY === 0) {
+                    return;
+                }
+                event.preventDefault();
+                if (wrapper._yearWheelLocked) {
+                    return;
+                }
+                wrapper._yearWheelLocked = true;
+                shiftSiteDateYearWindow(input, event.deltaY < 0 ? -1 : 1);
+                window.setTimeout(function () {
+                    wrapper._yearWheelLocked = false;
+                }, 90);
+            }, { passive: false });
             panel.addEventListener('click', function (event) {
                 event.stopPropagation();
             });

@@ -150,7 +150,7 @@ function render_contratti_cards(array $rows): string
                     </div>
                 <?php endif; ?>
                 <div class="card-detail-tile phone-duration-tile">
-                    <dt>Durata chiamate</dt>
+                    <dt>Durata chiamate tot</dt>
                     <dd><?= htmlspecialchars(format_total_duration_compact($durata_totale)) ?></dd>
                 </div>
                 <div class="card-detail-tile phone-charge-tile">
@@ -306,13 +306,13 @@ if ($search_durata_preset !== ''
     $search_errors[] = 'Selezionare una soglia di durata valida.';
 }
 if (!is_non_negative_integer_or_empty($search_durata_ore)) {
-    $search_errors[] = 'Il campo “Durata chiamate - ore” deve contenere un numero intero positivo o pari a zero.';
+    $search_errors[] = 'Il campo “Durata minima chiamate totali - ore” deve contenere un numero intero positivo o pari a zero.';
 }
 if (!is_duration_part_or_empty($search_durata_min)) {
-    $search_errors[] = 'Il campo “Durata chiamate - minuti” deve contenere un valore tra 0 e 59.';
+    $search_errors[] = 'Il campo “Durata minima chiamate totali - minuti” deve contenere un valore tra 0 e 59.';
 }
 if (!is_seconds_part_or_empty($search_durata_sec)) {
-    $search_errors[] = 'Il campo “Durata chiamate - secondi” deve contenere un valore tra 0 e 59.';
+    $search_errors[] = 'Il campo “Durata minima chiamate totali - secondi” deve contenere un valore tra 0 e 59.';
 }
 if (!in_array($search_ordine, ['recenti', 'disattivati_recenti', 'chiamate_crescenti', 'piu_chiamate', 'maggiore_durata', 'maggiore_spesa'], true)) {
     $search_errors[] = 'Selezionare un ordinamento valido.';
@@ -595,7 +595,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
             </div>
         </div>
         <div class="form-group phone-duration-filter-group">
-            <label for="durata_preset">Durata chiamate:</label>
+            <label for="durata_preset">Durata minima chiamate totali:</label>
             <div class="duration-smart-control<?= $search_durata_preset === 'custom' ? ' is-custom' : '' ?>" data-duration-control>
                 <select id="durata_preset" name="durata_preset" data-scroll-select="true" data-duration-preset-select>
                     <option value="" <?= $search_durata_preset === '' ? 'selected' : '' ?>>Qualsiasi durata</option>
@@ -712,7 +712,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 $contratti_zero_criteria[] = 'almeno ' . $effective_min_chiamate . ' chiamate';
             }
             if ($duration_filter_active) {
-                $contratti_zero_criteria[] = 'durata chiamate di almeno ' . format_duration_filter_value($duration_threshold_seconds);
+                $contratti_zero_criteria[] = 'durata totale delle chiamate di almeno ' . format_duration_filter_value($duration_threshold_seconds);
             }
             $contratti_zero_message = build_filter_aware_no_results_message(
                 'Nessun numero telefonico',

@@ -8335,8 +8335,8 @@ body.site-picker-overlay-active .search-filter {
     overflow: visible;
 }
 
-/* Il menu con le soglie rapide rimane sempre visibile. L'editor preciso viene
-   aggiunto sotto soltanto dopo la scelta "Durata personalizzata". */
+/* Il menu mostra le soglie rapide. Quando viene scelta la durata personalizzata,
+   il menu viene sostituito dall'editor preciso nello stesso spazio. */
 .duration-smart-control {
     display: flex;
     flex-direction: column;
@@ -8344,7 +8344,7 @@ body.site-picker-overlay-active .search-filter {
 }
 
 .duration-smart-control.is-custom > .custom-select {
-    display: block !important;
+    display: none !important;
 }
 
 .duration-smart-control:not(.is-custom) > .duration-custom-editor,
@@ -8466,5 +8466,154 @@ table.data-table th .table-header-icon {
         min-width: 2.25rem;
         width: 2.25rem;
         padding-right: 0.34rem !important;
+    }
+}
+
+
+/* =========================================================
+   V63 - Selezione rapida dell'anno e durata personalizzata sostitutiva
+   ========================================================= */
+
+/* Il titolo mese/anno è un comando: permette di passare alla selezione rapida
+   dell'anno senza modificare l'aspetto compatto del calendario. */
+.site-picker-title {
+    min-width: 0;
+    padding: 0.28rem 0.42rem;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--primary-color);
+    font-family: inherit;
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-align: center;
+    text-transform: capitalize;
+    cursor: pointer;
+}
+
+.site-picker-title:hover,
+.site-picker-title:focus {
+    background: var(--row-alt);
+    outline: 2px solid var(--accent-color);
+    outline-offset: -1px;
+}
+
+.site-picker-nav:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.site-calendar-grid.is-hidden,
+.site-calendar-year-grid.is-hidden {
+    display: none !important;
+}
+
+.site-calendar-year-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.34rem;
+    width: 100%;
+    min-height: 11rem;
+    align-content: center;
+}
+
+.site-calendar-year {
+    min-height: 2.35rem;
+    padding: 0.32rem 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.site-calendar-year:hover,
+.site-calendar-year:focus {
+    background: var(--row-alt);
+    border-color: var(--accent-color);
+    outline: 0;
+}
+
+.site-calendar-year.is-current-view {
+    box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+
+.site-calendar-year.is-selected {
+    background: var(--primary-color);
+    color: #fff;
+    box-shadow: none;
+}
+
+/* Sigle in maiuscolo e riga leggermente più alta: nessun glifo viene tagliato,
+   inclusa la G di GI. */
+.site-calendar-weekday {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 1.72rem;
+    padding: 0.18rem 0.05rem 0.24rem;
+    line-height: 1.35;
+    text-transform: uppercase;
+    overflow: visible;
+}
+
+/* In modalità personalizzata il menu delle soglie scompare davvero e viene
+   sostituito dall'editor; il pulsante indietro ripristina il menu. */
+.duration-smart-control.is-custom > .custom-select,
+.duration-smart-control.is-custom > select[data-duration-preset-select] {
+    display: none !important;
+}
+
+.duration-smart-control.is-custom > .duration-custom-editor:not(.is-hidden) {
+    display: grid !important;
+    margin-top: 0 !important;
+}
+
+/* I campi personalizzati non riservano più spazio a X interne inutili. Le
+   parole Ore, Minuti e Secondi rimangono interamente leggibili. */
+.telefonate-filter-form .duration-custom-editor .duration-segment,
+.contratti-filter-form .duration-custom-editor .duration-segment {
+    grid-template-columns: minmax(3.9rem, 1fr) max-content !important;
+    min-width: 0;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-segment > input,
+.contratti-filter-form .duration-custom-editor .duration-segment > input {
+    min-width: 0 !important;
+    width: 100% !important;
+    padding: 0 0.32rem 0 0.62rem !important;
+    font-size: 0.82rem;
+    text-overflow: clip;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-unit,
+.contratti-filter-form .duration-custom-editor .duration-unit {
+    min-width: auto !important;
+    width: auto !important;
+    padding: 0 0.42rem 0 0.08rem !important;
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+@media (max-width: 560px) {
+    .telefonate-filter-form .duration-custom-editor .duration-segment,
+    .contratti-filter-form .duration-custom-editor .duration-segment {
+        grid-template-columns: minmax(3.15rem, 1fr) max-content !important;
+    }
+
+    .telefonate-filter-form .duration-custom-editor .duration-segment > input,
+    .contratti-filter-form .duration-custom-editor .duration-segment > input {
+        padding-left: 0.42rem !important;
+        font-size: 0.76rem;
+    }
+
+    .telefonate-filter-form .duration-custom-editor .duration-unit,
+    .contratti-filter-form .duration-custom-editor .duration-unit {
+        padding-right: 0.25rem !important;
+        font-size: 0.72rem;
     }
 }

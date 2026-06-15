@@ -607,17 +607,17 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 </select>
                 <div class="duration-custom-editor duration-range-control duration-three-part<?= $search_durata_preset === 'custom' ? '' : ' is-hidden' ?>" data-duration-custom-panel aria-hidden="<?= $search_durata_preset === 'custom' ? 'false' : 'true' ?>">
                     <div class="duration-segment">
-                        <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_ore : '') ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in ore" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <input type="text" id="durata_ore" name="durata_ore" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_ore : '') ?>" placeholder="Ore" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in ore" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
                         <span class="duration-unit">h</span>
                     </div>
                     <span class="compound-control-divider" aria-hidden="true"></span>
                     <div class="duration-segment">
-                        <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_min : '') ?>" placeholder="Min" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in minuti" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <input type="text" id="durata_min" name="durata_min" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_min : '') ?>" placeholder="Minuti" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in minuti" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
                         <span class="duration-unit">min</span>
                     </div>
                     <span class="compound-control-divider" aria-hidden="true"></span>
                     <div class="duration-segment">
-                        <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_sec : '') ?>" placeholder="Sec" inputmode="numeric" autocomplete="off" data-clearable="true" aria-label="Durata complessiva minima in secondi" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
+                        <input type="text" id="durata_sec" name="durata_sec" value="<?= htmlspecialchars($search_durata_preset === 'custom' ? $search_durata_sec : '') ?>" placeholder="Secondi" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in secondi" <?= $search_durata_preset === 'custom' ? '' : 'disabled' ?>>
                         <span class="duration-unit">sec</span>
                     </div>
                     <button type="button" class="duration-custom-back" data-duration-custom-back aria-label="Torna alle soglie rapide" title="Torna alle soglie rapide">↩</button>

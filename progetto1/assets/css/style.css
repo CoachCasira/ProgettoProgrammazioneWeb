@@ -7238,3 +7238,38 @@ select[data-scroll-select="true"].native-select-hidden {
     .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn-reset-filters { grid-column: 1 / span 4 !important; grid-row: 2 !important; }
     .sim-filter-form:has(.sim-phone-filter-group.is-hidden):has(.sim-date-filter-group.is-hidden) > .btn-filter-submit { grid-column: 5 / span 4 !important; grid-row: 2 !important; }
 }
+
+/* =========================================================
+   V57 - Filtri contestuali SIM e soglia personalizzata
+   ========================================================= */
+
+/* La X della soglia personalizzata resta più distante dalla freccia della
+   tendina e completamente contenuta nel campo testuale. */
+.traffic-filter-group .custom-threshold-inline .clear-input-button,
+.traffic-filter-group .custom-threshold-inline .clear-input-button:hover,
+.traffic-filter-group .custom-threshold-inline .clear-input-button:focus {
+    right: 1.35rem !important;
+}
+
+.traffic-filter-group .custom-threshold-inline .clearable-input input {
+    padding-right: 3.15rem !important;
+}
+
+/* Quando sono selezionate esclusivamente SIM disponibili, i filtri che
+   richiedono un'associazione restano visibili ma sono chiaramente inattivi. */
+.sim-filter-form .form-group.is-filter-unavailable {
+    opacity: 0.46;
+    pointer-events: none;
+}
+
+.sim-filter-form .form-group.is-filter-unavailable label,
+.sim-filter-form .form-group.is-filter-unavailable input,
+.sim-filter-form .form-group.is-filter-unavailable select,
+.sim-filter-form .form-group.is-filter-unavailable .custom-select-button {
+    cursor: not-allowed !important;
+}
+
+.sim-filter-form .form-group.is-filter-unavailable input,
+.sim-filter-form .form-group.is-filter-unavailable .custom-select-button {
+    background: var(--surface-muted, #eee9e4) !important;
+}

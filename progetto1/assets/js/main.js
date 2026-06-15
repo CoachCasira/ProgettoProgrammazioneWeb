@@ -149,6 +149,40 @@
         }
     }
 
+    function updateSimOrderOptions(form, selectedStates) {
+        var order = form ? form.querySelector('#ordine_sim') : null;
+        if (!order) {
+            return;
+        }
+
+        var states = Array.isArray(selectedStates) ? selectedStates : getSelectedSimStates(form);
+        var hasActive = states.indexOf('attive') !== -1;
+        var hasDisabled = states.indexOf('disattive') !== -1;
+        var hasAssociated = hasActive || hasDisabled;
+
+        Array.prototype.forEach.call(order.options, function (option) {
+            if (option.value === 'piu_chiamate') {
+                option.hidden = !hasAssociated;
+            } else if (option.value === 'attivate_recenti') {
+                option.hidden = !hasActive;
+            } else if (option.value === 'disattivate_recenti') {
+                option.hidden = !hasDisabled;
+            }
+        });
+
+        var selectedOption = order.selectedIndex >= 0 ? order.options[order.selectedIndex] : null;
+        if (!hasAssociated || !selectedOption || selectedOption.hidden) {
+            order.value = 'nessuno';
+        }
+
+        order.disabled = !hasAssociated;
+        var group = order.closest('.sim-order-filter-group');
+        if (group) {
+            group.classList.toggle('is-filter-unavailable', !hasAssociated);
+        }
+        updateCustomSelect(order);
+    }
+
     function applySimState(form, states) {
         var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
         var select = form.querySelector('[data-sim-state-select]');
@@ -167,23 +201,35 @@
 
         form.querySelectorAll('[data-state-field]').forEach(function (fieldGroup) {
             var allowedStates = (fieldGroup.dataset.stateField || '').split(',').filter(Boolean);
-            var shouldShow = selectedStates.some(function (state) {
+            var shouldEnable = selectedStates.some(function (state) {
                 return allowedStates.indexOf(state) !== -1;
             });
-            fieldGroup.classList.toggle('is-hidden', !shouldShow);
+
+            /* I filtri non applicabili restano visibili per mantenere stabile il
+               layout, ma diventano attenuati e non interattivi. */
+            fieldGroup.classList.remove('is-hidden');
+            fieldGroup.classList.toggle('is-filter-unavailable', !shouldEnable);
 
             fieldGroup.querySelectorAll('input, select, textarea').forEach(function (field) {
-                field.disabled = !shouldShow;
-                if (!shouldShow) {
-                    field.value = '';
+                field.disabled = !shouldEnable;
+                if (!shouldEnable) {
+                    if (field.tagName === 'SELECT') {
+                        field.value = field.options.length ? field.options[0].value : '';
+                    } else {
+                        field.value = '';
+                    }
                     field.dispatchEvent(new Event('change', { bubbles: false }));
                 }
                 if (field.matches && field.matches('input[data-clearable="true"]')) {
                     updateClearButton(field);
                 }
+                if (field.tagName === 'SELECT') {
+                    updateCustomSelect(field);
+                }
             });
         });
 
+        updateSimOrderOptions(form, selectedStates);
         updateStickyLayout();
     }
 
@@ -557,6 +603,7 @@
             var isDisabled = Boolean(nativeOption && nativeOption.disabled);
             var isHidden = Boolean(nativeOption && nativeOption.hidden);
             optionButton.hidden = isHidden;
+            optionButton.style.display = isHidden ? 'none' : '';
             optionButton.classList.toggle('is-selected', isSelected);
             optionButton.classList.toggle('is-disabled', isDisabled);
             optionButton.disabled = isDisabled;
@@ -637,6 +684,7 @@
                 optionButton.textContent = option.textContent;
                 optionButton.setAttribute('role', 'option');
                 optionButton.hidden = option.hidden;
+                optionButton.style.display = option.hidden ? 'none' : '';
                 optionButton.disabled = option.disabled;
                 optionButton.classList.toggle('is-disabled', option.disabled);
                 optionButton.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');

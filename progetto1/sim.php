@@ -2,6 +2,7 @@
 require_once 'includes/config.php';
 require_once 'includes/validation.php';
 require_once 'includes/csv.php';
+require_once 'includes/performance.php';
 
 function normalize_sim_state(string $state): string
 {
@@ -831,9 +832,15 @@ $search_tipo = trim($is_filter_request ? ($_POST['tipoSIM'] ?? $_GET['tipoSIM'] 
 $search_piano = $has_associated_state_filter
     ? trim($is_filter_request ? ($_POST['piano'] ?? $_GET['piano'] ?? '') : '')
     : '';
-$search_ordine_sim = trim($is_filter_request ? ($_POST['ordine_sim'] ?? $_GET['ordine_sim'] ?? 'operative') : 'operative');
-if ($search_ordine_sim === '') {
-    $search_ordine_sim = 'operative';
+$search_ordine_sim = trim($is_filter_request ? ($_POST['ordine_sim'] ?? $_GET['ordine_sim'] ?? 'nessuno') : 'nessuno');
+/* Compatibilità con le versioni precedenti salvate in sessionStorage. */
+if ($search_ordine_sim === '' || $search_ordine_sim === 'operative') {
+    $search_ordine_sim = 'nessuno';
+}
+/* Le SIM disponibili non hanno chiamate né date operative associate: in questa
+   vista un ordinamento aggiuntivo non avrebbe significato. */
+if (!$has_associated_state_filter) {
+    $search_ordine_sim = 'nessuno';
 }
 $search_numero = $has_associated_state_filter ? trim($is_filter_request ? ($_POST['numero'] ?? $_GET['numero'] ?? '') : '') : '';
 $search_data_da = $has_associated_state_filter ? trim($is_filter_request ? ($_POST['data_da'] ?? $_GET['data_da'] ?? '') : '') : '';
@@ -856,7 +863,7 @@ if (!is_digits_or_empty($search_numero)) {
 if ($search_piano !== '' && !in_array($search_piano, ['consumo', 'ricarica'], true)) {
     $search_errors[] = 'Selezionare un piano associato valido.';
 }
-if (!in_array($search_ordine_sim, ['operative', 'piu_chiamate'], true)) {
+if (!in_array($search_ordine_sim, ['nessuno', 'piu_chiamate', 'attivate_recenti', 'disattivate_recenti'], true)) {
     $search_errors[] = 'Selezionare un ordinamento delle SIM valido.';
 }
 
@@ -871,16 +878,23 @@ if ($action === 'list' && empty($search_errors)) {
     /* Il conteggio delle chiamate viene calcolato soltanto quando l'utente
        richiede esplicitamente l'ordinamento per attività. Per le SIM in uso
        consideriamo le telefonate successive alla loro attivazione; per quelle
-       disattivate soltanto il periodo in cui erano effettivamente associate. */
+       disattivate soltanto il periodo in cui erano effettivamente associate.
+       L'indice composto utenza/data evita di scandire inutilmente milioni di
+       telefonate per ogni SIM. */
     $needs_sim_call_count = $search_ordine_sim === 'piu_chiamate';
+    $call_index_name = performance_index_exists($conn, 'Telefonata', 'idx_telefonata_utenza_data')
+        ? 'idx_telefonata_utenza_data'
+        : (performance_index_exists($conn, 'Telefonata', 'idx_telefonata_utenza') ? 'idx_telefonata_utenza' : '');
+    $call_index_hint = $call_index_name !== '' ? " FORCE INDEX (`$call_index_name`)" : '';
+
     $active_call_count_sql = $needs_sim_call_count
-        ? "(SELECT COUNT(*) FROM Telefonata t WHERE t.effettuataDa = s.associataA AND t.data >= s.dataAttivazione)"
+        ? "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.associataA AND t.data >= s.dataAttivazione)"
         : "0";
     $disabled_call_count_sql = $needs_sim_call_count
-        ? "(SELECT COUNT(*) FROM Telefonata t WHERE t.effettuataDa = s.eraAssociataA AND t.data BETWEEN s.dataAttivazione AND s.dataDisattivazione)"
+        ? "(SELECT COUNT(*) FROM Telefonata t$call_index_hint WHERE t.effettuataDa = s.eraAssociataA AND t.data BETWEEN s.dataAttivazione AND s.dataDisattivazione)"
         : "0";
 
-    $sql_list = "SELECT * FROM (
+    $sql_union = "
                     SELECT 'attive' AS _sim_state,
                            s.codice,
                            s.tipoSIM,
@@ -915,33 +929,62 @@ if ($action === 'list' && empty($search_errors)) {
                            $disabled_call_count_sql AS numeroChiamate
                     FROM SIMDisattiva s
                     LEFT JOIN ContrattoTelefonico c ON s.eraAssociataA = c.numero
-                ) AS sim_unificate
-                WHERE _sim_state IN (" . sim_states_for_sql($conn, $selected_states) . ")";
+                ";
+
+    /* La query di conteggio non include i conteggi delle chiamate né alcun
+       ordinamento: il totale dei risultati rimane esatto ma viene calcolato
+       senza ripetere la parte più costosa della ricerca. */
+    $sql_count_union = "
+                    SELECT 'attive' AS _sim_state,
+                           s.codice, s.tipoSIM, s.associataA,
+                           NULL AS eraAssociataA, s.dataAttivazione,
+                           NULL AS dataDisattivazione, c.tipo AS tipoContratto
+                    FROM SIMAttiva s
+                    JOIN ContrattoTelefonico c ON s.associataA = c.numero
+                    UNION ALL
+                    SELECT 'disponibili' AS _sim_state,
+                           n.codice, n.tipoSIM, NULL AS associataA,
+                           NULL AS eraAssociataA, NULL AS dataAttivazione,
+                           NULL AS dataDisattivazione, NULL AS tipoContratto
+                    FROM SIMNonAttiva n
+                    UNION ALL
+                    SELECT 'disattive' AS _sim_state,
+                           s.codice, s.tipoSIM, NULL AS associataA,
+                           s.eraAssociataA, s.dataAttivazione,
+                           s.dataDisattivazione, c.tipo AS tipoContratto
+                    FROM SIMDisattiva s
+                    LEFT JOIN ContrattoTelefonico c ON s.eraAssociataA = c.numero
+                ";
+
+    $where_filters = " WHERE _sim_state IN (" . sim_states_for_sql($conn, $selected_states) . ")";
 
     if ($search_codice !== '') {
         $codice_filter = $conn->real_escape_string($search_codice);
-        $sql_list .= " AND codice LIKE '%$codice_filter%'";
+        $where_filters .= " AND codice LIKE '%$codice_filter%'";
     }
     if ($search_tipo !== '') {
         $tipo_filter = $conn->real_escape_string($search_tipo);
-        $sql_list .= " AND tipoSIM = '$tipo_filter'";
+        $where_filters .= " AND tipoSIM = '$tipo_filter'";
     }
     if ($search_piano !== '') {
         $piano_filter = $conn->real_escape_string($search_piano);
-        $sql_list .= " AND tipoContratto = '$piano_filter'";
+        $where_filters .= " AND tipoContratto = '$piano_filter'";
     }
     if ($search_numero !== '') {
         $numero_filter = $conn->real_escape_string($search_numero);
-        $sql_list .= " AND (associataA LIKE '%$numero_filter%' OR eraAssociataA LIKE '%$numero_filter%')";
+        $where_filters .= " AND (associataA LIKE '%$numero_filter%' OR eraAssociataA LIKE '%$numero_filter%')";
     }
     if ($search_data_da !== '') {
         $data_da_filter = $conn->real_escape_string($search_data_da);
-        $sql_list .= " AND ((_sim_state='attive' AND dataAttivazione >= '$data_da_filter') OR (_sim_state='disattive' AND dataDisattivazione >= '$data_da_filter'))";
+        $where_filters .= " AND ((_sim_state='attive' AND dataAttivazione >= '$data_da_filter') OR (_sim_state='disattive' AND dataDisattivazione >= '$data_da_filter'))";
     }
     if ($search_data_a !== '') {
         $data_a_filter = $conn->real_escape_string($search_data_a);
-        $sql_list .= " AND ((_sim_state='attive' AND dataAttivazione <= '$data_a_filter') OR (_sim_state='disattive' AND dataDisattivazione <= '$data_a_filter'))";
+        $where_filters .= " AND ((_sim_state='attive' AND dataAttivazione <= '$data_a_filter') OR (_sim_state='disattive' AND dataDisattivazione <= '$data_a_filter'))";
     }
+
+    $sql_list = "SELECT * FROM ($sql_union) AS sim_unificate" . $where_filters;
+    $sql_count_list = "SELECT 1 FROM ($sql_count_union) AS sim_unificate" . $where_filters;
 
     if ($search_ordine_sim === 'piu_chiamate') {
         $sql_list .= " ORDER BY
@@ -953,9 +996,29 @@ if ($action === 'list' && empty($search_errors)) {
                         END,
                         COALESCE(dataDisattivazione, dataAttivazione, '9999-12-31') DESC,
                         codice ASC";
+    } elseif ($search_ordine_sim === 'attivate_recenti') {
+        $sql_list .= " ORDER BY
+                        CASE WHEN _sim_state = 'attive' THEN 0 ELSE 1 END,
+                        dataAttivazione DESC,
+                        CASE _sim_state
+                            WHEN 'disponibili' THEN 1
+                            WHEN 'attive' THEN 2
+                            ELSE 3
+                        END,
+                        codice ASC";
+    } elseif ($search_ordine_sim === 'disattivate_recenti') {
+        $sql_list .= " ORDER BY
+                        CASE WHEN _sim_state = 'disattive' THEN 0 ELSE 1 END,
+                        dataDisattivazione DESC,
+                        CASE _sim_state
+                            WHEN 'disponibili' THEN 1
+                            WHEN 'attive' THEN 2
+                            ELSE 3
+                        END,
+                        codice ASC";
     } else {
-        /* Ordine operativo predefinito richiesto dall'interfaccia: prima le SIM
-           immediatamente disponibili, poi quelle in uso e infine lo storico. */
+        /* Ordinamento predefinito dell'applicazione: prima le SIM disponibili,
+           poi quelle in uso e infine lo storico delle disattivate. */
         $sql_list .= " ORDER BY
                         CASE _sim_state
                             WHEN 'disponibili' THEN 1
@@ -968,7 +1031,7 @@ if ($action === 'list' && empty($search_errors)) {
 
     $sql_list_without_limit = $sql_list;
     if (!$skip_count && (!$ajax_rows || $offset === 0)) {
-        $total_count = query_total_count($conn, $sql_list_without_limit);
+        $total_count = query_total_count($conn, $sql_count_list);
     } else {
         $total_count = null;
     }
@@ -1035,7 +1098,7 @@ if ($ajax_rows) {
                 <label for="codice">Codice SIM:</label>
                 <input type="text" id="codice" name="codice" value="<?= htmlspecialchars($search_codice) ?>" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
-            <div class="form-group sim-phone-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
+            <div class="form-group sim-phone-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
                 <label for="numero_sim">Numero collegato:</label>
                 <input type="text" id="numero_sim" name="numero" value="<?= htmlspecialchars($has_associated_state_filter ? $search_numero : '') ?>" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
             </div>
@@ -1068,7 +1131,7 @@ if ($ajax_rows) {
                 </div>
             </div>
 
-            <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
+            <div class="form-group sim-date-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
                 <label>Periodo dal/al:</label>
                 <div class="range-pair compact-range-pair date-range-pair">
                     <input type="date" id="data_da_sim" name="data_da" value="<?= htmlspecialchars($has_associated_state_filter ? $search_data_da : '') ?>" aria-label="Data dal" data-state-dependent-input <?= $has_associated_state_filter ? '' : 'disabled' ?>>
@@ -1086,7 +1149,7 @@ if ($ajax_rows) {
                     <option value="eSIM" <?= $search_tipo == 'eSIM' ? 'selected' : '' ?>>Virtuale eSIM</option>
                 </select>
             </div>
-            <div class="form-group sim-plan-filter-group <?= $has_associated_state_filter ? '' : 'is-hidden' ?>" data-state-field="attive,disattive">
+            <div class="form-group sim-plan-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
                 <label for="piano_sim">Piano associato:</label>
                 <select id="piano_sim" name="piano" data-scroll-select="true" <?= $has_associated_state_filter ? '' : 'disabled' ?>>
                     <option value="">Mostra tutti</option>
@@ -1094,11 +1157,13 @@ if ($ajax_rows) {
                     <option value="ricarica" <?= $search_piano === 'ricarica' ? 'selected' : '' ?>>Ricaricabile</option>
                 </select>
             </div>
-            <div class="form-group sim-order-filter-group">
+            <div class="form-group sim-order-filter-group <?= $has_associated_state_filter ? '' : 'is-filter-unavailable' ?>" data-state-field="attive,disattive">
                 <label for="ordine_sim">Mostra prima:</label>
-                <select id="ordine_sim" name="ordine_sim" data-scroll-select="true">
-                    <option value="operative" <?= $search_ordine_sim === 'operative' ? 'selected' : '' ?>>Ordine operativo</option>
+                <select id="ordine_sim" name="ordine_sim" data-scroll-select="true" <?= $has_associated_state_filter ? '' : 'disabled' ?>>
+                    <option value="nessuno" <?= $search_ordine_sim === 'nessuno' ? 'selected' : '' ?>>Nessun criterio specifico</option>
                     <option value="piu_chiamate" <?= $search_ordine_sim === 'piu_chiamate' ? 'selected' : '' ?>>SIM con più chiamate</option>
+                    <option value="attivate_recenti" <?= $search_ordine_sim === 'attivate_recenti' ? 'selected' : '' ?>>SIM attivate più di recente</option>
+                    <option value="disattivate_recenti" <?= $search_ordine_sim === 'disattivate_recenti' ? 'selected' : '' ?>>SIM disattivate più di recente</option>
                 </select>
             </div>
             <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>

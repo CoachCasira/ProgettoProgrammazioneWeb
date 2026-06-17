@@ -3815,6 +3815,89 @@
         });
     }
 
+    function canonicalFilterDefaults(form) {
+        var defaults = captureFilterValues(form);
+        if (!form) {
+            return defaults;
+        }
+
+        var overrides = {};
+        if (form.id === 'contratti-filter') {
+            overrides = {
+                numero: [''],
+                stato_numero: [''],
+                data_da: [''],
+                data_a: [''],
+                tipo: [''],
+                residuo: [''],
+                min_chiamate: [''],
+                min_chiamate_custom: [''],
+                durata_preset: [''],
+                durata_ore: [''],
+                durata_min: [''],
+                durata_sec: [''],
+                ordine: ['recenti']
+            };
+        } else if (form.id === 'telefonate-filter') {
+            overrides = {
+                contratto: [''],
+                stato_numero: [''],
+                data_da: [''],
+                data_a: [''],
+                ora_da: [''],
+                ora_a: [''],
+                durata_preset: [''],
+                durata_ore: [''],
+                durata_min: [''],
+                durata_sec: [''],
+                piano: [''],
+                costo_max: [''],
+                ordine: ['recenti']
+            };
+        } else if (form.id === 'sim-filter') {
+            overrides = {
+                stato: ['tutte'],
+                'sim_states[]': ['attive', 'disponibili', 'disattive'],
+                codice: [''],
+                numero: [''],
+                data_da: [''],
+                data_a: [''],
+                tipoSIM: [''],
+                piano: [''],
+                ordine_sim: ['nessuno']
+            };
+        }
+
+        Object.keys(overrides).forEach(function (name) {
+            if (Object.prototype.hasOwnProperty.call(defaults, name)) {
+                defaults[name] = overrides[name].slice();
+            }
+        });
+        return defaults;
+    }
+
+    function formHasExplicitUrlFilters(form) {
+        if (!form || !window.location.search || typeof URLSearchParams === 'undefined') {
+            return false;
+        }
+
+        var controlNames = Object.create(null);
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (isPersistableFilterControl(control)) {
+                controlNames[control.name] = true;
+            }
+        });
+
+        var params = new URLSearchParams(window.location.search);
+        var hasExplicitFilter = false;
+        params.forEach(function (_value, key) {
+            if (controlNames[key]) {
+                hasExplicitFilter = true;
+            }
+        });
+        return hasExplicitFilter;
+    }
+
     function stableFilterValuesString(values) {
         var normalized = {};
         Object.keys(values || {}).sort().forEach(function (key) {
@@ -4081,10 +4164,16 @@
         var scope = root || document;
         scope.querySelectorAll('form[data-filter-session-key]:not([data-filter-session-ready="true"])').forEach(function (form) {
             form.dataset.filterSessionReady = 'true';
-            filterDefaultStates.set(form, captureFilterValues(form));
+            filterDefaultStates.set(form, canonicalFilterDefaults(form));
 
-            var saved = readFilterSessionState(form);
-            if (saved && saved.fields) {
+            var hasExplicitUrlFilters = formHasExplicitUrlFilters(form);
+            var saved = hasExplicitUrlFilters ? null : readFilterSessionState(form);
+            if (hasExplicitUrlFilters) {
+                /* I collegamenti interni e le ricerche frequenti devono prevalere
+                   sullo stato dei filtri precedentemente salvato nel browser. */
+                removeFilterSessionState(form);
+                form.dataset.filterSessionFromUrl = 'true';
+            } else if (saved && saved.fields) {
                 applyFilterValues(form, saved.fields);
                 pendingFilterRestores[form.id] = saved.position || null;
                 form.dataset.sessionRestoring = 'true';

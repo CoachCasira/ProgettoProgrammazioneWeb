@@ -132,7 +132,19 @@ if ($global_query !== '') {
     }
 }
 
-$recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
+$latest_disabled_date = (string) singleValue(
+    $conn,
+    "SELECT MAX(dataDisattivazione) AS ultimaDisattivazione FROM SIMDisattiva",
+    'ultimaDisattivazione',
+    date('Y-m-d')
+);
+if (!is_valid_date_value($latest_disabled_date)) {
+    $latest_disabled_date = date('Y-m-d');
+}
+/* Intervallo inclusivo di 30 giorni, ancorato all'ultima disattivazione
+   effettivamente presente nel database e non alla data del dispositivo. */
+$recent_disabled_to = $latest_disabled_date;
+$recent_disabled_from = date('Y-m-d', strtotime($latest_disabled_date . ' -29 days'));
 ?>
 <?php include 'includes/header.php'; ?>
 
@@ -258,7 +270,7 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
         </div>
     </div>
     <div class="dashboard-shortcut-grid">
-        <a class="dashboard-shortcut" href="sim.php?stato=disattive&amp;data_da=<?= urlencode($recent_disabled_from) ?>">
+        <a class="dashboard-shortcut" href="sim.php?stato=disattive&amp;data_da=<?= urlencode($recent_disabled_from) ?>&amp;data_a=<?= urlencode($recent_disabled_to) ?>&amp;ordine_sim=disattivate_recenti">
             <strong>SIM disattivate recentemente</strong>
             <span>Mostra le disattivazioni registrate negli ultimi 30 giorni.</span>
         </a>

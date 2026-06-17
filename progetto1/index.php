@@ -138,7 +138,9 @@ $latest_disabled_date = (string) singleValue(
     'ultimaDisattivazione',
     date('Y-m-d')
 );
-if (!is_valid_date_value($latest_disabled_date)) {
+$latest_disabled_timestamp = strtotime($latest_disabled_date);
+if ($latest_disabled_timestamp === false
+        || date('Y-m-d', $latest_disabled_timestamp) !== $latest_disabled_date) {
     $latest_disabled_date = date('Y-m-d');
 }
 /* Intervallo inclusivo di 30 giorni, ancorato all'ultima disattivazione

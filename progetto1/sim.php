@@ -1221,7 +1221,7 @@ if ($action === 'list' && empty($search_errors)) {
             $export_result->free();
 
             $sim_types = array_fill(0, count(sim_csv_headers($state)), 'text');
-            output_excel_html_response(
+            output_excel_xml_response(
                 'sim_' . $state . '.xls',
                 'SIM',
                 sim_csv_headers($state),

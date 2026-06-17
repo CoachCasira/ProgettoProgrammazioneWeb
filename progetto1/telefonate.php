@@ -468,57 +468,61 @@ if (empty($search_errors)) {
     $index_name = $fast_order['index'];
 
     if ($export_excel) {
-        /* Un foglio con milioni di righe supererebbe i limiti di Excel e
-           dell'hosting condiviso. L'esportazione resta quindi disponibile
-           dopo aver ristretto la ricerca a un insieme gestibile. */
+        /* Un singolo foglio Excel non puo' contenere in modo affidabile oltre
+           tre milioni di righe su un hosting condiviso. L'esportazione scarica
+           quindi sempre i primi 50.000 risultati secondo i filtri e
+           l'ordinamento selezionati, indicando chiaramente nel foglio quando
+           l'insieme completo e' piu' ampio. */
         $max_excel_export_rows = 50000;
         $export_total = $total_count;
         if ($export_total === null) {
             $export_total = query_total_count($conn, "SELECT t.id FROM Telefonata t WHERE $where_sql");
         }
 
-        if ($export_total > $max_excel_export_rows) {
-            $search_errors[] = 'Il foglio Excel comprenderebbe ' . number_format((int)$export_total, 0, ',', '.')
-                . ' chiamate. Applica uno o più filtri fino a ottenere al massimo '
-                . number_format($max_excel_export_rows, 0, ',', '.') . ' risultati, quindi ripeti l’esportazione.';
+        $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
+        $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                              c.tipo AS tipoContratto
+                       FROM Telefonata t FORCE INDEX ($index_name)
+                       JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
+                       WHERE $where_sql
+                       ORDER BY $export_order
+                       LIMIT " . $max_excel_export_rows;
+        $export_result = $conn->query($sql_export, MYSQLI_USE_RESULT);
+
+        if (!$export_result) {
+            $search_errors[] = 'Non è stato possibile preparare il file Excel delle chiamate. Riprova tra qualche istante.';
             $export_excel = false;
         } else {
-            $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
-            $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
-                                  c.tipo AS tipoContratto
-                           FROM Telefonata t FORCE INDEX ($index_name)
-                           JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
-                           WHERE $where_sql
-                           ORDER BY $export_order";
-            $export_result = $conn->query($sql_export, MYSQLI_USE_RESULT);
+            $stream_rows = (function () use ($export_result) {
+                while ($row = $export_result->fetch_assoc()) {
+                    yield [
+                        (string)$row['effettuataDa'],
+                        format_date_it($row['data']),
+                        format_time_minutes($row['ora']),
+                        (string)(int)$row['durata'],
+                        ucfirst((string)$row['tipoContratto']),
+                        (string)$row['costo']
+                    ];
+                }
+                $export_result->free();
+            })();
 
-            if (!$export_result) {
-                $search_errors[] = 'Non è stato possibile preparare il file Excel delle chiamate. Restringi i filtri e riprova.';
-                $export_excel = false;
-            } else {
-                $stream_rows = (function () use ($export_result) {
-                    while ($row = $export_result->fetch_assoc()) {
-                        yield [
-                            (string)$row['effettuataDa'],
-                            format_date_it($row['data']),
-                            format_time_minutes($row['ora']),
-                            (string)(int)$row['durata'],
-                            ucfirst((string)$row['tipoContratto']),
-                            csv_decimal_value($row['costo'])
-                        ];
-                    }
-                    $export_result->free();
-                })();
-
-                output_excel_html_stream_response(
-                    'chiamate.xls',
-                    'Chiamate',
-                    ['Numero chiamante', 'Data', 'Ora', 'Durata (secondi)', 'Piano', 'Addebito (€)'],
-                    $stream_rows,
-                    ['right', 'right', 'right', 'right', 'left', 'right'],
-                    ['text', 'text', 'text', 'integer', 'text', 'decimal']
-                );
+            $export_notice = '';
+            if ((int)$export_total > $max_excel_export_rows) {
+                $export_notice = 'Il file contiene i primi ' . number_format($max_excel_export_rows, 0, ',', '.')
+                    . ' risultati su ' . number_format((int)$export_total, 0, ',', '.')
+                    . '. Applica filtri più specifici per esportare un insieme completo più ristretto.';
             }
+
+            output_excel_xml_stream_response(
+                'chiamate.xls',
+                'Chiamate',
+                ['Numero chiamante', 'Data', 'Ora', 'Durata (secondi)', 'Piano', 'Addebito (€)'],
+                $stream_rows,
+                ['right', 'right', 'right', 'right', 'left', 'right'],
+                ['text', 'date', 'text', 'integer', 'text', 'currency'],
+                $export_notice
+            );
         }
     }
 

@@ -496,13 +496,13 @@ if (empty($search_errors)) {
             }
             $export_result->free();
 
-            output_excel_html_response(
+            output_excel_xml_response(
                 'numeri_telefonici.xls',
                 'Numeri telefonici',
                 ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo (minuti)', 'Credito residuo (€)', 'Chiamate', 'Durata totale (secondi)', 'Addebiti totali (€)'],
                 $export_rows,
                 ['right', 'left', 'right', 'right', 'right', 'left', 'right', 'right', 'right', 'right', 'right'],
-                ['text', 'text', 'text', 'text', 'text', 'text', 'integer', 'decimal', 'integer', 'integer', 'decimal']
+                ['text', 'text', 'text', 'date', 'date', 'text', 'integer', 'currency', 'integer', 'integer', 'currency']
             );
         }
     }

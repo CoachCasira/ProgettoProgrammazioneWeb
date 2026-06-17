@@ -215,9 +215,9 @@ function output_csv_stream_response(string $filename, array $headers, iterable $
 }
 
 /**
- * Escaping XML per il formato SpreadsheetML 2003, apribile direttamente
- * con Microsoft Excel e capace di conservare allineamenti e identificativi
- * molto lunghi senza perdita di precisione.
+ * Escaping XML per SpreadsheetML 2003, formato XML nativo leggibile da
+ * Microsoft Excel. Gli identificativi lunghi restano stringhe esatte e non
+ * vengono trasformati in notazione scientifica.
  */
 function excel_xml_escape($value): string
 {
@@ -225,16 +225,63 @@ function excel_xml_escape($value): string
 }
 
 /**
- * Produce un foglio Excel XML con allineamento esplicito delle colonne.
- * Viene usato come alternativa al CSV quando e' necessario conservare sia
- * l'esattezza dei codici SIM sia l'allineamento a destra in Excel.
+ * Normalizza l'allineamento richiesto per gli stili del foglio.
  */
-function output_excel_xml_response(
+function excel_xml_alignment(string $alignment): string
+{
+    $alignment = ucfirst(strtolower($alignment));
+    return in_array($alignment, ['Left', 'Center', 'Right'], true) ? $alignment : 'Left';
+}
+
+/**
+ * Normalizza il tipo logico di una colonna Excel.
+ */
+function excel_xml_type(string $type): string
+{
+    $type = strtolower($type);
+    return in_array($type, ['text', 'integer', 'decimal', 'currency', 'date'], true)
+        ? $type
+        : 'text';
+}
+
+/**
+ * Converte un valore nel formato richiesto dal nodo SpreadsheetML.
+ */
+function excel_xml_cell_payload($value, string $type): array
+{
+    $type = excel_xml_type($type);
+
+    if ($value === null || $value === '' || $value === '-') {
+        return ['String', $value === '-' ? '-' : ''];
+    }
+
+    if ($type === 'integer') {
+        return ['Number', (string)(int)$value];
+    }
+
+    if ($type === 'decimal' || $type === 'currency') {
+        $normalized = str_replace(',', '.', (string)$value);
+        return is_numeric($normalized)
+            ? ['Number', number_format((float)$normalized, 2, '.', '')]
+            : ['String', (string)$value];
+    }
+
+    /* Date e identificativi vengono mantenuti come testo: in questo modo
+       numeri telefonici e codici SIM non perdono cifre e le date italiane
+       non dipendono dalle impostazioni locali di Excel. */
+    return ['String', (string)$value];
+}
+
+/**
+ * Scrive intestazione, stili e apertura tabella di un foglio SpreadsheetML.
+ */
+function excel_xml_begin(
     string $filename,
     string $sheet_name,
     array $headers,
-    array $rows,
-    array $alignments
+    array $alignments,
+    array $types = [],
+    string $notice = ''
 ): void {
     while (ob_get_level() > 0) {
         ob_end_clean();
@@ -258,173 +305,123 @@ function output_excel_xml_response(
         . ' xmlns:o="urn:schemas-microsoft-com:office:office"'
         . ' xmlns:x="urn:schemas-microsoft-com:office:excel"'
         . ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' . "\n";
+
     echo '<Styles>';
+    echo '<Style ss:ID="Default" ss:Name="Normal"><Font ss:FontName="Arial" ss:Size="11"/>'
+        . '<Alignment ss:Vertical="Center"/></Style>';
+    echo '<Style ss:ID="Notice"><Alignment ss:Horizontal="Left" ss:Vertical="Center" ss:WrapText="1"/>'
+        . '<Font ss:Bold="1" ss:Color="#6E5D52"/><Interior ss:Color="#EEE8E3" ss:Pattern="Solid"/></Style>';
+
     foreach (['Left', 'Center', 'Right'] as $alignment) {
         echo '<Style ss:ID="Header' . $alignment . '"><Alignment ss:Horizontal="' . $alignment
-            . '"/><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#8B7A6E" ss:Pattern="Solid"/></Style>';
-        echo '<Style ss:ID="Cell' . $alignment . '"><Alignment ss:Horizontal="' . $alignment . '"/></Style>';
+            . '" ss:Vertical="Center"/><Font ss:Bold="1" ss:Color="#FFFFFF"/>'
+            . '<Interior ss:Color="#8B7A6E" ss:Pattern="Solid"/>'
+            . '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0C7C0"/>'
+            . '<Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0C7C0"/>'
+            . '<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0C7C0"/>'
+            . '<Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0C7C0"/></Borders></Style>';
+
+        foreach (['Text', 'Integer', 'Decimal', 'Currency', 'Date'] as $type_name) {
+            $format = '';
+            if ($type_name === 'Integer') {
+                $format = '<NumberFormat ss:Format="0"/>';
+            } elseif ($type_name === 'Decimal') {
+                $format = '<NumberFormat ss:Format="0.00"/>';
+            } elseif ($type_name === 'Currency') {
+                $format = '<NumberFormat ss:Format="&quot;€&quot; #,##0.00"/>';
+            }
+            echo '<Style ss:ID="Cell' . $type_name . $alignment . '"><Alignment ss:Horizontal="' . $alignment
+                . '" ss:Vertical="Center"/>' . $format
+                . '<Borders><Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8D1CB"/>'
+                . '<Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8D1CB"/>'
+                . '<Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8D1CB"/>'
+                . '<Border ss:Position="Top" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D8D1CB"/></Borders></Style>';
+        }
     }
     echo '</Styles>' . "\n";
-    echo '<Worksheet ss:Name="' . excel_xml_escape($safe_sheet_name) . '"><Table>' . "\n";
 
-    echo '<Row>';
+    echo '<Worksheet ss:Name="' . excel_xml_escape($safe_sheet_name) . '"><Table>' . "\n";
+    foreach ($headers as $_header) {
+        echo '<Column ss:AutoFitWidth="1" ss:Width="110"/>';
+    }
+
+    if ($notice !== '') {
+        $merge = max(0, count($headers) - 1);
+        echo '<Row ss:Height="34"><Cell ss:StyleID="Notice" ss:MergeAcross="' . $merge . '"><Data ss:Type="String">'
+            . excel_xml_escape($notice) . '</Data></Cell></Row>' . "\n";
+    }
+
+    echo '<Row ss:Height="24">';
     foreach ($headers as $index => $header) {
-        $alignment = ucfirst(strtolower((string)($alignments[$index] ?? 'left')));
-        if (!in_array($alignment, ['Left', 'Center', 'Right'], true)) {
-            $alignment = 'Left';
-        }
+        $alignment = excel_xml_alignment((string)($alignments[$index] ?? 'left'));
         echo '<Cell ss:StyleID="Header' . $alignment . '"><Data ss:Type="String">'
             . excel_xml_escape($header) . '</Data></Cell>';
     }
     echo '</Row>' . "\n";
+}
 
-    foreach ($rows as $row) {
-        echo '<Row>';
-        foreach ($headers as $index => $_header) {
-            $alignment = ucfirst(strtolower((string)($alignments[$index] ?? 'left')));
-            if (!in_array($alignment, ['Left', 'Center', 'Right'], true)) {
-                $alignment = 'Left';
-            }
-            $value = $row[$index] ?? '';
-            echo '<Cell ss:StyleID="Cell' . $alignment . '"><Data ss:Type="String">'
-                . excel_xml_escape($value) . '</Data></Cell>';
-        }
-        echo '</Row>' . "\n";
+/**
+ * Scrive una riga dati SpreadsheetML.
+ */
+function excel_xml_write_row(array $headers, array $row, array $alignments, array $types): void
+{
+    echo '<Row>';
+    foreach ($headers as $index => $_header) {
+        $alignment = excel_xml_alignment((string)($alignments[$index] ?? 'left'));
+        $type = excel_xml_type((string)($types[$index] ?? 'text'));
+        [$xml_type, $payload] = excel_xml_cell_payload($row[$index] ?? '', $type);
+        $style_type = ucfirst($type);
+        echo '<Cell ss:StyleID="Cell' . $style_type . $alignment . '"><Data ss:Type="' . $xml_type . '">'
+            . excel_xml_escape($payload) . '</Data></Cell>';
     }
+    echo '</Row>' . "\n";
+}
 
+function excel_xml_end(): void
+{
     echo '</Table></Worksheet></Workbook>';
     exit;
 }
 
-
 /**
- * Escaping HTML minimale per i fogli Excel basati su tabella HTML.
- * Il formato e' volutamente semplice e compatibile con gli hosting condivisi:
- * non richiede estensioni PHP aggiuntive e consente di controllare allineamento
- * e trattamento degli identificativi lunghi.
+ * Esporta un insieme contenuto di righe come foglio Excel XML.
  */
-function excel_html_escape($value): string
-{
-    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Scrive l'intestazione di un file Excel compatibile con Microsoft Excel.
- * Il foglio usa una tabella HTML con metadati mso-number-format: in questo modo
- * codici SIM e numeri telefonici possono restare testo esatto pur essendo
- * allineati a destra, mentre quantita' e importi restano numerici.
- */
-function excel_html_begin(string $filename, string $title): void
-{
-    while (ob_get_level() > 0) {
-        ob_end_clean();
-    }
-
-    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
-    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
-    header('Pragma: no-cache');
-    header('Expires: 0');
-    header('X-Content-Type-Options: nosniff');
-
-    echo "\xEF\xBB\xBF";
-    echo '<!DOCTYPE html><html><head><meta charset="UTF-8">';
-    echo '<title>' . excel_html_escape($title) . '</title>';
-    echo '<style>'
-        . 'table{border-collapse:collapse;font-family:Arial,sans-serif;font-size:11pt}'
-        . 'th,td{border:1px solid #cfc7c0;padding:6px 8px;white-space:nowrap}'
-        . 'th{background:#8b7a6e;color:#fff;font-weight:bold}'
-        . '.left{text-align:left}.center{text-align:center}.right{text-align:right}'
-        . '.text{mso-number-format:"\\@"}.integer{mso-number-format:"0"}'
-        . '.decimal{mso-number-format:"0.00"}.date{mso-number-format:"dd/mm/yyyy"}'
-        . '</style></head><body><table><thead><tr>';
-}
-
-function excel_html_cell_class(string $alignment, string $type): string
-{
-    $alignment = strtolower($alignment);
-    if (!in_array($alignment, ['left', 'center', 'right'], true)) {
-        $alignment = 'left';
-    }
-
-    $type = strtolower($type);
-    if (!in_array($type, ['text', 'integer', 'decimal', 'date'], true)) {
-        $type = 'text';
-    }
-
-    return $alignment . ' ' . $type;
-}
-
-/**
- * Produce un file Excel completo da un insieme contenuto di righe.
- */
-function output_excel_html_response(
+function output_excel_xml_response(
     string $filename,
-    string $title,
+    string $sheet_name,
     array $headers,
     array $rows,
     array $alignments,
-    array $types = []
+    array $types = [],
+    string $notice = ''
 ): void {
-    excel_html_begin($filename, $title);
-
-    foreach ($headers as $index => $header) {
-        $class = excel_html_cell_class($alignments[$index] ?? 'left', 'text');
-        echo '<th class="' . $class . '">' . excel_html_escape($header) . '</th>';
-    }
-    echo '</tr></thead><tbody>';
-
+    excel_xml_begin($filename, $sheet_name, $headers, $alignments, $types, $notice);
     foreach ($rows as $row) {
-        echo '<tr>';
-        foreach ($headers as $index => $_header) {
-            $value = $row[$index] ?? '';
-            $type = $types[$index] ?? 'text';
-            $class = excel_html_cell_class($alignments[$index] ?? 'left', $type);
-            echo '<td class="' . $class . '">' . excel_html_escape($value) . '</td>';
-        }
-        echo '</tr>';
+        excel_xml_write_row($headers, $row, $alignments, $types);
     }
-
-    echo '</tbody></table></body></html>';
-    exit;
+    excel_xml_end();
 }
 
 /**
- * Versione streaming del foglio Excel: viene usata per le chiamate per non
- * costruire in memoria migliaia di righe prima del download.
+ * Versione streaming: evita di accumulare in memoria le righe delle chiamate.
  */
-function output_excel_html_stream_response(
+function output_excel_xml_stream_response(
     string $filename,
-    string $title,
+    string $sheet_name,
     array $headers,
     iterable $rows,
     array $alignments,
-    array $types = []
+    array $types = [],
+    string $notice = ''
 ): void {
-    excel_html_begin($filename, $title);
-
-    foreach ($headers as $index => $header) {
-        $class = excel_html_cell_class($alignments[$index] ?? 'left', 'text');
-        echo '<th class="' . $class . '">' . excel_html_escape($header) . '</th>';
-    }
-    echo '</tr></thead><tbody>';
-
+    excel_xml_begin($filename, $sheet_name, $headers, $alignments, $types, $notice);
     $written = 0;
     foreach ($rows as $row) {
-        echo '<tr>';
-        foreach ($headers as $index => $_header) {
-            $value = $row[$index] ?? '';
-            $type = $types[$index] ?? 'text';
-            $class = excel_html_cell_class($alignments[$index] ?? 'left', $type);
-            echo '<td class="' . $class . '">' . excel_html_escape($value) . '</td>';
-        }
-        echo '</tr>';
+        excel_xml_write_row($headers, $row, $alignments, $types);
         $written++;
         if (($written % 500) === 0) {
             flush();
         }
     }
-
-    echo '</tbody></table></body></html>';
-    exit;
+    excel_xml_end();
 }

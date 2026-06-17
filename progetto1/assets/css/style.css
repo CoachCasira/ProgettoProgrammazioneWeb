@@ -9698,3 +9698,37 @@ form[data-sim-crud-form="true"] .site-picker-panel {
         width: 100% !important;
     }
 }
+
+
+/* =========================================================
+   V80 - Rifiniture esportazioni, calendario CRUD e filtri Chiamate
+   ========================================================= */
+/* Nella CRUD entrambi i campi data partono da fondo bianco; il colore tortora
+   compare soltanto in hover/focus come negli altri controlli del sito. */
+form[data-sim-crud-form="true"] .site-date-picker.is-readonly .site-picker-trigger,
+form[data-sim-crud-form="true"] .site-date-picker .site-picker-trigger {
+    background: var(--surface-color) !important;
+}
+
+form[data-sim-crud-form="true"] .site-date-picker .site-picker-trigger:hover,
+form[data-sim-crud-form="true"] .site-date-picker .site-picker-trigger:focus,
+form[data-sim-crud-form="true"] .site-date-picker.is-open .site-picker-trigger {
+    background: #EEE8E3 !important;
+}
+
+@media (min-width: 1181px) {
+    /* Il nome reale della classe del criterio di ordinamento e'
+       call-order-filter-group: il vecchio selettore lasciava il campo in
+       auto-placement e lo sovrapponeva ad Addebito massimo. */
+    .telefonate-filter-form .call-order-filter-group {
+        grid-column: 11 / span 4 !important;
+        grid-row: 2 !important;
+        min-width: 0 !important;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 8 / span 3 !important;
+        grid-row: 2 !important;
+        min-width: 0 !important;
+    }
+}

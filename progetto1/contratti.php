@@ -24,11 +24,11 @@ function contratto_status_label(array $row): string
     return contratto_is_currently_disabled($row) ? 'Numero disattivato' : 'Numero attivo';
 }
 
-function query_total_count(mysqli $conn, string $sql): int
+function query_total_count(mysqli $conn, string $sql): ?int
 {
-    $result = $conn->query("SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results");
+    $result = app_db_query($conn, "SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results", false, 'conteggio numeri filtrati');
     if (!$result) {
-        return 0;
+        return null;
     }
     $row = $result->fetch_assoc();
     return (int)($row['total_count'] ?? 0);
@@ -470,9 +470,11 @@ if (empty($search_errors)) {
 
     if ($export_csv) {
         $csv_rows = [];
-        $export_result = $conn->query($sql_base);
-        if ($export_result) {
-            while ($row = $export_result->fetch_assoc()) {
+        $export_result = app_db_query($conn, $sql_base, true, 'esportazione numeri telefonici');
+        if (!$export_result) {
+            app_abort_database_request();
+        }
+        while ($row = $export_result->fetch_assoc()) {
                 $tipo = strtolower((string)$row['tipo']);
                 $is_consumo = $tipo === 'consumo';
                 $csv_rows[] = [
@@ -489,12 +491,11 @@ if (empty($search_errors)) {
                     csv_currency_value($row['costo_totale'] ?? 0)
                 ];
             }
-        }
         output_csv_response('numeri_telefonici.csv', ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate', 'Durata totale', 'Addebiti totali'], $csv_rows);
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
-    $result = $conn->query($sql);
+    $result = app_db_query($conn, $sql, true, 'lettura numeri telefonici');
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $rows[] = $row;
@@ -507,6 +508,9 @@ if (empty($search_errors)) {
 }
 
 if ($ajax_rows) {
+    if (app_database_error_occurred()) {
+        app_abort_database_request();
+    }
     header('Content-Type: application/json; charset=utf-8');
     $payload = [
         'html' => render_contratti_cards($rows),
@@ -649,7 +653,9 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
     </div>
 
     <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#contratti-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
-        <?php if (!empty($search_errors)): ?>
+        <?php if (app_database_error_occurred()): ?>
+            <div class="alert alert-error"><?= htmlspecialchars(app_database_error_message()) ?></div>
+        <?php elseif (!empty($search_errors)): ?>
             <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
         <?php elseif (!empty($rows)): ?>
             <div class="view-panel view-panel-cards" data-view-panel="cards">

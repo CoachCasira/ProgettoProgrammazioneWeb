@@ -8,7 +8,7 @@ function countRows($conn, $table) {
     if (!in_array($table, $allowed, true)) {
         return 0;
     }
-    $result = $conn->query("SELECT COUNT(*) AS totale FROM $table");
+    $result = app_db_query($conn, "SELECT COUNT(*) AS totale FROM $table", true, 'conteggio dashboard');
     if ($result && ($row = $result->fetch_assoc())) {
         return (int)$row['totale'];
     }
@@ -16,7 +16,7 @@ function countRows($conn, $table) {
 }
 
 function singleValue($conn, $sql, $field, $default = 0) {
-    $result = $conn->query($sql);
+    $result = app_db_query($conn, $sql, true, 'indicatore dashboard');
     if ($result && ($row = $result->fetch_assoc()) && $row[$field] !== null) {
         return $row[$field];
     }
@@ -86,7 +86,7 @@ if ($global_query !== '') {
                       ORDER BY CASE WHEN c.numero = '$escaped_query' THEN 0 ELSE 1 END,
                                c.numero ASC
                       LIMIT 6";
-        $phone_result = $conn->query($phone_sql);
+        $phone_result = app_db_query($conn, $phone_sql, true, 'ricerca rapida numeri');
         if ($phone_result) {
             while ($row = $phone_result->fetch_assoc()) {
                 $global_phone_results[] = $row;
@@ -123,7 +123,7 @@ if ($global_query !== '') {
                              CASE simState WHEN 'attive' THEN 1 WHEN 'disponibili' THEN 2 ELSE 3 END,
                              codice ASC
                     LIMIT 8";
-        $sim_result = $conn->query($sim_sql);
+        $sim_result = app_db_query($conn, $sim_sql, true, 'ricerca rapida SIM');
         if ($sim_result) {
             while ($row = $sim_result->fetch_assoc()) {
                 $global_sim_results[] = $row;
@@ -137,6 +137,10 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
 <?php include 'includes/header.php'; ?>
 
 <h2>Panoramica operativa</h2>
+
+<?php if (app_database_error_occurred()): ?>
+    <div class="alert alert-error"><?= htmlspecialchars(app_database_error_message()) ?></div>
+<?php endif; ?>
 
 <div class="dashboard-search-layout">
     <section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
@@ -158,7 +162,11 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
     </section>
 
     <aside id="dashboard-search-output" class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
-        <?php if ($global_error !== ''): ?>
+        <?php if (app_database_error_occurred()): ?>
+            <div class="dashboard-search-results">
+                <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars(app_database_error_message()) ?></div>
+            </div>
+        <?php elseif ($global_error !== ''): ?>
             <div class="dashboard-search-results">
                 <div class="alert alert-error dashboard-search-feedback"><?= htmlspecialchars($global_error) ?></div>
             </div>
@@ -227,6 +235,7 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
     </aside>
 </div>
 
+<?php if (!app_database_error_occurred()): ?>
 <section class="stat-grid" aria-label="Indicatori principali">
     <article class="stat-card">
         <span class="stat-label">Chiamate registrate</span>
@@ -249,6 +258,7 @@ $recent_disabled_from = date('Y-m-d', strtotime('-30 days'));
         <span class="stat-detail stat-detail-sim" aria-label="Dettaglio stato SIM"><?= htmlspecialchars($total_sim_attive) ?> in uso · <?= htmlspecialchars($total_sim_non_attive) ?> disponibili · <?= htmlspecialchars($total_sim_disattive) ?> disattivate</span>
     </article>
 </section>
+<?php endif; ?>
 
 <section class="dashboard-shortcuts" aria-labelledby="dashboard-shortcuts-title">
     <div class="dashboard-section-heading">

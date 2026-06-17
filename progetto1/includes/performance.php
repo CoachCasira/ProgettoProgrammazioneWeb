@@ -1,7 +1,9 @@
 <?php
 /**
  * Funzioni comuni per lavorare in modo efficiente con archivi molto grandi.
- * Le tabelle di riepilogo vengono create dal file SQL presente in database/.
+ * Le tabelle di riepilogo sono già presenti sul database Altervista: sono state
+ * create una sola volta importando manualmente gli script di manutenzione da
+ * phpMyAdmin. L'applicazione non crea né modifica lo schema a runtime.
  */
 
 function performance_table_exists(mysqli $conn, string $table): bool
@@ -17,7 +19,7 @@ function performance_table_exists(mysqli $conn, string $table): bool
     }
 
     $escaped = $conn->real_escape_string($table);
-    $result = $conn->query("SHOW TABLES LIKE '$escaped'");
+    $result = app_db_query($conn, "SHOW TABLES LIKE '$escaped'", false, 'verifica tabella di supporto');
     $cache[$table] = $result instanceof mysqli_result && $result->num_rows > 0;
 
     return $cache[$table];
@@ -55,7 +57,7 @@ function performance_table_has_columns(mysqli $conn, string $table, array $colum
         return $cache[$cache_key];
     }
 
-    $result = $conn->query("SHOW COLUMNS FROM `$table`");
+    $result = app_db_query($conn, "SHOW COLUMNS FROM `$table`", false, 'verifica colonne tabella di supporto');
     if (!$result) {
         $cache[$cache_key] = false;
         return false;
@@ -94,7 +96,7 @@ function performance_index_exists(mysqli $conn, string $table, string $index): b
     }
 
     $safe_index = $conn->real_escape_string($index);
-    $result = $conn->query("SHOW INDEX FROM `$table` WHERE Key_name = '$safe_index'");
+    $result = app_db_query($conn, "SHOW INDEX FROM `$table` WHERE Key_name = '$safe_index'", false, 'verifica indice di supporto');
     $cache[$cache_key] = $result instanceof mysqli_result && $result->num_rows > 0;
 
     return $cache[$cache_key];
@@ -102,12 +104,12 @@ function performance_index_exists(mysqli $conn, string $table, string $index): b
 
 function performance_contract_stats_join(mysqli $conn, string $alias = 'tf'): string
 {
-    if (performance_table_exists($conn, 'StatisticheContratto')) {
+    if (performance_table_has_columns($conn, 'StatisticheContratto', ['numero', 'numeroTelefonate', 'durataTotale', 'addebitoTotale'])) {
         return "LEFT JOIN StatisticheContratto $alias ON $alias.numero = c.numero";
     }
 
-    // Compatibilità di emergenza prima dell'importazione dello script SQL.
-    // Con milioni di telefonate questa variante è più lenta e va usata solo come fallback.
+    // Fallback di compatibilità se la tabella tecnica non fosse disponibile.
+    // Con milioni di telefonate questa variante è più lenta, ma mantiene il sito operativo.
     return "LEFT JOIN (
                 SELECT effettuataDa AS numero,
                        COUNT(*) AS numeroTelefonate,
@@ -127,11 +129,11 @@ function performance_global_call_stats(mysqli $conn): array
         'addebitoTotale' => 0.0
     ];
 
-    if (performance_table_exists($conn, 'StatisticheTelefonate')) {
-        $result = $conn->query("SELECT totaleTelefonate, durataTotale, durataMedia, addebitoTotale
+    if (performance_table_has_columns($conn, 'StatisticheTelefonate', ['id', 'totaleTelefonate', 'durataTotale', 'durataMedia', 'addebitoTotale'])) {
+        $result = app_db_query($conn, "SELECT totaleTelefonate, durataTotale, durataMedia, addebitoTotale
                                 FROM StatisticheTelefonate
                                 WHERE id = 1
-                                LIMIT 1");
+                                LIMIT 1", false, 'lettura statistiche globali telefonate');
         if ($result && ($row = $result->fetch_assoc())) {
             return [
                 'totaleTelefonate' => (int)($row['totaleTelefonate'] ?? 0),
@@ -142,8 +144,8 @@ function performance_global_call_stats(mysqli $conn): array
         }
     }
 
-    // Fallback per non interrompere il sito se lo script SQL non è ancora stato importato.
-    $result = $conn->query("SELECT COUNT(*) AS totaleTelefonate,
+    // Fallback se la tabella tecnica non è disponibile o non contiene il riepilogo.
+    $result = app_db_query($conn, "SELECT COUNT(*) AS totaleTelefonate,
                                    COALESCE(SUM(durata), 0) AS durataTotale,
                                    COALESCE(AVG(durata), 0) AS durataMedia,
                                    COALESCE(SUM(costo), 0) AS addebitoTotale
@@ -162,11 +164,11 @@ function performance_global_call_stats(mysqli $conn): array
 
 function performance_global_call_count(mysqli $conn): ?int
 {
-    if (!performance_table_exists($conn, 'StatisticheTelefonate')) {
+    if (!performance_table_has_columns($conn, 'StatisticheTelefonate', ['id', 'totaleTelefonate'])) {
         return null;
     }
 
-    $result = $conn->query("SELECT totaleTelefonate FROM StatisticheTelefonate WHERE id = 1 LIMIT 1");
+    $result = app_db_query($conn, "SELECT totaleTelefonate FROM StatisticheTelefonate WHERE id = 1 LIMIT 1", false, 'lettura conteggio globale telefonate');
     if (!$result || !($row = $result->fetch_assoc())) {
         return null;
     }

@@ -3026,3 +3026,15 @@ table.data-table td.sim-code-cell {
         height: 2.75rem;
     }
 }
+/* Pulsante secondario dei form: personalizzazione sopra Bootstrap. */
+.btn-outline-reset {
+    background: transparent;
+    color: #6e6157;
+    border: 1px solid #6e6157;
+}
+
+.btn-outline-reset:hover,
+.btn-outline-reset:focus {
+    background: #6e6157;
+    color: #ffffff;
+}

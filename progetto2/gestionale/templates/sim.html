@@ -7,18 +7,16 @@
 <div class="sticky-data-panel">
     <div class="search-filter">
         <form id="sim-filter" class="d-flex flex-wrap align-items-end gap-3" method="GET" action="{% url 'gestione_sim' %}">
-            <input type="hidden" id="sim-stato" name="stato" value="{{ stato }}">
-
-            <div class="state-tabs w-100 mb-2" role="group" aria-label="Stato della SIM da visualizzare">
-                <button type="submit" onclick="document.getElementById('sim-stato').value='attive';" class="state-tab-button {% if stato == 'attive' %}active{% endif %}">
+                        <div class="state-tabs w-100 mb-2" role="group" aria-label="Stato della SIM da visualizzare">
+                <button type="submit" name="stato" value="attive" class="state-tab-button {% if stato == 'attive' %}active{% endif %}">
                     <strong>SIM in uso</strong>
                     <span>Associate a un numero attivo</span>
                 </button>
-                <button type="submit" onclick="document.getElementById('sim-stato').value='disponibili';" class="state-tab-button {% if stato == 'disponibili' %}active{% endif %}">
+                <button type="submit" name="stato" value="disponibili" class="state-tab-button {% if stato == 'disponibili' %}active{% endif %}">
                     <strong>SIM disponibili</strong>
                     <span>Pronte per un nuovo numero</span>
                 </button>
-                <button type="submit" onclick="document.getElementById('sim-stato').value='disattive';" class="state-tab-button {% if stato == 'disattive' %}active{% endif %}">
+                <button type="submit" name="stato" value="disattive" class="state-tab-button {% if stato == 'disattive' %}active{% endif %}">
                     <strong>SIM disattivate</strong>
                     <span>Storico delle SIM non più attive</span>
                 </button>
@@ -62,7 +60,7 @@
 
             <div class="mb-0 ms-auto d-flex gap-2">
                 <button type="submit" class="btn m-0">Cerca SIM</button>
-                <a href="{% url 'gestione_sim' %}?stato={{ stato }}" class="btn m-0 d-flex align-items-center justify-content-center" style="background:transparent; color:#6e6157; border: 1px solid #6e6157;">Resetta</a>
+                <a href="{% url 'gestione_sim' %}?stato={{ stato }}" class="btn btn-outline-reset m-0 d-flex align-items-center justify-content-center">Resetta</a>
             </div>
         </form>
     </div>
@@ -150,8 +148,8 @@
                                     </div>
                                     <dl class="card-detail-grid mb-0">
                                         <div class="card-detail-tile card-detail-link sim-phone-tile">
-                                            <dt><a href="{% url 'lista_contratti' %}?numero={{ sim.eraAssociataA }}" class="tile-overlay-link">Numero precedente</a></dt>
-                                            <dd>{{ sim.eraAssociataA }}</dd>
+                                            <dt><a href="{% url 'lista_contratti' %}?numero={{ sim.eraAssociataA.numero }}" class="tile-overlay-link">Numero precedente</a></dt>
+                                            <dd>{{ sim.eraAssociataA.numero }}</dd>
                                         </div>
                                         <div>
                                             <dt>Data attivazione</dt>

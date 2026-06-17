@@ -2,24 +2,26 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
-
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestione Numeri Telefonici</title>
-    
-    <link rel="icon" type="image/png" href="{% static 'assest/images/logo.png' %}">
-    <link rel="stylesheet" href="{% static 'assest/css/style.css' %}">
-    
-    <script src="{% static 'assest/js/main.js' %}" defer></script>
-    <script src="{% static 'assest/js/ajax.js' %}" defer></script>
+    <title>{% block title %}Gestione Numeri Telefonici{% endblock %}</title>
+
+    <link rel="icon" type="image/png" href="{% static 'assets/images/logo.png' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+
+    <script src="{% static 'assets/js/main.js' %}" defer></script>
+    <script src="{% static 'assets/js/ajax.js' %}" defer></script>
 </head>
 <body>
-
     <header class="main-header">
         <div class="header-content">
-            <img src="{% static 'assest/images/logo.png' %}" alt="Logo Gestione Numeri Telefonici" class="header-logo">
+            <img
+                src="{% static 'assets/images/logo.png' %}"
+                alt="Logo Gestione Numeri Telefonici"
+                title="Gestione Numeri Telefonici"
+                class="header-logo"
+            >
             <div class="header-titles">
                 <h1>Gestione Numeri Telefonici</h1>
                 <p>Consultazione operativa di numeri telefonici, SIM e chiamate</p>
@@ -37,8 +39,7 @@
     </nav>
 
     <main class="content">
-        {% block content %}
-        {% endblock %}
+        {% block content %}{% endblock %}
     </main>
 
     <footer>
@@ -47,6 +48,5 @@
             Progetto d'esame per il corso di Programmazione Web. I dati presenti sono puramente dimostrativi e non corrispondono a numeri telefonici, SIM o utenti reali. L'applicazione non rappresenta un servizio realmente operativo.
         </p>
     </footer>
-
 </body>
 </html>

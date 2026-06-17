@@ -1,0 +1,29 @@
+# Ambiente virtuale
+.venv/
+
+# Configurazione locale e segreti
+.env
+.env.local
+
+# File Python generati
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database di sviluppo non più utilizzato
+db.sqlite3
+
+# Test, cache e copertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# File IDE e sistema operativo
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Log e file temporanei
+*.log
+*.tmp

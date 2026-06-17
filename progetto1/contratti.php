@@ -285,8 +285,8 @@ $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
-$export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
-$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1');
+$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1')
+    || (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 
 $search_errors = [];
 if (!is_digits_or_empty($search_numero)) {
@@ -469,61 +469,42 @@ if (empty($search_errors)) {
         $total_count = null;
     }
 
-    if ($export_csv || $export_excel) {
+    if ($export_excel) {
         $export_rows = [];
         $export_result = $conn->query($sql_base);
-        if ($export_result) {
+
+        if (!$export_result) {
+            $search_errors[] = 'Non è stato possibile preparare il file Excel dei numeri telefonici. Riprova tra qualche istante.';
+        } else {
             while ($row = $export_result->fetch_assoc()) {
                 $tipo = strtolower((string)$row['tipo']);
                 $is_consumo = $tipo === 'consumo';
 
-                if ($export_excel) {
-                    $export_rows[] = [
-                        (string)$row['numero'],
-                        contratto_status_label($row),
-                        (string)($row['simDisattivaCodice'] ?: ''),
-                        $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
-                        format_date_it($row['dataAttivazione']),
-                        $is_consumo ? 'A consumo' : 'Ricaricabile',
-                        $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
-                        $is_consumo ? '' : format_euro($row['creditoResiduo']),
-                        (string)(int)$row['num_telefonate'],
-                        format_duration_seconds($row['durata_totale'] ?? 0),
-                        format_euro($row['costo_totale'] ?? 0)
-                    ];
-                } else {
-                    $export_rows[] = [
-                        csv_excel_safe_integer($row['numero']),
-                        contratto_status_label($row),
-                        csv_excel_identifier($row['simDisattivaCodice'] ?: ''),
-                        $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
-                        format_date_it($row['dataAttivazione']),
-                        $is_consumo ? 'A consumo' : 'Ricaricabile',
-                        $is_consumo ? csv_integer_value($row['minutiResidui']) : '',
-                        $is_consumo ? '' : csv_decimal_value($row['creditoResiduo']),
-                        csv_integer_value($row['num_telefonate']),
-                        csv_integer_value($row['durata_totale'] ?? 0),
-                        csv_decimal_value($row['costo_totale'] ?? 0)
-                    ];
-                }
+                $export_rows[] = [
+                    (string)$row['numero'],
+                    contratto_status_label($row),
+                    (string)($row['simDisattivaCodice'] ?: ''),
+                    $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
+                    format_date_it($row['dataAttivazione']),
+                    $is_consumo ? 'A consumo' : 'Ricaricabile',
+                    $is_consumo ? (string)(int)$row['minutiResidui'] : '',
+                    $is_consumo ? '' : csv_decimal_value($row['creditoResiduo']),
+                    (string)(int)$row['num_telefonate'],
+                    (string)(int)($row['durata_totale'] ?? 0),
+                    csv_decimal_value($row['costo_totale'] ?? 0)
+                ];
             }
-        }
+            $export_result->free();
 
-        if ($export_excel) {
-            output_excel_xml_response(
-                'numeri_telefonici.xml',
+            output_excel_html_response(
+                'numeri_telefonici.xls',
                 'Numeri telefonici',
-                ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate', 'Durata totale', 'Addebiti totali'],
+                ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo (minuti)', 'Credito residuo (€)', 'Chiamate', 'Durata totale (secondi)', 'Addebiti totali (€)'],
                 $export_rows,
-                ['right', 'left', 'right', 'right', 'right', 'left', 'right', 'right', 'right', 'right', 'right']
+                ['right', 'left', 'right', 'right', 'right', 'left', 'right', 'right', 'right', 'right', 'right'],
+                ['text', 'text', 'text', 'text', 'text', 'text', 'integer', 'decimal', 'integer', 'integer', 'decimal']
             );
         }
-
-        output_csv_response(
-            'numeri_telefonici.csv',
-            ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo (minuti)', 'Credito residuo (€)', 'Chiamate', 'Durata totale (secondi)', 'Addebiti totali (€)'],
-            $export_rows
-        );
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
@@ -677,7 +658,6 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <span class="view-toggle-icon" aria-hidden="true">▤</span>
                 <span data-view-toggle-text>Vista tabellare</span>
             </button>
-            <button type="submit" form="contratti-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
             <button type="submit" form="contratti-filter" name="export_excel" value="1" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
         </div>
     </div>

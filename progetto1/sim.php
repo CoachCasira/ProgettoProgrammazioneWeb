@@ -973,8 +973,8 @@ $limit = max(8, min(60, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
-$export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
-$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1');
+$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1')
+    || (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 $lazy_direction = ($_POST['direction'] ?? $_GET['direction'] ?? 'next') === 'prev' ? 'prev' : 'next';
 
 $search_errors = [];
@@ -1208,28 +1208,28 @@ if ($action === 'list' && empty($search_errors)) {
     }
 
 
-    if ($export_csv || $export_excel) {
+    if ($export_excel) {
         $export_rows = [];
         $export_result = $conn->query($sql_list_without_limit);
-        if ($export_result) {
-            while ($row = $export_result->fetch_assoc()) {
-                $export_rows[] = $export_excel
-                    ? sim_excel_row($row, $state)
-                    : sim_csv_row($row, $state);
-            }
-        }
 
-        if ($export_excel) {
-            output_excel_xml_response(
-                'sim_' . $state . '.xml',
+        if (!$export_result) {
+            $search_errors[] = 'Non è stato possibile preparare il file Excel delle SIM. Riprova tra qualche istante.';
+        } else {
+            while ($row = $export_result->fetch_assoc()) {
+                $export_rows[] = sim_excel_row($row, $state);
+            }
+            $export_result->free();
+
+            $sim_types = array_fill(0, count(sim_csv_headers($state)), 'text');
+            output_excel_html_response(
+                'sim_' . $state . '.xls',
                 'SIM',
                 sim_csv_headers($state),
                 $export_rows,
-                sim_excel_alignments($state)
+                sim_excel_alignments($state),
+                $sim_types
             );
         }
-
-        output_csv_response('sim_' . $state . '.csv', sim_csv_headers($state), $export_rows);
     }
 
     $list_start_offset = $offset;
@@ -1385,7 +1385,6 @@ if ($has_active_date_state && !$has_disabled_date_state) {
                     <span class="view-toggle-icon" aria-hidden="true">▤</span>
                     <span data-view-toggle-text>Vista tabellare</span>
                 </button>
-                <button type="submit" form="sim-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
                 <button type="submit" form="sim-filter" name="export_excel" value="1" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
                 <a href="sim.php?stato=disattive&amp;action=create&amp;return_stato=<?= urlencode($state) ?>" class="btn btn-secondary btn-add-disattiva">+ Disattiva SIM</a>
             </div>

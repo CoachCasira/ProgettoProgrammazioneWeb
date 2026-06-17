@@ -9573,3 +9573,128 @@ form[data-sim-crud-form="true"] .site-picker-panel {
     top: calc(100% + 0.48rem) !important;
     bottom: auto !important;
 }
+
+/* =========================================================
+   V79 - Allineamento desktop filtri Numeri e Chiamate
+   ========================================================= */
+@media (min-width: 1181px) {
+    /* Numeri telefonici: entrambe le righe riempiono la stessa larghezza
+       con controlli proporzionati al contenuto. */
+    .contratti-filter-form {
+        grid-template-columns: repeat(20, minmax(0, 1fr)) !important;
+        gap: 0.8rem !important;
+        align-items: end !important;
+    }
+
+    .contratti-filter-form .phone-number-filter-group {
+        grid-column: 1 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-status-filter-group {
+        grid-column: 4 / span 3 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-date-filter-group {
+        grid-column: 7 / span 6 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .phone-plan-filter-group {
+        grid-column: 13 / span 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .residual-filter-group {
+        grid-column: 17 / span 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .contratti-filter-form .traffic-filter-group {
+        grid-column: 1 / span 5 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .phone-duration-filter-group {
+        grid-column: 6 / span 5 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form .order-filter-group {
+        grid-column: 11 / span 4 !important;
+        grid-row: 2 !important;
+    }
+
+    .contratti-filter-form > .btn-reset-filters {
+        grid-column: 15 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+    }
+
+    .contratti-filter-form > .btn-filter-submit {
+        grid-column: 18 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+    }
+
+    /* Chiamate: la prima e la seconda riga usano la stessa griglia da
+       venti colonne, eliminando gli sfalsamenti visivi. */
+    .telefonate-filter-form {
+        grid-template-columns: repeat(20, minmax(0, 1fr)) !important;
+        gap: 0.8rem !important;
+        align-items: end !important;
+    }
+
+    .telefonate-filter-form .call-number-filter-group {
+        grid-column: 1 / span 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .call-state-filter-group {
+        grid-column: 5 / span 4 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .period-filter-group {
+        grid-column: 9 / span 6 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .time-filter-group {
+        grid-column: 15 / span 6 !important;
+        grid-row: 1 !important;
+    }
+
+    .telefonate-filter-form .duration-filter-group {
+        grid-column: 1 / span 4 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .call-plan-filter-group {
+        grid-column: 5 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .cost-filter-group {
+        grid-column: 8 / span 3 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form .order-filter-group {
+        grid-column: 11 / span 4 !important;
+        grid-row: 2 !important;
+    }
+
+    .telefonate-filter-form > .btn-reset-filters {
+        grid-column: 15 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+    }
+
+    .telefonate-filter-form > .btn-filter-submit {
+        grid-column: 18 / span 3 !important;
+        grid-row: 2 !important;
+        width: 100% !important;
+    }
+}

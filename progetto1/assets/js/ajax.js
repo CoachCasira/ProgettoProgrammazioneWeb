@@ -123,6 +123,7 @@
             count_only: true,
             direction: true,
             export_csv: true,
+            export_excel: true,
             jump_last: true,
             limit: true,
             offset: true,

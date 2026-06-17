@@ -184,7 +184,8 @@ $limit = max(10, min(80, (int)($_POST['limit'] ?? $_GET['limit'] ?? 12)));
 $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
-$export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
+$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1')
+    || (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
 $jump_last = $ajax_rows && (($_POST['jump_last'] ?? $_GET['jump_last'] ?? '') === '1');
 $reverse_offset = max(0, (int)($_POST['reverse_offset'] ?? $_GET['reverse_offset'] ?? 0));
 $count_only = (($_POST['count_only'] ?? $_GET['count_only'] ?? '') === '1');
@@ -466,18 +467,21 @@ if (empty($search_errors)) {
     $reverse_order = $fast_order['reverse'];
     $index_name = $fast_order['index'];
 
-    if ($export_csv) {
-        $max_csv_export_rows = 100000;
+    if ($export_excel) {
+        /* Un foglio con milioni di righe supererebbe i limiti di Excel e
+           dell'hosting condiviso. L'esportazione resta quindi disponibile
+           dopo aver ristretto la ricerca a un insieme gestibile. */
+        $max_excel_export_rows = 50000;
         $export_total = $total_count;
         if ($export_total === null) {
             $export_total = query_total_count($conn, "SELECT t.id FROM Telefonata t WHERE $where_sql");
         }
 
-        if ($export_total > $max_csv_export_rows) {
-            $search_errors[] = 'L’esportazione comprende ' . number_format((int)$export_total, 0, ',', '.')
-                . ' chiamate ed è troppo grande per un unico CSV. Applica uno o più filtri fino a ottenere al massimo '
-                . number_format($max_csv_export_rows, 0, ',', '.') . ' risultati, quindi ripeti l’esportazione.';
-            $export_csv = false;
+        if ($export_total > $max_excel_export_rows) {
+            $search_errors[] = 'Il foglio Excel comprenderebbe ' . number_format((int)$export_total, 0, ',', '.')
+                . ' chiamate. Applica uno o più filtri fino a ottenere al massimo '
+                . number_format($max_excel_export_rows, 0, ',', '.') . ' risultati, quindi ripeti l’esportazione.';
+            $export_excel = false;
         } else {
             $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
             $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
@@ -489,16 +493,16 @@ if (empty($search_errors)) {
             $export_result = $conn->query($sql_export, MYSQLI_USE_RESULT);
 
             if (!$export_result) {
-                $search_errors[] = 'Non è stato possibile preparare il file CSV delle chiamate. Riduci i filtri e riprova.';
-                $export_csv = false;
+                $search_errors[] = 'Non è stato possibile preparare il file Excel delle chiamate. Restringi i filtri e riprova.';
+                $export_excel = false;
             } else {
                 $stream_rows = (function () use ($export_result) {
                     while ($row = $export_result->fetch_assoc()) {
                         yield [
-                            csv_excel_safe_integer($row['effettuataDa']),
+                            (string)$row['effettuataDa'],
                             format_date_it($row['data']),
                             format_time_minutes($row['ora']),
-                            csv_integer_value($row['durata']),
+                            (string)(int)$row['durata'],
                             ucfirst((string)$row['tipoContratto']),
                             csv_decimal_value($row['costo'])
                         ];
@@ -506,10 +510,13 @@ if (empty($search_errors)) {
                     $export_result->free();
                 })();
 
-                output_csv_stream_response(
-                    'chiamate.csv',
+                output_excel_html_stream_response(
+                    'chiamate.xls',
+                    'Chiamate',
                     ['Numero chiamante', 'Data', 'Ora', 'Durata (secondi)', 'Piano', 'Addebito (€)'],
-                    $stream_rows
+                    $stream_rows,
+                    ['right', 'right', 'right', 'right', 'left', 'right'],
+                    ['text', 'text', 'text', 'integer', 'text', 'decimal']
                 );
             }
         }
@@ -686,7 +693,7 @@ if ($ajax_rows) {
                 <span class="view-toggle-icon" aria-hidden="true">▤</span>
                 <span data-view-toggle-text>Vista tabellare</span>
             </button>
-            <button type="submit" form="telefonate-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
+            <button type="submit" form="telefonate-filter" name="export_excel" value="1" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
         </div>
     </div>
 

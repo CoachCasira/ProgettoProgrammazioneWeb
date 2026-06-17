@@ -62,11 +62,11 @@ function render_telefonate_table_rows(array $rows): string
     return ob_get_clean();
 }
 
-function query_total_count(mysqli $conn, string $sql): ?int
+function query_total_count(mysqli $conn, string $sql): int
 {
-    $result = app_db_query($conn, "SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results", false, 'conteggio chiamate filtrate');
+    $result = $conn->query("SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results");
     if (!$result) {
-        return null;
+        return 0;
     }
     $row = $result->fetch_assoc();
     return (int)($row['total_count'] ?? 0);
@@ -80,7 +80,7 @@ function query_total_count(mysqli $conn, string $sql): ?int
  */
 function fast_unfiltered_call_count(mysqli $conn): ?int
 {
-    $result = app_db_query($conn, "SELECT MAX(id) AS max_id FROM Telefonata", false, 'conteggio rapido chiamate');
+    $result = $conn->query("SELECT MAX(id) AS max_id FROM Telefonata");
     if (!$result || !($row = $result->fetch_assoc())) {
         return null;
     }
@@ -132,10 +132,10 @@ function fast_contract_scoped_call_count(
     }
 
     $where = implode(' AND ', $clauses);
-    $result = app_db_query($conn, "SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
+    $result = $conn->query("SELECT COALESCE(SUM(sc.numeroTelefonate), 0) AS total_count
                             FROM ContrattoTelefonico c
                             LEFT JOIN StatisticheContratto sc ON sc.numero = c.numero
-                            WHERE $where", false, 'conteggio rapido chiamate per contratto');
+                            WHERE $where");
     if (!$result || !($row = $result->fetch_assoc())) {
         return null;
     }
@@ -281,7 +281,7 @@ if (empty($search_errors)) {
     if ($has_contract_scope_filter) {
         $eligible_numbers = [];
         $contract_scope_sql = implode(' AND ', $contract_scope_clauses);
-        $eligible_result = app_db_query($conn, "SELECT c.numero FROM ContrattoTelefonico c WHERE $contract_scope_sql");
+        $eligible_result = $conn->query("SELECT c.numero FROM ContrattoTelefonico c WHERE $contract_scope_sql");
         if ($eligible_result) {
             while ($eligible_row = $eligible_result->fetch_assoc()) {
                 $eligible_numbers[] = "'" . $conn->real_escape_string((string)$eligible_row['numero']) . "'";
@@ -430,12 +430,9 @@ if (empty($search_errors)) {
         }
 
         if ($count_value === null) {
-            $count_result = app_db_query($conn, "SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql", true, 'conteggio chiamate richiesto via AJAX');
-            if (!$count_result) {
-                app_abort_database_request();
-            }
+            $count_result = $conn->query("SELECT COUNT(*) AS total_count FROM Telefonata t WHERE $where_sql");
             $count_value = 0;
-            if ($count_row = $count_result->fetch_assoc()) {
+            if ($count_result && ($count_row = $count_result->fetch_assoc())) {
                 $count_value = (int)($count_row['total_count'] ?? 0);
             }
         }
@@ -452,7 +449,7 @@ if (empty($search_errors)) {
     if (!$has_any_filter) {
         $total_count = fast_unfiltered_call_count($conn);
         if ($total_count === null) {
-            $total_count = performance_global_call_count($conn);
+            $total_count = 0;
         }
     } elseif (!$is_xhr_request && !$skip_count) {
         $total_count = !$has_call_row_filter
@@ -478,11 +475,9 @@ if (empty($search_errors)) {
                        WHERE $where_sql
                        ORDER BY $export_order";
         $csv_rows = [];
-        $export_result = app_db_query($conn, $sql_export, true, 'esportazione chiamate');
-        if (!$export_result) {
-            app_abort_database_request();
-        }
-        while ($row = $export_result->fetch_assoc()) {
+        $export_result = $conn->query($sql_export);
+        if ($export_result) {
+            while ($row = $export_result->fetch_assoc()) {
                 $csv_rows[] = [
                     csv_excel_identifier($row['effettuataDa']),
                     format_date_it($row['data']),
@@ -492,6 +487,7 @@ if (empty($search_errors)) {
                     csv_currency_value($row['costo'])
                 ];
             }
+        }
         output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
     }
 
@@ -519,7 +515,7 @@ if (empty($search_errors)) {
             JOIN ContrattoTelefonico c ON c.numero = blocco.effettuataDa
             ORDER BY $outer_order";
 
-    $result = app_db_query($conn, $sql, true, 'lettura chiamate');
+    $result = $conn->query($sql);
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $rows[] = $row;
@@ -538,9 +534,6 @@ if (empty($search_errors)) {
     }
 }
 if ($ajax_rows) {
-    if (app_database_error_occurred()) {
-        app_abort_database_request();
-    }
     header('Content-Type: application/json; charset=utf-8');
     $payload = [
         'html' => render_telefonate_cards($rows),
@@ -674,9 +667,7 @@ if ($ajax_rows) {
     </div>
 
     <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#telefonate-filter" data-next-offset="<?= count($rows) ?>" data-prev-offset="0" data-has-prev="0" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-total-count="<?= $total_count === null ? '' : $total_count ?>" data-count-pending="<?= $total_count === null ? '1' : '0' ?>">
-        <?php if (app_database_error_occurred()): ?>
-            <div class="alert alert-error"><?= htmlspecialchars(app_database_error_message()) ?></div>
-        <?php elseif (!empty($search_errors)): ?>
+        <?php if (!empty($search_errors)): ?>
             <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
         <?php elseif (!empty($rows)): ?>
             <div class="view-panel view-panel-cards" data-view-panel="cards">

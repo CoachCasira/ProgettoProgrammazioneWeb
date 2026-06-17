@@ -1,6 +1,5 @@
 <?php
 require_once 'includes/config.php';
-require_once 'includes/security.php';
 require_once 'includes/validation.php';
 require_once 'includes/csv.php';
 require_once 'includes/performance.php';
@@ -214,8 +213,8 @@ function refresh_sim_statistics(mysqli $conn, string $codice, string $state): vo
                 ON DUPLICATE KEY UPDATE numeroChiamate = 0";
     }
 
-    app_db_query($conn, $sql, false, 'aggiornamento statistiche SIM');
-    app_db_query($conn, "DELETE FROM StatisticheSIM WHERE codice = '$safe_code' AND stato <> '$safe_state'", false, 'pulizia statistiche SIM');
+    $conn->query($sql);
+    $conn->query("DELETE FROM StatisticheSIM WHERE codice = '$safe_code' AND stato <> '$safe_state'");
 }
 
 function delete_sim_statistics(mysqli $conn, string $codice): void
@@ -224,7 +223,7 @@ function delete_sim_statistics(mysqli $conn, string $codice): void
         return;
     }
     $safe_code = $conn->real_escape_string($codice);
-    app_db_query($conn, "DELETE FROM StatisticheSIM WHERE codice = '$safe_code'", false, 'rimozione statistiche SIM');
+    $conn->query("DELETE FROM StatisticheSIM WHERE codice = '$safe_code'");
 }
 
 function get_numero_info(mysqli $conn, string $numero): array
@@ -245,14 +244,14 @@ function get_numero_info(mysqli $conn, string $numero): array
     }
 
     $numero_sql = $conn->real_escape_string($numero);
-    $contratto_res = app_db_query($conn, "SELECT numero, dataAttivazione FROM ContrattoTelefonico WHERE numero='$numero_sql' LIMIT 1");
+    $contratto_res = $conn->query("SELECT numero, dataAttivazione FROM ContrattoTelefonico WHERE numero='$numero_sql' LIMIT 1");
     if (!$contratto_res || $contratto_res->num_rows === 0) {
         $info['message'] = 'Il numero indicato non risulta presente tra i numeri telefonici registrati.';
         return $info;
     }
 
     $contratto = $contratto_res->fetch_assoc();
-    $chiamata_res = app_db_query($conn, "SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
+    $chiamata_res = $conn->query("SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
     $ultima_chiamata = '';
     if ($chiamata_res) {
         $chiamata_row = $chiamata_res->fetch_assoc();
@@ -270,7 +269,7 @@ function get_numero_info(mysqli $conn, string $numero): array
 function get_ultima_chiamata_by_numero(mysqli $conn, string $numero): string
 {
     $numero_sql = $conn->real_escape_string($numero);
-    $chiamata_res = app_db_query($conn, "SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
+    $chiamata_res = $conn->query("SELECT MAX(data) AS ultimaChiamata FROM Telefonata WHERE effettuataDa='$numero_sql'");
     if (!$chiamata_res) {
         return '';
     }
@@ -302,7 +301,7 @@ function get_sim_status_info(mysqli $conn, string $codice): array
 
     $codice_sql = $conn->real_escape_string($codice);
 
-    $active_res = app_db_query($conn, "SELECT s.codice, s.tipoSIM, s.associataA, s.dataAttivazione AS dataSIM
+    $active_res = $conn->query("SELECT s.codice, s.tipoSIM, s.associataA, s.dataAttivazione AS dataSIM
                                 FROM SIMAttiva s
                                 JOIN ContrattoTelefonico c ON s.associataA = c.numero
                                 WHERE s.codice='$codice_sql'
@@ -321,7 +320,7 @@ function get_sim_status_info(mysqli $conn, string $codice): array
         return $info;
     }
 
-    $available_res = app_db_query($conn, "SELECT codice FROM SIMNonAttiva WHERE codice='$codice_sql' LIMIT 1");
+    $available_res = $conn->query("SELECT codice FROM SIMNonAttiva WHERE codice='$codice_sql' LIMIT 1");
     if ($available_res && $available_res->num_rows > 0) {
         $info['exists'] = true;
         $info['status'] = 'disponibile';
@@ -329,7 +328,7 @@ function get_sim_status_info(mysqli $conn, string $codice): array
         return $info;
     }
 
-    $disabled_res = app_db_query($conn, "SELECT codice FROM SIMDisattiva WHERE codice='$codice_sql' LIMIT 1");
+    $disabled_res = $conn->query("SELECT codice FROM SIMDisattiva WHERE codice='$codice_sql' LIMIT 1");
     if ($disabled_res && $disabled_res->num_rows > 0) {
         $info['exists'] = true;
         $info['status'] = 'disattiva';
@@ -354,7 +353,7 @@ function get_active_sim_by_numero(mysqli $conn, string $numero): array
     }
 
     $numero_sql = $conn->real_escape_string($numero);
-    $active_res = app_db_query($conn, "SELECT codice, tipoSIM, dataAttivazione FROM SIMAttiva WHERE associataA='$numero_sql' LIMIT 1");
+    $active_res = $conn->query("SELECT codice, tipoSIM, dataAttivazione FROM SIMAttiva WHERE associataA='$numero_sql' LIMIT 1");
     if ($active_res && $active_res->num_rows > 0) {
         $row = $active_res->fetch_assoc();
         $ultima_chiamata = get_ultima_chiamata_by_numero($conn, $numero);
@@ -590,11 +589,11 @@ function render_sim_table_rows(array $rows, string $state): string
     return ob_get_clean();
 }
 
-function query_total_count(mysqli $conn, string $sql): ?int
+function query_total_count(mysqli $conn, string $sql): int
 {
-    $result = app_db_query($conn, "SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results", false, 'conteggio SIM filtrate');
+    $result = $conn->query("SELECT COUNT(*) AS total_count FROM (" . $sql . ") AS filtered_results");
     if (!$result) {
-        return null;
+        return 0;
     }
     $row = $result->fetch_assoc();
     return (int)($row['total_count'] ?? 0);
@@ -665,38 +664,25 @@ if ((($_GET['ajax_numero_info'] ?? $_POST['ajax_numero_info'] ?? '') === '1')) {
     $numero_lookup = trim($_GET['numero'] ?? $_POST['numero'] ?? '');
     $mode_lookup = trim($_GET['mode'] ?? $_POST['mode'] ?? 'edit');
     header('Content-Type: application/json; charset=utf-8');
-    $lookup_payload = $mode_lookup === 'create'
-        ? get_active_sim_by_numero($conn, $numero_lookup)
-        : get_numero_info($conn, $numero_lookup);
-    if (app_database_error_occurred()) {
-        app_abort_database_request();
+    if ($mode_lookup === 'create') {
+        echo json_encode(get_active_sim_by_numero($conn, $numero_lookup));
+    } else {
+        echo json_encode(get_numero_info($conn, $numero_lookup));
     }
-    echo json_encode($lookup_payload);
     exit;
 }
 
 if ((($_GET['ajax_sim_info'] ?? $_POST['ajax_sim_info'] ?? '') === '1')) {
     $codice_lookup = trim($_GET['codice'] ?? $_POST['codice'] ?? '');
     header('Content-Type: application/json; charset=utf-8');
-    $lookup_payload = get_sim_status_info($conn, $codice_lookup);
-    if (app_database_error_occurred()) {
-        app_abort_database_request();
-    }
-    echo json_encode($lookup_payload);
+    echo json_encode(get_sim_status_info($conn, $codice_lookup));
     exit;
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $post_action = $_POST['action'] ?? '';
-    $protected_actions = ['create', 'edit', 'delete'];
 
-    if (in_array($post_action, $protected_actions, true)
-            && !csrf_token_is_valid($_POST['csrf_token'] ?? null)) {
-        http_response_code(403);
-        $msg = 'La sessione di sicurezza è scaduta. Riaprire il modulo e riprovare.';
-        $msg_type = 'error';
-        $action = in_array($post_action, ['create', 'edit'], true) ? $post_action : 'list';
-    } elseif ($post_action === 'create' || $post_action === 'edit') {
+    if ($post_action === 'create' || $post_action === 'edit') {
         $state = 'disattive';
         $action = $post_action;
         $codice_raw = trim($_POST['codice'] ?? '');
@@ -764,7 +750,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             $old_codice_lookup = $conn->real_escape_string($_POST['old_codice'] ?? '');
             if ($old_codice_lookup !== '') {
-                $stored_res = app_db_query($conn, "SELECT * FROM SIMDisattiva WHERE codice='$old_codice_lookup' LIMIT 1");
+                $stored_res = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$old_codice_lookup' LIMIT 1");
                 if ($stored_res && $stored_res->num_rows > 0) {
                     $stored_edit_row = $stored_res->fetch_assoc();
                     $dataAttivazione_raw = $stored_edit_row['dataAttivazione'];
@@ -827,86 +813,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg_type = 'error';
             $action = $post_action;
         } else {
-            $codice = $codice_raw;
-            $tipoSIM = $tipoSIM_raw;
-            $eraAssociataA = $eraAssociataA_raw;
-            $dataAttivazione = $dataAttivazione_raw;
-            $dataDisattivazione = $dataDisattivazione_raw;
+            $codice = $conn->real_escape_string($codice_raw);
+            $tipoSIM = $conn->real_escape_string($tipoSIM_raw);
+            $eraAssociataA = $conn->real_escape_string($eraAssociataA_raw);
+            $dataAttivazione = $conn->real_escape_string($dataAttivazione_raw);
+            $dataDisattivazione = $conn->real_escape_string($dataDisattivazione_raw);
 
             if ($post_action === 'create') {
-                $insert_stmt = app_db_prepare(
-                    $conn,
-                    'INSERT INTO SIMDisattiva (codice, tipoSIM, eraAssociataA, dataAttivazione, dataDisattivazione) VALUES (?, ?, ?, ?, ?)',
-                    'preparazione inserimento SIM disattivata'
-                );
-                $delete_stmt = app_db_prepare(
-                    $conn,
-                    'DELETE FROM SIMAttiva WHERE codice = ?',
-                    'preparazione rimozione SIM attiva'
-                );
+                $insert_sql = "INSERT INTO SIMDisattiva (codice, tipoSIM, eraAssociataA, dataAttivazione, dataDisattivazione)
+                               VALUES ('$codice', '$tipoSIM', '$eraAssociataA', '$dataAttivazione', '$dataDisattivazione')";
+                $delete_sql = "DELETE FROM SIMAttiva WHERE codice='$codice'";
 
-                $created = false;
-                if ($insert_stmt && $delete_stmt) {
-                    $insert_stmt->bind_param('sssss', $codice, $tipoSIM, $eraAssociataA, $dataAttivazione, $dataDisattivazione);
-                    $delete_stmt->bind_param('s', $codice);
-
-                    if (!$conn->begin_transaction()) {
-                        app_log_database_error($conn, 'avvio transazione disattivazione SIM');
-                        $GLOBALS['app_database_error_occurred'] = true;
-                    } else {
-                        $created = app_db_execute($insert_stmt, 'inserimento SIM disattivata')
-                            && app_db_execute($delete_stmt, 'rimozione SIM attiva')
-                            && $delete_stmt->affected_rows === 1;
-
-                        if ($created) {
-                            if (!$conn->commit()) {
-                                app_log_database_error($conn, 'conferma transazione disattivazione SIM');
-                                $GLOBALS['app_database_error_occurred'] = true;
-                                $created = false;
-                                $conn->rollback();
-                            }
-                        } else {
-                            $conn->rollback();
-                        }
-                    }
-                }
-
-                if ($insert_stmt) {
-                    $insert_stmt->close();
-                }
-                if ($delete_stmt) {
-                    $delete_stmt->close();
-                }
-
-                if ($created) {
+                $conn->begin_transaction();
+                if ($conn->query($insert_sql) && $conn->query($delete_sql)) {
+                    $conn->commit();
                     refresh_sim_statistics($conn, $codice, 'disattive');
                     $msg = 'SIM disattivata registrata nello storico correttamente.';
                     $msg_type = 'success';
                     $action = 'list';
                     $state = normalize_sim_state($_POST['return_stato'] ?? 'disattive');
                 } else {
-                    $msg = app_database_error_occurred()
-                        ? app_database_error_message()
-                        : 'Operazione non riuscita. Controllare i dati inseriti e riprovare.';
+                    $conn->rollback();
+                    $msg = 'Operazione non riuscita. Controllare i dati inseriti e riprovare.';
                     $msg_type = 'error';
                     $action = 'create';
                 }
             } else {
-                $old_codice = trim((string)($_POST['old_codice'] ?? ''));
-                $update_stmt = app_db_prepare(
-                    $conn,
-                    'UPDATE SIMDisattiva SET tipoSIM = ?, eraAssociataA = ?, dataAttivazione = ?, dataDisattivazione = ? WHERE codice = ?',
-                    'preparazione aggiornamento SIM disattivata'
-                );
-
-                $updated = false;
-                if ($update_stmt) {
-                    $update_stmt->bind_param('sssss', $tipoSIM, $eraAssociataA, $dataAttivazione, $dataDisattivazione, $old_codice);
-                    $updated = app_db_execute($update_stmt, 'aggiornamento SIM disattivata');
-                    $update_stmt->close();
-                }
-
-                if ($updated) {
+                $old_codice = $conn->real_escape_string($_POST['old_codice'] ?? '');
+                $sql = "UPDATE SIMDisattiva SET
+                            tipoSIM='$tipoSIM',
+                            eraAssociataA='$eraAssociataA',
+                            dataAttivazione='$dataAttivazione',
+                            dataDisattivazione='$dataDisattivazione'
+                        WHERE codice='$old_codice'";
+                if ($conn->query($sql)) {
                     if ($old_codice !== $codice) {
                         delete_sim_statistics($conn, $old_codice);
                     }
@@ -916,9 +856,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $action = 'list';
                     $state = normalize_sim_state($_POST['return_stato'] ?? 'disattive');
                 } else {
-                    $msg = app_database_error_occurred()
-                        ? app_database_error_message()
-                        : 'Aggiornamento non riuscito. Controllare i dati inseriti e riprovare.';
+                    $msg = 'Aggiornamento non riuscito. Controllare i dati inseriti e riprovare.';
                     $msg_type = 'error';
                     $action = 'edit';
                 }
@@ -926,58 +864,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($post_action === 'delete') {
         $state = normalize_sim_state($_POST['return_stato'] ?? 'disattive');
-        $codice = trim((string)($_POST['codice'] ?? ''));
+        $codice = $conn->real_escape_string($_POST['codice'] ?? '');
+        $check_res = $conn->query("SELECT codice FROM SIMDisattiva WHERE codice='$codice'");
 
-        if ($codice === '' || !ctype_digit($codice)) {
-            $msg = 'La SIM selezionata non è valida.';
+        if ($codice === '' || !$check_res || $check_res->num_rows === 0) {
+            $msg = 'La SIM selezionata non è più disponibile nello storico.';
             $msg_type = 'error';
+        } elseif ($conn->query("DELETE FROM SIMDisattiva WHERE codice='$codice'")) {
+            delete_sim_statistics($conn, $codice);
+            $msg = 'SIM disattivata rimossa dallo storico correttamente.';
+            $msg_type = 'success';
         } else {
-            $check_stmt = app_db_prepare(
-                $conn,
-                'SELECT codice FROM SIMDisattiva WHERE codice = ?',
-                'preparazione verifica SIM da eliminare'
-            );
-            $exists = false;
-            if ($check_stmt) {
-                $check_stmt->bind_param('s', $codice);
-                if (app_db_execute($check_stmt, 'verifica SIM da eliminare')) {
-                    $check_stmt->store_result();
-                    $exists = $check_stmt->num_rows > 0;
-                }
-                $check_stmt->close();
-            }
-
-            if (app_database_error_occurred()) {
-                $msg = app_database_error_message();
-                $msg_type = 'error';
-            } elseif (!$exists) {
-                $msg = 'La SIM selezionata non è più disponibile nello storico.';
-                $msg_type = 'error';
-            } else {
-                $delete_stmt = app_db_prepare(
-                    $conn,
-                    'DELETE FROM SIMDisattiva WHERE codice = ?',
-                    'preparazione eliminazione SIM disattivata'
-                );
-                $deleted = false;
-                if ($delete_stmt) {
-                    $delete_stmt->bind_param('s', $codice);
-                    $deleted = app_db_execute($delete_stmt, 'eliminazione SIM disattivata')
-                        && $delete_stmt->affected_rows === 1;
-                    $delete_stmt->close();
-                }
-
-                if ($deleted) {
-                    delete_sim_statistics($conn, $codice);
-                    $msg = 'SIM disattivata rimossa dallo storico correttamente.';
-                    $msg_type = 'success';
-                } else {
-                    $msg = app_database_error_occurred()
-                        ? app_database_error_message()
-                        : 'Eliminazione non riuscita. Riprovare più tardi.';
-                    $msg_type = 'error';
-                }
-            }
+            $msg = 'Eliminazione non riuscita. Riprovare più tardi.';
+            $msg_type = 'error';
         }
         $action = 'list';
     }
@@ -1264,12 +1163,11 @@ if ($action === 'list' && empty($search_errors)) {
 
     if ($export_csv) {
         $csv_rows = [];
-        $export_result = app_db_query($conn, $sql_list_without_limit, true, 'esportazione SIM');
-        if (!$export_result) {
-            app_abort_database_request();
-        }
-        while ($row = $export_result->fetch_assoc()) {
-            $csv_rows[] = sim_csv_row($row, $state);
+        $export_result = $conn->query($sql_list_without_limit);
+        if ($export_result) {
+            while ($row = $export_result->fetch_assoc()) {
+                $csv_rows[] = sim_csv_row($row, $state);
+            }
         }
         output_csv_response('sim_' . $state . '.csv', sim_csv_headers($state), $csv_rows);
     }
@@ -1278,7 +1176,7 @@ if ($action === 'list' && empty($search_errors)) {
     $has_prev = $offset > 0;
 
     $sql_list .= " LIMIT " . ($query_limit + 1) . " OFFSET " . $offset;
-    $result_list = app_db_query($conn, $sql_list, true, 'lettura SIM');
+    $result_list = $conn->query($sql_list);
     if ($result_list) {
         while ($row = $result_list->fetch_assoc()) {
             $rows[] = $row;
@@ -1291,9 +1189,6 @@ if ($action === 'list' && empty($search_errors)) {
 }
 
 if ($ajax_rows) {
-    if (app_database_error_occurred()) {
-        app_abort_database_request();
-    }
     header('Content-Type: application/json; charset=utf-8');
     $payload = [
         'html' => render_sim_rows($rows, $state),
@@ -1436,9 +1331,7 @@ if ($has_active_date_state && !$has_disabled_date_state) {
         </div>
 
         <div class="cards-container results-data-container" data-lazy-container="true" data-lazy-form="#sim-filter" data-next-offset="<?= $list_start_offset + count($rows) ?>" data-prev-offset="<?= $list_start_offset ?>" data-limit="<?= $limit ?>" data-has-more="<?= $has_more ? '1' : '0' ?>" data-has-prev="<?= $has_prev ? '1' : '0' ?>" data-total-count="<?= $total_count ?>">
-            <?php if (app_database_error_occurred()): ?>
-                <div class="alert alert-error"><?= htmlspecialchars(app_database_error_message()) ?></div>
-            <?php elseif (!empty($search_errors)): ?>
+            <?php if (!empty($search_errors)): ?>
                 <div class="alert alert-error"><?= htmlspecialchars(implode(' ', $search_errors)) ?></div>
             <?php elseif (!empty($rows)): ?>
                 <div class="view-panel view-panel-cards" data-view-panel="cards">
@@ -1497,16 +1390,13 @@ if ($has_active_date_state && !$has_disabled_date_state) {
 
     <?php
     $delete_id = $conn->real_escape_string($_GET['codice'] ?? '');
-    $res_delete = app_db_query($conn, "SELECT * FROM SIMDisattiva WHERE codice='$delete_id'", true, 'lettura SIM da eliminare');
+    $res_delete = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$delete_id'");
     $delete_row = ($res_delete && $res_delete->num_rows > 0) ? $res_delete->fetch_assoc() : null;
     $delete_return_state = normalize_sim_state($_GET['return_stato'] ?? 'disattive');
     $delete_cancel_url = 'sim.php?stato=' . urlencode($delete_return_state);
     ?>
 
-    <?php if (app_database_error_occurred()): ?>
-        <div class="alert alert-error"><?= htmlspecialchars(app_database_error_message()) ?></div>
-        <p><a href="sim.php?stato=disattive" class="btn btn-cancel">Torna alla gestione SIM</a></p>
-    <?php elseif ($delete_row): ?>
+    <?php if ($delete_row): ?>
         <div class="confirm-box confirm-box-removal">
             <span class="confirm-kicker">Azione importante</span>
             <h3 class="crud-title">Conferma rimozione SIM disattivata</h3>
@@ -1526,7 +1416,6 @@ if ($has_active_date_state && !$has_disabled_date_state) {
             <p class="confirm-note">I numeri telefonici già registrati nel sistema non verranno modificati.</p>
 
             <form method="POST" action="sim.php?stato=<?= urlencode($delete_return_state) ?>" class="form-actions" data-ajax-content="true" data-update-target=".content">
-                <?= csrf_token_field() ?>
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="return_stato" value="<?= htmlspecialchars($delete_return_state) ?>">
                 <input type="hidden" name="codice" value="<?= htmlspecialchars($delete_row['codice']) ?>">
@@ -1572,13 +1461,11 @@ if ($has_active_date_state && !$has_disabled_date_state) {
 
     if ($is_edit && empty($_POST)) {
         $edit_id = $conn->real_escape_string($_GET['codice'] ?? '');
-        $res = app_db_query($conn, "SELECT * FROM SIMDisattiva WHERE codice='$edit_id'", true, 'lettura SIM da modificare');
+        $res = $conn->query("SELECT * FROM SIMDisattiva WHERE codice='$edit_id'");
         if ($res && $res->num_rows > 0) {
             $row = $res->fetch_assoc();
         } else {
-            $msg = app_database_error_occurred()
-                ? app_database_error_message()
-                : "La SIM selezionata non è stata trovata nello storico.";
+            $msg = "La SIM selezionata non è stata trovata nello storico.";
             $msg_type = "error";
         }
     }
@@ -1621,7 +1508,6 @@ if ($has_active_date_state && !$has_disabled_date_state) {
             <p class="required-note"><span class="required-marker" aria-hidden="true">*</span> Campi obbligatori</p>
 
             <form method="POST" action="sim.php?stato=disattive<?= $is_edit ? '&amp;action=edit&amp;codice=' . urlencode($row['codice']) : '&amp;action=create' ?><?= ($return_state !== '') ? '&amp;return_stato=' . urlencode($return_state) : '' ?>" data-ajax-content="true" data-update-target=".content" data-sim-crud-form="true" data-form-mode="<?= $is_edit ? 'edit' : 'create' ?>" data-crud-blocked="<?= $crud_blocked ? 'true' : 'false' ?>" data-lookup-url="sim.php?ajax_numero_info=1" data-sim-lookup-url="sim.php?ajax_sim_info=1" novalidate>
-                <?= csrf_token_field() ?>
                 <input type="hidden" name="action" value="<?= $is_edit ? 'edit' : 'create' ?>">
                 <?php if ($return_state !== ''): ?>
                     <input type="hidden" name="return_stato" value="<?= htmlspecialchars($return_state) ?>">

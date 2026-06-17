@@ -9528,3 +9528,39 @@ table.data-table td.table-align-center {
     transform: translateY(-1px);
     overflow: visible;
 }
+
+
+/* =========================================================
+   V77 - Calendario personalizzato nella CRUD SIM disattivate
+   ========================================================= */
+form[data-sim-crud-form="true"] .site-date-picker {
+    width: 100%;
+}
+
+form[data-sim-crud-form="true"] .site-date-panel {
+    z-index: 760;
+}
+
+.site-date-picker.is-readonly .site-picker-trigger {
+    background: var(--row-alt);
+    color: var(--muted-text);
+}
+
+.site-date-picker.is-readonly .site-picker-clear {
+    display: none !important;
+}
+
+.site-date-picker.is-readonly .site-calendar-day:disabled {
+    opacity: 0.62;
+    cursor: default;
+}
+
+.site-date-picker.is-readonly .site-picker-footer {
+    justify-content: flex-end;
+}
+
+
+.site-date-picker .site-picker-trigger.input-invalid {
+    border-color: var(--error-color);
+    box-shadow: 0 0 0 2px rgba(185, 76, 76, 0.12);
+}

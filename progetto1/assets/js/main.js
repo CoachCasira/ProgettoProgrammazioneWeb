@@ -1034,6 +1034,9 @@
     }
 
     function setSiteDateValue(input, value) {
+        if (input.readOnly || input.dataset.pickerReadonly === 'true') {
+            return;
+        }
         input.value = value || '';
         syncSiteDatePicker(input);
         dispatchFilterValueChange(input);
@@ -1245,7 +1248,8 @@
             button.classList.toggle('is-outside-month', outside);
             button.classList.toggle('is-today', cellDate.getTime() === today.getTime());
             button.classList.toggle('is-selected', Boolean(selected && cellDate.getTime() === selected.getTime()));
-            var disabled = Boolean((minDate && cellDate < minDate) || (maxDate && cellDate > maxDate));
+            var readOnlyPicker = input.readOnly || input.dataset.pickerReadonly === 'true';
+            var disabled = Boolean(readOnlyPicker || (minDate && cellDate < minDate) || (maxDate && cellDate > maxDate));
             button.disabled = disabled;
             button.setAttribute('aria-label', padTwo(cellDate.getDate()) + '/' + padTwo(cellDate.getMonth() + 1) + '/' + cellDate.getFullYear());
             button.addEventListener('click', function () {
@@ -1263,13 +1267,25 @@
         }
         var ui = wrapper._sitePicker;
         var displayValue = formatDateForDisplay(input.value);
+        var readOnlyPicker = input.readOnly || input.dataset.pickerReadonly === 'true';
+        var canEdit = !input.disabled && !readOnlyPicker;
         ui.value.textContent = displayValue || 'gg/mm/aaaa';
         ui.trigger.classList.toggle('has-value', Boolean(displayValue));
-        ui.clear.classList.toggle('is-visible', Boolean(displayValue) && !input.disabled);
-        ui.clear.setAttribute('aria-hidden', displayValue && !input.disabled ? 'false' : 'true');
-        ui.clear.tabIndex = displayValue && !input.disabled ? 0 : -1;
+        var invalid = input.getAttribute('aria-invalid') === 'true' || input.classList.contains('input-invalid');
+        ui.trigger.classList.toggle('input-invalid', invalid);
+        ui.trigger.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+        ui.clear.classList.toggle('is-visible', Boolean(displayValue) && canEdit);
+        ui.clear.setAttribute('aria-hidden', displayValue && canEdit ? 'false' : 'true');
+        ui.clear.tabIndex = displayValue && canEdit ? 0 : -1;
         ui.trigger.disabled = input.disabled;
         wrapper.classList.toggle('is-disabled', input.disabled);
+        wrapper.classList.toggle('is-readonly', readOnlyPicker && !input.disabled);
+        if (ui.clearFooter) {
+            ui.clearFooter.textContent = readOnlyPicker ? 'Chiudi' : 'Cancella';
+        }
+        if (ui.todayButton) {
+            ui.todayButton.hidden = readOnlyPicker;
+        }
         if (input.disabled) {
             closeSitePicker(wrapper);
         }
@@ -1283,7 +1299,7 @@
 
     function initCustomDatePickers(root) {
         var scope = root || document;
-        scope.querySelectorAll('.compact-filter-form input[type="date"]:not([data-custom-date-ready="true"])').forEach(function (input) {
+        scope.querySelectorAll('input[type="date"]:not([data-custom-date-ready="true"])').forEach(function (input) {
             input.dataset.customDateReady = 'true';
             input.dataset.customDateValue = 'true';
             input.dataset.pickerMin = input.getAttribute('min') || '';
@@ -1392,7 +1408,8 @@
                 trigger: trigger, value: value, clear: clear, panel: panel,
                 title: title, grid: grid, yearGrid: yearGrid,
                 yearScrollbar: yearScrollbar, yearScrollbarThumb: yearScrollbarThumb,
-                previous: previous, next: next
+                previous: previous, next: next,
+                clearFooter: clearFooter, todayButton: todayButton
             };
 
             trigger.addEventListener('click', function (event) {
@@ -1413,10 +1430,15 @@
                 setSiteDateValue(input, '');
             });
             clearFooter.addEventListener('click', function () {
-                setSiteDateValue(input, '');
+                if (!input.readOnly && input.dataset.pickerReadonly !== 'true') {
+                    setSiteDateValue(input, '');
+                }
                 closeSitePicker(wrapper);
             });
             todayButton.addEventListener('click', function () {
+                if (input.readOnly || input.dataset.pickerReadonly === 'true') {
+                    return;
+                }
                 setSiteDateValue(input, dateToIso(new Date()));
                 closeSitePicker(wrapper);
             });
@@ -1797,6 +1819,12 @@
         var error = getFieldError(field);
         field.classList.toggle('input-invalid', Boolean(message));
         field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        var dateWrapper = field.closest ? field.closest('.site-date-picker') : null;
+        var dateTrigger = dateWrapper ? dateWrapper.querySelector('.site-picker-trigger') : null;
+        if (dateTrigger) {
+            dateTrigger.classList.toggle('input-invalid', Boolean(message));
+            dateTrigger.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
         if (error) {
             error.textContent = message || '';
             error.classList.toggle('is-visible', Boolean(message));
@@ -1882,7 +1910,7 @@
     function validateSimCrudForm(form) {
         var valid = true;
         form.querySelectorAll('input, select, textarea').forEach(function (field) {
-            if (field.type === 'hidden' || field.disabled) {
+            if ((field.type === 'hidden' && field.dataset.customDateValue !== 'true') || field.disabled) {
                 return;
             }
             if (!validateSimCrudField(field)) {
@@ -1906,6 +1934,9 @@
         }
         field.value = value || '';
         updateClearButton(field);
+        if (field.dataset.customDateReady === 'true') {
+            syncSiteDatePicker(field);
+        }
     }
 
     function setSystemRecoveredField(field, locked) {
@@ -1920,6 +1951,9 @@
 
         if (field.matches && field.matches('input[data-clearable="true"]')) {
             updateClearButton(field);
+        }
+        if (field.dataset.customDateReady === 'true') {
+            syncSiteDatePicker(field);
         }
     }
 
@@ -1953,10 +1987,20 @@
         }
         if (activationField) {
             activationField.value = payload.dataAttivazione || '';
+            if (activationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(activationField);
+            }
         }
         if (deactivationField) {
-            deactivationField.setAttribute('min', payload.dataMinimaDisattivazione || payload.dataAttivazione || '');
-            deactivationField.setAttribute('max', payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10));
+            var minimumDate = payload.dataMinimaDisattivazione || payload.dataAttivazione || '';
+            var maximumDate = payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10);
+            deactivationField.setAttribute('min', minimumDate);
+            deactivationField.setAttribute('max', maximumDate);
+            deactivationField.dataset.pickerMin = minimumDate;
+            deactivationField.dataset.pickerMax = maximumDate;
+            if (deactivationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(deactivationField);
+            }
             validateDeactivationDate(deactivationField);
         }
 
@@ -1987,9 +2031,16 @@
         }
         if (activationField) {
             activationField.value = '';
+            if (activationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(activationField);
+            }
         }
         if (deactivationField) {
             deactivationField.removeAttribute('min');
+            deactivationField.dataset.pickerMin = '';
+            if (deactivationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(deactivationField);
+            }
         }
     }
 

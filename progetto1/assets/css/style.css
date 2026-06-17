@@ -9564,3 +9564,12 @@ form[data-sim-crud-form="true"] .site-date-panel {
     border-color: var(--error-color);
     box-shadow: 0 0 0 2px rgba(185, 76, 76, 0.12);
 }
+
+
+/* =========================================================
+   V78 - Calendario CRUD SIM verso il basso
+   ========================================================= */
+form[data-sim-crud-form="true"] .site-picker-panel {
+    top: calc(100% + 0.48rem) !important;
+    bottom: auto !important;
+}

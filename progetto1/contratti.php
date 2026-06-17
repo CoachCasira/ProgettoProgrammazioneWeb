@@ -286,6 +286,7 @@ $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
+$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1');
 
 $search_errors = [];
 if (!is_digits_or_empty($search_numero)) {
@@ -468,29 +469,61 @@ if (empty($search_errors)) {
         $total_count = null;
     }
 
-    if ($export_csv) {
-        $csv_rows = [];
+    if ($export_csv || $export_excel) {
+        $export_rows = [];
         $export_result = $conn->query($sql_base);
         if ($export_result) {
             while ($row = $export_result->fetch_assoc()) {
                 $tipo = strtolower((string)$row['tipo']);
                 $is_consumo = $tipo === 'consumo';
-                $csv_rows[] = [
-                    csv_excel_identifier($row['numero']),
-                    contratto_status_label($row),
-                    csv_excel_identifier($row['simDisattivaCodice'] ?: ''),
-                    $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
-                    format_date_it($row['dataAttivazione']),
-                    $is_consumo ? 'A consumo' : 'Ricaricabile',
-                    $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
-                    $is_consumo ? '' : csv_currency_value($row['creditoResiduo']),
-                    (string)(int)$row['num_telefonate'],
-                    format_duration_seconds($row['durata_totale'] ?? 0),
-                    csv_currency_value($row['costo_totale'] ?? 0)
-                ];
+
+                if ($export_excel) {
+                    $export_rows[] = [
+                        (string)$row['numero'],
+                        contratto_status_label($row),
+                        (string)($row['simDisattivaCodice'] ?: ''),
+                        $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
+                        format_date_it($row['dataAttivazione']),
+                        $is_consumo ? 'A consumo' : 'Ricaricabile',
+                        $is_consumo ? format_minutes_remaining($row['minutiResidui']) : '',
+                        $is_consumo ? '' : format_euro($row['creditoResiduo']),
+                        (string)(int)$row['num_telefonate'],
+                        format_duration_seconds($row['durata_totale'] ?? 0),
+                        format_euro($row['costo_totale'] ?? 0)
+                    ];
+                } else {
+                    $export_rows[] = [
+                        csv_excel_safe_integer($row['numero']),
+                        contratto_status_label($row),
+                        csv_excel_identifier($row['simDisattivaCodice'] ?: ''),
+                        $row['simDisattivaDataDisattivazione'] ? format_date_it($row['simDisattivaDataDisattivazione']) : '',
+                        format_date_it($row['dataAttivazione']),
+                        $is_consumo ? 'A consumo' : 'Ricaricabile',
+                        $is_consumo ? csv_integer_value($row['minutiResidui']) : '',
+                        $is_consumo ? '' : csv_decimal_value($row['creditoResiduo']),
+                        csv_integer_value($row['num_telefonate']),
+                        csv_integer_value($row['durata_totale'] ?? 0),
+                        csv_decimal_value($row['costo_totale'] ?? 0)
+                    ];
+                }
             }
         }
-        output_csv_response('numeri_telefonici.csv', ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate', 'Durata totale', 'Addebiti totali'], $csv_rows);
+
+        if ($export_excel) {
+            output_excel_xml_response(
+                'numeri_telefonici.xml',
+                'Numeri telefonici',
+                ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo', 'Credito residuo', 'Chiamate', 'Durata totale', 'Addebiti totali'],
+                $export_rows,
+                ['right', 'left', 'right', 'right', 'right', 'left', 'right', 'right', 'right', 'right', 'right']
+            );
+        }
+
+        output_csv_response(
+            'numeri_telefonici.csv',
+            ['Numero', 'Stato', 'SIM precedente', 'Disattivazione SIM', 'Attivazione numero', 'Piano', 'Tempo residuo (minuti)', 'Credito residuo (€)', 'Chiamate', 'Durata totale (secondi)', 'Addebiti totali (€)'],
+            $export_rows
+        );
     }
 
     $sql = $sql_base . " LIMIT " . ($limit + 1) . " OFFSET " . $offset;
@@ -645,6 +678,7 @@ $phone_date_filter_label = $search_stato_numero === 'disattivato' ? 'Disattivato
                 <span data-view-toggle-text>Vista tabellare</span>
             </button>
             <button type="submit" form="contratti-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
+            <button type="submit" form="contratti-filter" name="export_excel" value="1" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
         </div>
     </div>
 

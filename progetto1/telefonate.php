@@ -467,28 +467,52 @@ if (empty($search_errors)) {
     $index_name = $fast_order['index'];
 
     if ($export_csv) {
-        $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
-        $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
-                              c.tipo AS tipoContratto
-                       FROM Telefonata t FORCE INDEX ($index_name)
-                       JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
-                       WHERE $where_sql
-                       ORDER BY $export_order";
-        $csv_rows = [];
-        $export_result = $conn->query($sql_export);
-        if ($export_result) {
-            while ($row = $export_result->fetch_assoc()) {
-                $csv_rows[] = [
-                    csv_excel_identifier($row['effettuataDa']),
-                    format_date_it($row['data']),
-                    format_time_minutes($row['ora']),
-                    format_duration_seconds($row['durata']),
-                    ucfirst((string)$row['tipoContratto']),
-                    csv_currency_value($row['costo'])
-                ];
+        $max_csv_export_rows = 100000;
+        $export_total = $total_count;
+        if ($export_total === null) {
+            $export_total = query_total_count($conn, "SELECT t.id FROM Telefonata t WHERE $where_sql");
+        }
+
+        if ($export_total > $max_csv_export_rows) {
+            $search_errors[] = 'L’esportazione comprende ' . number_format((int)$export_total, 0, ',', '.')
+                . ' chiamate ed è troppo grande per un unico CSV. Applica uno o più filtri fino a ottenere al massimo '
+                . number_format($max_csv_export_rows, 0, ',', '.') . ' risultati, quindi ripeti l’esportazione.';
+            $export_csv = false;
+        } else {
+            $export_order = preg_replace('/\b(id|effettuataDa|data|ora|durata|costo)\b/', 't.$1', $normal_order);
+            $sql_export = "SELECT t.id, t.effettuataDa, t.data, t.ora, t.durata, t.costo,
+                                  c.tipo AS tipoContratto
+                           FROM Telefonata t FORCE INDEX ($index_name)
+                           JOIN ContrattoTelefonico c ON c.numero = t.effettuataDa
+                           WHERE $where_sql
+                           ORDER BY $export_order";
+            $export_result = $conn->query($sql_export, MYSQLI_USE_RESULT);
+
+            if (!$export_result) {
+                $search_errors[] = 'Non è stato possibile preparare il file CSV delle chiamate. Riduci i filtri e riprova.';
+                $export_csv = false;
+            } else {
+                $stream_rows = (function () use ($export_result) {
+                    while ($row = $export_result->fetch_assoc()) {
+                        yield [
+                            csv_excel_safe_integer($row['effettuataDa']),
+                            format_date_it($row['data']),
+                            format_time_minutes($row['ora']),
+                            csv_integer_value($row['durata']),
+                            ucfirst((string)$row['tipoContratto']),
+                            csv_decimal_value($row['costo'])
+                        ];
+                    }
+                    $export_result->free();
+                })();
+
+                output_csv_stream_response(
+                    'chiamate.csv',
+                    ['Numero chiamante', 'Data', 'Ora', 'Durata (secondi)', 'Piano', 'Addebito (€)'],
+                    $stream_rows
+                );
             }
         }
-        output_csv_response('chiamate.csv', ['Numero chiamante', 'Data', 'Ora', 'Durata', 'Piano', 'Addebito'], $csv_rows);
     }
 
     $inner_order = $jump_last ? $reverse_order : $normal_order;

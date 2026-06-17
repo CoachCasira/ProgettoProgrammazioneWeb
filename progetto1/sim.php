@@ -628,7 +628,7 @@ function sim_csv_row(array $row, string $state): array
         return [
             csv_excel_identifier($row['codice']),
             sim_state_title($row_state),
-            csv_excel_identifier($numero_collegato),
+            csv_excel_safe_integer($numero_collegato),
             format_date_it($row['dataAttivazione'] ?? ''),
             $row_state === 'disattive' ? format_date_it($row['dataDisattivazione']) : '-',
             $row['tipoSIM'],
@@ -637,12 +637,58 @@ function sim_csv_row(array $row, string $state): array
     }
 
     if ($row_state === 'attive') {
-        return [csv_excel_identifier($row['codice']), csv_excel_identifier($row['associataA']), format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
+        return [csv_excel_identifier($row['codice']), csv_excel_safe_integer($row['associataA']), format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
     }
     if ($row_state === 'disponibili') {
         return [csv_excel_identifier($row['codice']), $row['tipoSIM'], 'Non associata a un numero'];
     }
-    return [csv_excel_identifier($row['codice']), csv_excel_identifier($row['eraAssociataA']), format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
+    return [csv_excel_identifier($row['codice']), csv_excel_safe_integer($row['eraAssociataA']), format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
+}
+
+function sim_excel_row(array $row, string $state): array
+{
+    $row_state = sim_row_state($row, $state);
+
+    if ($state === 'tutte') {
+        $numero_collegato = '-';
+        if ($row_state === 'attive') {
+            $numero_collegato = (string)$row['associataA'];
+        } elseif ($row_state === 'disattive') {
+            $numero_collegato = (string)$row['eraAssociataA'];
+        }
+
+        return [
+            (string)$row['codice'],
+            sim_state_title($row_state),
+            $numero_collegato,
+            format_date_it($row['dataAttivazione'] ?? ''),
+            $row_state === 'disattive' ? format_date_it($row['dataDisattivazione']) : '-',
+            $row['tipoSIM'],
+            ($row['tipoContratto'] ?? null) !== null ? ucfirst((string)$row['tipoContratto']) : '-'
+        ];
+    }
+
+    if ($row_state === 'attive') {
+        return [(string)$row['codice'], (string)$row['associataA'], format_date_it($row['dataAttivazione']), $row['tipoSIM'], ucfirst((string)$row['tipoContratto'])];
+    }
+    if ($row_state === 'disponibili') {
+        return [(string)$row['codice'], $row['tipoSIM'], 'Non associata a un numero'];
+    }
+    return [(string)$row['codice'], (string)$row['eraAssociataA'], format_date_it($row['dataAttivazione']), format_date_it($row['dataDisattivazione']), $row['tipoSIM'], $row['tipoContratto'] !== null ? ucfirst((string)$row['tipoContratto']) : '-'];
+}
+
+function sim_excel_alignments(string $state): array
+{
+    if ($state === 'tutte') {
+        return ['right', 'left', 'right', 'right', 'right', 'left', 'left'];
+    }
+    if ($state === 'attive') {
+        return ['right', 'right', 'right', 'left', 'left'];
+    }
+    if ($state === 'disponibili') {
+        return ['right', 'left', 'left'];
+    }
+    return ['right', 'right', 'right', 'right', 'left', 'left'];
 }
 
 $allowed_actions = ['list', 'create', 'edit', 'confirm_delete'];
@@ -928,6 +974,7 @@ $offset = max(0, (int)($_POST['offset'] ?? $_GET['offset'] ?? 0));
 $ajax_rows = (($_POST['ajax_rows'] ?? $_GET['ajax_rows'] ?? '') === '1');
 $skip_count = (($_POST['skip_count'] ?? $_GET['skip_count'] ?? '') === '1');
 $export_csv = (($_POST['export_csv'] ?? $_GET['export_csv'] ?? '') === '1');
+$export_excel = (($_POST['export_excel'] ?? $_GET['export_excel'] ?? '') === '1');
 $lazy_direction = ($_POST['direction'] ?? $_GET['direction'] ?? 'next') === 'prev' ? 'prev' : 'next';
 
 $search_errors = [];
@@ -1161,15 +1208,28 @@ if ($action === 'list' && empty($search_errors)) {
     }
 
 
-    if ($export_csv) {
-        $csv_rows = [];
+    if ($export_csv || $export_excel) {
+        $export_rows = [];
         $export_result = $conn->query($sql_list_without_limit);
         if ($export_result) {
             while ($row = $export_result->fetch_assoc()) {
-                $csv_rows[] = sim_csv_row($row, $state);
+                $export_rows[] = $export_excel
+                    ? sim_excel_row($row, $state)
+                    : sim_csv_row($row, $state);
             }
         }
-        output_csv_response('sim_' . $state . '.csv', sim_csv_headers($state), $csv_rows);
+
+        if ($export_excel) {
+            output_excel_xml_response(
+                'sim_' . $state . '.xml',
+                'SIM',
+                sim_csv_headers($state),
+                $export_rows,
+                sim_excel_alignments($state)
+            );
+        }
+
+        output_csv_response('sim_' . $state . '.csv', sim_csv_headers($state), $export_rows);
     }
 
     $list_start_offset = $offset;
@@ -1326,6 +1386,7 @@ if ($has_active_date_state && !$has_disabled_date_state) {
                     <span data-view-toggle-text>Vista tabellare</span>
                 </button>
                 <button type="submit" form="sim-filter" name="export_csv" value="1" class="btn btn-export" data-export-submit="true">Esporta in .CSV</button>
+                <button type="submit" form="sim-filter" name="export_excel" value="1" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
                 <a href="sim.php?stato=disattive&amp;action=create&amp;return_stato=<?= urlencode($state) ?>" class="btn btn-secondary btn-add-disattiva">+ Disattiva SIM</a>
             </div>
         </div>

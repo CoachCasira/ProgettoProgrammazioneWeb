@@ -64,8 +64,48 @@ def ask_text(label: str, default: str) -> str:
     return text or default
 
 
+def ask_host(default: str) -> str:
+    while True:
+        host = ask_text("Host PostgreSQL", default)
+        if host.strip().lower() != "postgres":
+            return host
+
+        print(
+            "ATTENZIONE: 'postgres' di solito è il nome dell'utente amministratore, "
+            "non l'host del server."
+        )
+        print("Per PostgreSQL installato sullo stesso computer usare normalmente 127.0.0.1.")
+        confirm = input("Usare comunque 'postgres' come host? Digitare SI per confermare: ").strip().upper()
+        if confirm == "SI":
+            return host
+        default = DEFAULTS["POSTGRES_HOST"]
+
+
+def ask_port(default: str) -> str:
+    while True:
+        port = ask_text("Porta PostgreSQL", default)
+        if not port.isdigit():
+            print("La porta deve essere un numero. Di solito PostgreSQL usa 5432.")
+            default = DEFAULTS["POSTGRES_PORT"]
+            continue
+
+        if port in {"8000", "8001"}:
+            print(
+                "ATTENZIONE: 8000 e 8001 sono porte usate dal sito Django, "
+                "non da PostgreSQL."
+            )
+            print("Per PostgreSQL usare normalmente 5432.")
+            confirm = input(f"Usare comunque la porta {port}? Digitare SI per confermare: ").strip().upper()
+            if confirm == "SI":
+                return port
+            default = DEFAULTS["POSTGRES_PORT"]
+            continue
+
+        return port
+
+
 def ask_password(label: str, current_value: str | None = None) -> str:
-    suffix = " [invio per mantenere quella del file .env]" if current_value else ""
+    suffix = " [Invio per mantenere quella del file .env]" if current_value else ""
     while True:
         value = getpass.getpass(f"{label}{suffix}: ")
         if value:
@@ -75,12 +115,48 @@ def ask_password(label: str, current_value: str | None = None) -> str:
         print("La password non può essere vuota.")
 
 
+def ask_admin_password() -> str:
+    return getpass.getpass(
+        "Password utente amministratore PostgreSQL "
+        "[premere Invio se PostgreSQL locale non richiede password]: "
+    )
+
+
+def default_admin_user() -> str:
+    if sys.platform == "darwin":
+        return getpass.getuser() or "postgres"
+    return "postgres"
+
+
+def initial_values() -> dict[str, str]:
+    """Prepara valori iniziali sicuri per una nuova installazione.
+
+    I parametri tecnici principali ripartono dai valori standard locali, così un
+    tentativo fallito non ripropone come default valori sbagliati salvati in .env.
+    Vengono invece mantenute, se presenti, la secret key Django e la password
+    dell'utente applicativo.
+    """
+
+    existing = load_env(ENV_PATH)
+    values = DEFAULTS.copy()
+    values["DJANGO_SECRET_KEY"] = existing.get("DJANGO_SECRET_KEY") or token_urlsafe(50)
+    values["DJANGO_DEBUG"] = existing.get("DJANGO_DEBUG", DEFAULTS["DJANGO_DEBUG"])
+    values["DJANGO_ALLOWED_HOSTS"] = existing.get(
+        "DJANGO_ALLOWED_HOSTS", DEFAULTS["DJANGO_ALLOWED_HOSTS"]
+    )
+    if existing.get("POSTGRES_PASSWORD"):
+        values["POSTGRES_PASSWORD"] = existing["POSTGRES_PASSWORD"]
+    return values
+
+
 def find_pg_restore() -> str:
     executable = shutil.which("pg_restore")
     if executable:
         return executable
 
     windows_candidates = [
+        Path(r"C:\Program Files\PostgreSQL\18\bin\pg_restore.exe"),
+        Path(r"C:\Program Files\PostgreSQL\17\bin\pg_restore.exe"),
         Path(r"C:\Program Files\PostgreSQL\16\bin\pg_restore.exe"),
         Path(r"C:\Program Files\PostgreSQL\15\bin\pg_restore.exe"),
         Path(r"C:\Program Files\PostgreSQL\14\bin\pg_restore.exe"),
@@ -96,14 +172,24 @@ def find_pg_restore() -> str:
 
 
 def connect_admin(admin_user: str, admin_password: str, host: str, port: str):
-    return psycopg.connect(
-        dbname="postgres",
-        user=admin_user,
-        password=admin_password,
-        host=host,
-        port=port,
-        autocommit=True,
-    )
+    last_error: Exception | None = None
+    password = admin_password or None
+
+    for dbname in ("postgres", admin_user, "template1"):
+        try:
+            return psycopg.connect(
+                dbname=dbname,
+                user=admin_user,
+                password=password,
+                host=host,
+                port=port,
+                autocommit=True,
+            )
+        except psycopg.OperationalError as exc:
+            last_error = exc
+
+    assert last_error is not None
+    raise last_error
 
 
 def database_exists(cur, db_name: str) -> bool:
@@ -128,18 +214,18 @@ def recreate_database(values: dict[str, str], admin_user: str, admin_password: s
         with connection.cursor() as cur:
             if role_exists(cur, app_user):
                 cur.execute(
-                    sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD %s").format(
-                        sql.Identifier(app_user)
-                    ),
-                    (app_password,),
+                    sql.SQL("ALTER ROLE {} WITH LOGIN PASSWORD {}").format(
+                        sql.Identifier(app_user),
+                        sql.Literal(app_password),
+                    )
                 )
                 print(f"- ruolo PostgreSQL già presente: {app_user}")
             else:
                 cur.execute(
-                    sql.SQL("CREATE ROLE {} WITH LOGIN PASSWORD %s").format(
-                        sql.Identifier(app_user)
-                    ),
-                    (app_password,),
+                    sql.SQL("CREATE ROLE {} WITH LOGIN PASSWORD {}").format(
+                        sql.Identifier(app_user),
+                        sql.Literal(app_password),
+                    )
                 )
                 print(f"- ruolo PostgreSQL creato: {app_user}")
 
@@ -213,20 +299,20 @@ def run_django_check() -> None:
 def main() -> None:
     print("Installazione database - Gestione Numeri Telefonici")
     print("Questo comando ricrea il database locale e ripristina i dati dimostrativi.")
+    print("Quando non serve cambiare un valore, premere Invio per usare quello tra parentesi quadre.")
 
-    values = DEFAULTS | load_env(ENV_PATH)
-    values.setdefault("DJANGO_SECRET_KEY", token_urlsafe(50))
+    values = initial_values()
 
-    values["POSTGRES_HOST"] = ask_text("Host PostgreSQL", values["POSTGRES_HOST"])
-    values["POSTGRES_PORT"] = ask_text("Porta PostgreSQL", values["POSTGRES_PORT"])
+    values["POSTGRES_HOST"] = ask_host(values["POSTGRES_HOST"])
+    values["POSTGRES_PORT"] = ask_port(values["POSTGRES_PORT"])
     values["POSTGRES_DB"] = ask_text("Nome database applicativo", values["POSTGRES_DB"])
     values["POSTGRES_USER"] = ask_text("Utente applicativo PostgreSQL", values["POSTGRES_USER"])
     values["POSTGRES_PASSWORD"] = ask_password(
         "Password utente applicativo PostgreSQL", values.get("POSTGRES_PASSWORD")
     )
 
-    admin_user = ask_text("Utente amministratore PostgreSQL", "postgres")
-    admin_password = ask_password("Password utente amministratore PostgreSQL")
+    admin_user = ask_text("Utente amministratore PostgreSQL", default_admin_user())
+    admin_password = ask_admin_password()
 
     print(
         "\nATTENZIONE: il database applicativo indicato verrà eliminato e ricreato, "
@@ -236,9 +322,9 @@ def main() -> None:
     if confirm != "SI":
         raise SystemExit("Operazione annullata.")
 
-    write_env(values)
     recreate_database(values, admin_user, admin_password)
     restore_backup(values)
+    write_env(values)
     run_django_check()
 
     print("\nInstallazione completata.")

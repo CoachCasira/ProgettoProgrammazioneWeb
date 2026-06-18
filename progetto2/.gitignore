@@ -27,3 +27,9 @@ Thumbs.db
 # Log e file temporanei
 *.log
 *.tmp
+
+# Dump locali usati durante la conversione
+/database/source/*
+!/database/source/.gitkeep
+/database/generated/*
+!/database/generated/.gitkeep

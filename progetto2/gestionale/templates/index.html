@@ -1,64 +1,51 @@
 {% extends 'base.html' %}
-{% load static %}
-
+{% load static gestionale_tags %}
 {% block content %}
-    <h2>Panoramica operativa</h2>
-
-    <section class="stat-grid" aria-label="Indicatori principali">
-        <article class="stat-card">
-            <span class="stat-label">Chiamate registrate</span>
-            <strong class="stat-value">{{ total_telefonate }}</strong>
-            <span class="stat-detail">Durata media: {{ durata_media }}</span>
-        </article>
-        <article class="stat-card">
-            <span class="stat-label">Numeri telefonici registrati</span>
-            <strong class="stat-value">{{ total_contratti }}</strong>
-            <span class="stat-detail">{{ contratti_ricarica }} con credito, {{ contratti_consumo }} a consumo</span>
-        </article>
-        <article class="stat-card">
-            <span class="stat-label">Addebiti chiamate</span>
-            <strong class="stat-value">&euro; {{ costo_totale }}</strong>
-            <span class="stat-detail">Totale dei costi registrati</span>
-        </article>
-        <article class="stat-card stat-card-wide">
-            <span class="stat-label">SIM gestite</span>
-            <strong class="stat-value">{{ total_sim_gestite }}</strong>
-            <div class="sim-summary" aria-label="Dettaglio stato SIM">
-                <span>{{ total_sim_attive }} in uso</span>
-                <span>{{ total_sim_non_attive }} disponibili</span>
-                <span>{{ total_sim_disattive }} disattivate</span>
+<h2>Panoramica operativa</h2>
+<div class="dashboard-search-layout">
+    <section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
+        <div class="dashboard-section-heading"><div><h3 id="dashboard-search-title">Ricerca rapida</h3><p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p></div></div>
+        <form id="dashboard-search-form" class="dashboard-global-search" method="get" action="{% url 'home' %}">
+            <div class="form-group">
+                <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
+                <input type="text" id="ricerca_globale" name="ricerca_globale" value="{{ global_query }}" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
             </div>
-        </article>
+            <button type="submit" class="btn">Cerca</button>
+        </form>
     </section>
-
-    <h3>Accessi rapidi</h3>
-    <section class="action-grid" aria-label="Accessi rapidi">
-        <a class="action-card" href="{% url 'lista_contratti' %}">
-            <span class="action-card-icon" aria-hidden="true">
-                <img src="{% static 'assets/images/icons/numeri-telefonici.svg' %}" alt="Icona numeri telefonici" class="quick-card-icon">
-            </span>
-            <span class="action-card-text">
-                <strong>Consulta numeri telefonici</strong>
-                <span>Filtra numeri per telefono, piano e periodo di attivazione.</span>
-            </span>
-        </a>
-        <a class="action-card" href="{% url 'lista_telefonate' %}">
-            <span class="action-card-icon" aria-hidden="true">
-                <img src="{% static 'assets/images/icons/chiamate.svg' %}" alt="Icona chiamate" class="quick-card-icon">
-            </span>
-            <span class="action-card-text">
-                <strong>Consulta chiamate</strong>
-                <span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span>
-            </span>
-        </a>
-        <a class="action-card" href="{% url 'gestione_sim' %}">
-            <span class="action-card-icon" aria-hidden="true">
-                <img src="{% static 'assets/images/icons/sim.svg' %}" alt="Icona SIM" class="quick-card-icon">
-            </span>
-            <span class="action-card-text">
-                <strong>Gestisci SIM</strong>
-                <span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span>
-            </span>
-        </a>
-    </section>
+    <aside class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
+        {% if global_error %}<div class="alert alert-error dashboard-search-feedback">{{ global_error }}</div>
+        {% elif global_query %}
+            <div class="dashboard-search-results">
+                {% if global_phone_results %}
+                <section class="dashboard-result-group"><div class="dashboard-result-group-header"><h4>Numeri telefonici</h4><span>{{ global_phone_results|length }} risultati</span></div><div class="dashboard-result-list">
+                    {% for row in global_phone_results %}<a class="dashboard-result-card" href="{% url 'lista_contratti' %}?numero={{ row.numero }}"><span class="dashboard-result-main"><strong>{{ row.numero }}</strong><span>{{ row.tipo }} · attivato il {{ row.data|date:'d/m/Y' }}</span></span><span class="dashboard-result-status {% if not row.active %}is-disabled{% endif %}">{% if row.active %}Numero attivo{% else %}Numero disattivato{% endif %}</span></a>{% endfor %}
+                </div></section>{% endif %}
+                {% if global_sim_results %}
+                <section class="dashboard-result-group"><div class="dashboard-result-group-header"><h4>SIM</h4><span>{{ global_sim_results|length }} risultati</span></div><div class="dashboard-result-list">
+                    {% for row in global_sim_results %}<a class="dashboard-result-card" href="{% url 'gestione_sim' %}?sim_states={{ row.state }}&amp;codice={{ row.codice }}"><span class="dashboard-result-main"><strong>{{ row.codice }}</strong><span>{{ row.state_label }} · {{ row.tipo }}{% if row.numero %} · numero {{ row.numero }}{% endif %}</span></span><span class="dashboard-result-status sim-state-{{ row.state }}">{{ row.state_label }}</span></a>{% endfor %}
+                </div></section>{% endif %}
+                {% if not global_phone_results and not global_sim_results %}<div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “{{ global_query }}”.</div>{% endif %}
+            </div>
+        {% else %}<div class="dashboard-search-placeholder">I risultati o gli eventuali suggerimenti di correzione appariranno qui dopo la ricerca.</div>{% endif %}
+    </aside>
+</div>
+<section class="stat-grid" aria-label="Indicatori principali">
+    <article class="stat-card"><span class="stat-label">Chiamate registrate</span><strong class="stat-value">{{ total_telefonate|int_it }}</strong><span class="stat-detail">Durata media: {{ durata_media|duration_compact }}</span></article>
+    <article class="stat-card"><span class="stat-label">Numeri telefonici registrati</span><strong class="stat-value">{{ total_contratti|int_it }}</strong><span class="stat-detail">{{ contratti_ricarica }} con credito, {{ contratti_consumo }} a consumo</span></article>
+    <article class="stat-card"><span class="stat-label">Addebiti chiamate</span><strong class="stat-value">{{ costo_totale|euro }}</strong><span class="stat-detail">Totale dei costi registrati</span></article>
+    <article class="stat-card stat-card-wide"><span class="stat-label">SIM gestite</span><strong class="stat-value">{{ total_sim_gestite|int_it }}</strong><span class="stat-detail stat-detail-sim">{{ total_sim_attive }} in uso · {{ total_sim_non_attive }} disponibili · {{ total_sim_disattive }} disattivate</span></article>
+</section>
+<section class="dashboard-shortcuts" aria-labelledby="dashboard-shortcuts-title"><div class="dashboard-section-heading"><div><h3 id="dashboard-shortcuts-title">Ricerche frequenti</h3><p>Apri direttamente alcune consultazioni operative già configurate.</p></div></div>
+<div class="dashboard-shortcut-grid">
+<a class="dashboard-shortcut" href="{% url 'gestione_sim' %}?sim_states=disattive&amp;data_da={{ recent_disabled_from }}&amp;data_a={{ recent_disabled_to }}&amp;ordine_sim=disattivate_recenti"><strong>SIM disattivate recentemente</strong><span>Mostra le disattivazioni registrate negli ultimi 30 giorni.</span></a>
+<a class="dashboard-shortcut" href="{% url 'lista_contratti' %}?ordine=piu_chiamate"><strong>Numeri con più chiamate</strong><span>Ordina i numeri partendo da quelli con maggiore attività.</span></a>
+<a class="dashboard-shortcut" href="{% url 'lista_telefonate' %}?ordine=costo_desc"><strong>Chiamate più costose</strong><span>Visualizza prima le telefonate con l’addebito più elevato.</span></a>
+<a class="dashboard-shortcut" href="{% url 'lista_contratti' %}?residuo=esaurito"><strong>Piani esauriti</strong><span>Mostra i numeri senza credito residuo o senza minuti disponibili.</span></a>
+</div></section>
+<section class="action-grid" aria-label="Accessi rapidi">
+<a class="action-card" href="{% url 'lista_contratti' %}"><span class="action-card-icon"><img src="{% static 'assets/images/icons/numeri-telefonici.svg' %}" alt="Icona numeri telefonici" title="Numeri telefonici" class="quick-card-icon"></span><span class="action-card-text"><strong>Consulta numeri telefonici</strong><span>Filtra numeri per telefono, piano e periodo di attivazione.</span></span></a>
+<a class="action-card" href="{% url 'lista_telefonate' %}"><span class="action-card-icon"><img src="{% static 'assets/images/icons/chiamate.svg' %}" alt="Icona chiamate" title="Chiamate" class="quick-card-icon"></span><span class="action-card-text"><strong>Consulta chiamate</strong><span>Visualizza chiamate, durate e addebiti associati ai numeri telefonici.</span></span></a>
+<a class="action-card" href="{% url 'gestione_sim' %}"><span class="action-card-icon"><img src="{% static 'assets/images/icons/sim.svg' %}" alt="Icona SIM" title="SIM" class="quick-card-icon"></span><span class="action-card-text"><strong>Gestisci SIM</strong><span>Consulta SIM in uso, disponibili e disattivate in una sola sezione.</span></span></a>
+</section>
 {% endblock %}

@@ -1,0 +1,21 @@
+<div class="results-navigation" data-results-navigation="true" data-card-modal-exclude="true" aria-label="Navigazione risultati">
+    <a class="results-page-button results-boundary-button{% if not pager.has_prev %} is-disabled{% endif %}"
+       {% if pager.has_prev %}href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page=1"{% else %}aria-disabled="true"{% endif %}
+       aria-label="Vai al primo risultato" title="Vai al primo risultato">
+        <span class="results-boundary-icon results-boundary-icon-up" aria-hidden="true"></span>
+    </a>
+    <a class="results-page-button{% if not pager.has_prev %} is-disabled{% endif %}"
+       {% if pager.has_prev %}href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ pager.prev_page }}"{% else %}aria-disabled="true"{% endif %}
+       aria-label="Risultati precedenti" title="Risultati precedenti">↑</a>
+    <span class="results-counter" data-results-counter="true">
+        {% if total_count %}{{ pager.display_start }}-{{ pager.end }} di {{ total_count }} risultati{% else %}0 risultati{% endif %}
+    </span>
+    <a class="results-page-button{% if not pager.has_next %} is-disabled{% endif %}"
+       {% if pager.has_next %}href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ pager.next_page }}"{% else %}aria-disabled="true"{% endif %}
+       aria-label="Risultati successivi" title="Risultati successivi">↓</a>
+    <a class="results-page-button results-boundary-button{% if not pager.has_next %} is-disabled{% endif %}"
+       {% if pager.has_next %}href="?{% if query_string %}{{ query_string }}&amp;{% endif %}page={{ pager.pages }}"{% else %}aria-disabled="true"{% endif %}
+       aria-label="Vai all'ultimo risultato" title="Vai all'ultimo risultato">
+        <span class="results-boundary-icon results-boundary-icon-down" aria-hidden="true"></span>
+    </a>
+</div>

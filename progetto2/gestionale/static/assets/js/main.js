@@ -63,56 +63,358 @@
             message.dataset.alertReady = 'true';
             window.setTimeout(function () {
                 message.classList.add('alert-soft-hidden');
+                window.setTimeout(function () {
+                    if (message.parentNode) {
+                        message.remove();
+                        updateStickyLayout();
+                    }
+                }, 450);
             }, 6000);
         });
     }
 
-    function applySimState(form, state) {
-        form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
-            var isActive = button.dataset.simStateValue === state;
-            button.classList.toggle('active', isActive);
-            button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    function getSelectedSimStates(form) {
+        var select = form.querySelector('[data-sim-state-select]');
+        if (select) {
+            if (select.value === 'attive' || select.value === 'disponibili' || select.value === 'disattive') {
+                return [select.value];
+            }
+            return ['attive', 'disponibili', 'disattive'];
+        }
+
+        var checkboxes = Array.prototype.slice.call(form.querySelectorAll('[data-sim-state-checkbox]'));
+        var selected = checkboxes.filter(function (checkbox) {
+            return checkbox.checked;
+        }).map(function (checkbox) {
+            return checkbox.value;
+        });
+
+        if (selected.length === 0 && checkboxes.length > 0) {
+            return ['attive', 'disponibili', 'disattive'];
+        }
+
+        return selected;
+    }
+
+    function simStatesKey(states) {
+        if (!Array.isArray(states) || states.length !== 1) {
+            return 'tutte';
+        }
+        return states[0] || 'tutte';
+    }
+
+    function simStatesLabel(states) {
+        var labels = {
+            attive: 'SIM in uso',
+            disponibili: 'SIM disponibili',
+            disattive: 'SIM disattivate'
+        };
+        if (!Array.isArray(states) || states.length === 0 || states.length === 3) {
+            return 'Mostra tutte';
+        }
+        return states.map(function (state) {
+            return labels[state] || '';
+        }).filter(Boolean).join(' e ');
+    }
+
+    function updateSimMultiSelect(form, states) {
+        var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
+        var label = form.querySelector('[data-sim-multi-select-label]');
+        var hiddenState = form.querySelector('[data-sim-state-hidden]');
+        var allCheckbox = form.querySelector('[data-sim-state-all]');
+        var explicitSelectedCount = Array.prototype.slice.call(form.querySelectorAll('[data-sim-state-checkbox]')).filter(function (checkbox) {
+            return checkbox.checked;
+        }).length;
+
+        if (label) {
+            label.textContent = simStatesLabel(selectedStates);
+        }
+        if (hiddenState) {
+            hiddenState.value = simStatesKey(selectedStates);
+        }
+        if (allCheckbox) {
+            allCheckbox.checked = explicitSelectedCount === 0 || explicitSelectedCount === 3;
+        }
+
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        var resetButton = wrapper ? wrapper.querySelector('.multi-select-reset') : null;
+        var canReset = selectedStates.length !== 3;
+        if (wrapper) {
+            wrapper.classList.toggle('has-reset-value', canReset);
+        }
+        if (resetButton) {
+            resetButton.classList.toggle('is-visible', canReset);
+            resetButton.setAttribute('aria-hidden', canReset ? 'false' : 'true');
+            resetButton.tabIndex = canReset ? 0 : -1;
+        }
+    }
+
+    function updateSimOrderOptions(form, selectedStates) {
+        var order = form ? form.querySelector('#ordine_sim') : null;
+        if (!order) {
+            return;
+        }
+
+        var states = Array.isArray(selectedStates) ? selectedStates : getSelectedSimStates(form);
+        var hasActive = states.indexOf('attive') !== -1;
+        var hasDisabled = states.indexOf('disattive') !== -1;
+        var hasAssociated = hasActive || hasDisabled;
+
+        Array.prototype.forEach.call(order.options, function (option) {
+            if (option.value === 'piu_chiamate'
+                    || option.value === 'attivate_recenti'
+                    || option.value === 'disattivate_recenti') {
+                option.hidden = !hasAssociated;
+            }
+        });
+
+        var selectedOption = order.selectedIndex >= 0 ? order.options[order.selectedIndex] : null;
+        if (!hasAssociated || !selectedOption || selectedOption.hidden) {
+            order.value = 'nessuno';
+        }
+
+        order.disabled = !hasAssociated;
+        var group = order.closest('.sim-order-filter-group');
+        if (group) {
+            group.classList.toggle('is-filter-unavailable', !hasAssociated);
+        }
+        updateCustomSelect(order);
+    }
+
+    function updateSimDateFilterLabel(form, selectedStates) {
+        if (!form) {
+            return;
+        }
+        var label = form.querySelector('[data-sim-date-label]');
+        if (!label) {
+            return;
+        }
+        var states = Array.isArray(selectedStates) ? selectedStates : getSelectedSimStates(form);
+        var hasActive = states.indexOf('attive') !== -1;
+        var hasDisabled = states.indexOf('disattive') !== -1;
+
+        if (hasActive && !hasDisabled) {
+            label.textContent = 'Attivata dal/al:';
+        } else if (hasDisabled && !hasActive) {
+            label.textContent = 'Disattivata dal/al:';
+        } else if (hasActive && hasDisabled) {
+            label.textContent = 'Attivata/disattivata dal/al:';
+        } else {
+            label.textContent = 'Periodo dal/al:';
+        }
+    }
+
+    function updateSimStateOrderLock(form) {
+        if (!form) {
+            return;
+        }
+        var order = form.querySelector('#ordine_sim');
+        var locked = order && (order.value === 'attivate_recenti' || order.value === 'disattivate_recenti');
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        var button = wrapper ? wrapper.querySelector('.multi-select-button') : null;
+        var reset = wrapper ? wrapper.querySelector('.multi-select-reset') : null;
+
+        if (wrapper) {
+            wrapper.classList.toggle('is-order-locked', Boolean(locked));
+        }
+        if (button) {
+            button.disabled = Boolean(locked);
+            button.setAttribute('aria-disabled', locked ? 'true' : 'false');
+            button.title = locked ? 'Lo stato è determinato dal criterio Mostra prima' : '';
+        }
+        if (reset) {
+            reset.disabled = Boolean(locked);
+        }
+        form.querySelectorAll('[data-sim-state-checkbox], [data-sim-state-all]').forEach(function (checkbox) {
+            checkbox.disabled = Boolean(locked);
+        });
+    }
+
+    function applySimOrderStateConstraint(form) {
+        if (!form) {
+            return;
+        }
+        var order = form.querySelector('#ordine_sim');
+        if (!order) {
+            return;
+        }
+
+        var forcedState = order.value === 'attivate_recenti'
+            ? 'attive'
+            : (order.value === 'disattivate_recenti' ? 'disattive' : '');
+
+        if (forcedState) {
+            form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
+                checkbox.checked = checkbox.value === forcedState;
+            });
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.checked = false;
+            }
+            applySimState(form, [forcedState]);
+        }
+        updateSimStateOrderLock(form);
+    }
+
+    function applySimState(form, states) {
+        var selectedStates = Array.isArray(states) ? states : getSelectedSimStates(form);
+        var select = form.querySelector('[data-sim-state-select]');
+        if (select && select.value === '') {
+            select.value = 'tutte';
+        }
+
+        updateSimMultiSelect(form, selectedStates);
+
+        form.querySelectorAll('[data-sim-state-checkbox]').forEach(function (checkbox) {
+            var chip = checkbox.closest('.checkbox-chip');
+            if (chip) {
+                chip.classList.toggle('is-selected', checkbox.checked);
+            }
         });
 
         form.querySelectorAll('[data-state-field]').forEach(function (fieldGroup) {
-            var allowedStates = (fieldGroup.dataset.stateField || '').split(',');
-            var shouldShow = allowedStates.indexOf(state) !== -1;
-            fieldGroup.classList.toggle('is-hidden', !shouldShow);
+            var allowedStates = (fieldGroup.dataset.stateField || '').split(',').filter(Boolean);
+            var shouldEnable = selectedStates.some(function (state) {
+                return allowedStates.indexOf(state) !== -1;
+            });
+
+            /* I filtri non applicabili restano visibili per mantenere stabile il
+               layout, ma diventano attenuati e non interattivi. */
+            fieldGroup.classList.remove('is-hidden');
+            fieldGroup.classList.toggle('is-filter-unavailable', !shouldEnable);
 
             fieldGroup.querySelectorAll('input, select, textarea').forEach(function (field) {
-                field.disabled = !shouldShow;
+                field.disabled = !shouldEnable;
+                if (!shouldEnable) {
+                    if (field.tagName === 'SELECT') {
+                        field.value = field.options.length ? field.options[0].value : '';
+                    } else {
+                        field.value = '';
+                    }
+                    field.dispatchEvent(new Event('change', { bubbles: false }));
+                }
                 if (field.matches && field.matches('input[data-clearable="true"]')) {
                     updateClearButton(field);
+                }
+                if (field.tagName === 'SELECT') {
+                    updateCustomSelect(field);
+                }
+                if (field.matches && field.matches('input[data-custom-date-value="true"], input[data-custom-time-value="true"]')) {
+                    syncCustomPickers(fieldGroup);
                 }
             });
         });
 
+        updateSimOrderOptions(form, selectedStates);
+        updateSimDateFilterLabel(form, selectedStates);
+        updateSimStateOrderLock(form);
         updateStickyLayout();
+    }
+
+    function closeSimMultiSelect(wrapper) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-open');
+        var button = wrapper.querySelector('.multi-select-button');
+        if (button) {
+            button.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function initSimMultiSelect(form) {
+        var wrapper = form.querySelector('[data-sim-multi-select]');
+        if (!wrapper || wrapper.dataset.multiSelectReady === 'true') {
+            return;
+        }
+        wrapper.dataset.multiSelectReady = 'true';
+        var button = wrapper.querySelector('.multi-select-button');
+        var resetButton = wrapper.querySelector('.multi-select-reset');
+        if (!resetButton) {
+            resetButton = document.createElement('button');
+            resetButton.type = 'button';
+            resetButton.className = 'custom-select-reset multi-select-reset';
+            resetButton.setAttribute('aria-label', 'Ripristina stati SIM');
+            resetButton.setAttribute('title', 'Ripristina stati SIM');
+            resetButton.setAttribute('aria-hidden', 'true');
+            resetButton.tabIndex = -1;
+            wrapper.insertBefore(resetButton, wrapper.querySelector('.multi-select-menu'));
+        }
+
+        if (button) {
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
+                wrapper.classList.toggle('is-open', shouldOpen);
+                button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+        }
+        resetButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
+            checkboxes.forEach(function (checkbox) {
+                checkbox.checked = true;
+            });
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.checked = true;
+            }
+            applySimState(form, ['attive', 'disponibili', 'disattive']);
+            closeSimMultiSelect(wrapper);
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        });
+
+        wrapper.addEventListener('click', function (event) {
+            event.stopPropagation();
+        });
     }
 
     function initSimStateControls(root) {
         var scope = root || document;
         scope.querySelectorAll('form[data-sim-state-filter="true"]:not([data-sim-state-ready="true"])').forEach(function (form) {
             form.dataset.simStateReady = 'true';
-            var stateInput = form.querySelector('input[name="stato"]');
-            if (!stateInput) {
+            var select = form.querySelector('[data-sim-state-select]');
+            var checkboxes = form.querySelectorAll('[data-sim-state-checkbox]');
+
+            initSimMultiSelect(form);
+            applySimState(form, getSelectedSimStates(form));
+            applySimOrderStateConstraint(form);
+
+            var orderSelect = form.querySelector('#ordine_sim');
+            if (orderSelect && orderSelect.dataset.simOrderConstraintReady !== 'true') {
+                orderSelect.dataset.simOrderConstraintReady = 'true';
+                orderSelect.addEventListener('change', function () {
+                    applySimOrderStateConstraint(form);
+                });
+            }
+
+            if (select) {
+                select.addEventListener('change', function () {
+                    applySimState(form, getSelectedSimStates(form));
+                });
                 return;
             }
 
-            applySimState(form, stateInput.value || 'attive');
-
-            form.querySelectorAll('[data-sim-state-value]').forEach(function (button) {
-                button.addEventListener('click', function () {
-                    var newState = button.dataset.simStateValue;
-                    if (!newState || stateInput.value === newState) {
-                        return;
-                    }
-
-                    stateInput.value = newState;
-                    form.querySelectorAll('[data-state-dependent-input]').forEach(function (field) {
-                        field.value = '';
+            var allCheckbox = form.querySelector('[data-sim-state-all]');
+            if (allCheckbox) {
+                allCheckbox.addEventListener('change', function () {
+                    checkboxes.forEach(function (checkbox) {
+                        checkbox.checked = true;
                     });
-                    applySimState(form, newState);
+                    applySimState(form, ['attive', 'disponibili', 'disattive']);
+
+                    var submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                });
+            }
+
+            checkboxes.forEach(function (checkbox) {
+                checkbox.addEventListener('change', function () {
+                    var selectedStates = getSelectedSimStates(form);
+                    applySimState(form, selectedStates);
 
                     var submitEvent = new Event('submit', { bubbles: true, cancelable: true });
                     form.dispatchEvent(submitEvent);
@@ -120,6 +422,413 @@
             });
         });
     }
+
+    function toggleCustomThreshold(select, focusInput) {
+        if (!select) {
+            return;
+        }
+        var formGroup = select.closest('.traffic-filter-group');
+        var container = formGroup ? formGroup.querySelector('[data-custom-threshold-container]') : null;
+        var input = formGroup ? formGroup.querySelector('[data-custom-threshold-input]') : null;
+        var wrapper = select.nextElementSibling && select.nextElementSibling.classList && select.nextElementSibling.classList.contains('custom-select')
+            ? select.nextElementSibling
+            : null;
+        var shouldShow = select.value === 'custom';
+
+        if (formGroup) {
+            formGroup.classList.toggle('threshold-is-custom', shouldShow);
+        }
+        if (wrapper) {
+            wrapper.classList.toggle('custom-select-threshold-active', shouldShow);
+        }
+        if (container) {
+            container.classList.toggle('is-hidden', !shouldShow);
+            container.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+        }
+        if (input) {
+            input.disabled = !shouldShow;
+            if (!shouldShow) {
+                input.value = '';
+            } else if (focusInput) {
+                window.setTimeout(function () {
+                    input.focus();
+                    input.select();
+                }, 0);
+            }
+            updateClearButton(input);
+        }
+        updateStickyLayout();
+    }
+
+    function initTrafficThresholdControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-custom-threshold-select]:not([data-threshold-ready="true"])').forEach(function (select) {
+            select.dataset.thresholdReady = 'true';
+            toggleCustomThreshold(select, false);
+            select.addEventListener('change', function () {
+                toggleCustomThreshold(select, true);
+            });
+        });
+    }
+
+    function updatePhoneDateLabel(form) {
+        var label = form ? form.querySelector('[data-phone-date-label]') : null;
+        var status = form ? form.querySelector('#stato_numero') : null;
+        if (!label || !status) {
+            return;
+        }
+        label.textContent = status.value === 'disattivato' ? 'Disattivato dal/al:' : 'Attivato dal/al:';
+    }
+
+    function updatePhoneOrderOptions(form) {
+        var status = form ? form.querySelector('#stato_numero') : null;
+        var order = form ? form.querySelector('#ordine') : null;
+        if (!status || !order) {
+            return;
+        }
+
+        var activeRecent = Array.prototype.find.call(order.options, function (option) {
+            return option.value === 'recenti';
+        });
+        var disabledRecent = Array.prototype.find.call(order.options, function (option) {
+            return option.value === 'disattivati_recenti';
+        });
+        if (!activeRecent || !disabledRecent) {
+            return;
+        }
+
+        activeRecent.hidden = status.value === 'disattivato';
+        disabledRecent.hidden = status.value === 'attivo';
+
+        if (status.value === 'disattivato' && order.value === 'recenti') {
+            order.value = 'disattivati_recenti';
+        } else if (status.value === 'attivo' && order.value === 'disattivati_recenti') {
+            order.value = 'recenti';
+        }
+
+        updateCustomSelect(order);
+    }
+
+    function initPhoneDateLabelControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form.contratti-filter-form:not([data-phone-date-label-ready="true"])').forEach(function (form) {
+            form.dataset.phoneDateLabelReady = 'true';
+            updatePhoneDateLabel(form);
+            updatePhoneOrderOptions(form);
+            var status = form.querySelector('#stato_numero');
+            if (status) {
+                status.addEventListener('change', function () {
+                    updatePhoneDateLabel(form);
+                    updatePhoneOrderOptions(form);
+                });
+            }
+        });
+    }
+
+    var PHONE_RESIDUAL_PLAN_REQUIREMENTS = {
+        credito_basso: 'ricarica',
+        credito_disponibile: 'ricarica',
+        minuti_bassi: 'consumo',
+        minuti_disponibili: 'consumo'
+    };
+
+    function setSelectOptionDisabled(select, values, disabled) {
+        if (!select) {
+            return;
+        }
+        var valueSet = values || [];
+        Array.prototype.forEach.call(select.options, function (option) {
+            if (valueSet.indexOf(option.value) !== -1) {
+                option.disabled = Boolean(disabled);
+            }
+        });
+        updateCustomSelect(select);
+    }
+
+    function setDependencyLocked(select, locked, message) {
+        if (!select) {
+            return;
+        }
+        select.dataset.dependencyLocked = locked ? 'true' : 'false';
+        if (locked) {
+            select.dataset.dependencyMessage = message || '';
+        } else {
+            delete select.dataset.dependencyMessage;
+        }
+        updateCustomSelect(select);
+    }
+
+    function applyPhonePlanResidualDependencies(form, changedField) {
+        if (!form) {
+            return;
+        }
+
+        var planSelect = form.querySelector('#tipo');
+        var residualSelect = form.querySelector('#residuo');
+        if (!planSelect || !residualSelect) {
+            return;
+        }
+
+        var requiredPlan = PHONE_RESIDUAL_PLAN_REQUIREMENTS[residualSelect.value] || '';
+        var wasAutoSet = form.dataset.planAutoSet === 'true';
+
+        if (requiredPlan) {
+            if (!wasAutoSet) {
+                /* Su un caricamento completo il piano è già stato normalizzato dal
+                   server: non è una scelta manuale da conservare. Se invece il
+                   residuo cambia nell'interfaccia, ricordiamo il piano precedente. */
+                form.dataset.planPreviousValue = changedField === residualSelect
+                    ? (planSelect.value || '')
+                    : '';
+            }
+            form.dataset.planAutoSet = 'true';
+            if (planSelect.value !== requiredPlan) {
+                planSelect.value = requiredPlan;
+            }
+
+            /* Il filtro residuo deve restare completamente navigabile: l'utente
+               può passare direttamente da un criterio sui minuti a uno sul credito.
+               È il piano, già determinato dal residuo, a essere temporaneamente bloccato. */
+            setSelectOptionDisabled(residualSelect, [
+                'credito_basso',
+                'credito_disponibile',
+                'minuti_bassi',
+                'minuti_disponibili'
+            ], false);
+            setDependencyLocked(
+                planSelect,
+                true,
+                'Piano impostato automaticamente dal filtro Disponibilità del piano'
+            );
+        } else {
+            if (wasAutoSet) {
+                planSelect.value = form.dataset.planPreviousValue || '';
+                delete form.dataset.planPreviousValue;
+                delete form.dataset.planAutoSet;
+            }
+            setDependencyLocked(planSelect, false);
+
+            /* Quando il piano è scelto manualmente, manteniamo visibili tutte le
+               disponibilità ma rendiamo non selezionabili quelle incompatibili. */
+            setSelectOptionDisabled(
+                residualSelect,
+                ['credito_basso', 'credito_disponibile'],
+                planSelect.value === 'consumo'
+            );
+            setSelectOptionDisabled(
+                residualSelect,
+                ['minuti_bassi', 'minuti_disponibili'],
+                planSelect.value === 'ricarica'
+            );
+
+            var selectedResidualOption = residualSelect.options[residualSelect.selectedIndex];
+            if (selectedResidualOption && selectedResidualOption.disabled) {
+                residualSelect.value = '';
+            }
+        }
+
+        updateCustomSelect(planSelect);
+        updateCustomSelect(residualSelect);
+    }
+
+    function initPhonePlanResidualDependencies(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-plan-residual-sync="true"]:not([data-plan-residual-ready="true"])').forEach(function (form) {
+            form.dataset.planResidualReady = 'true';
+            var planSelect = form.querySelector('#tipo');
+            var residualSelect = form.querySelector('#residuo');
+            if (!planSelect || !residualSelect) {
+                return;
+            }
+
+            applyPhonePlanResidualDependencies(form, null);
+
+            residualSelect.addEventListener('change', function () {
+                applyPhonePlanResidualDependencies(form, residualSelect);
+            });
+            planSelect.addEventListener('change', function () {
+                applyPhonePlanResidualDependencies(form, planSelect);
+            });
+        });
+    }
+
+    function initPhoneTrafficOrderControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form.contratti-filter-form:not([data-traffic-order-ready="true"])').forEach(function (form) {
+            /* Il filtro minimo di chiamate e l'ordinamento sono scelte autonome:
+               selezionare una soglia non deve modificare "Mostra prima". */
+            form.dataset.trafficOrderReady = 'true';
+        });
+    }
+
+    function closeCustomSelect(wrapper) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-open');
+        var button = wrapper.querySelector('.custom-select-button');
+        if (button) {
+            button.setAttribute('aria-expanded', 'false');
+        }
+    }
+
+    function updateCustomSelect(select) {
+        var wrapper = select.nextElementSibling;
+        if (!wrapper || !wrapper.classList.contains('custom-select')) {
+            return;
+        }
+        var buttonText = wrapper.querySelector('.custom-select-current');
+        var selectedOption = select.options[select.selectedIndex];
+        if (buttonText && selectedOption) {
+            buttonText.textContent = selectedOption.textContent;
+        }
+        wrapper.querySelectorAll('.custom-select-option').forEach(function (optionButton) {
+            var isSelected = optionButton.dataset.value === select.value;
+            var nativeOption = Array.prototype.find.call(select.options, function (option) {
+                return option.value === optionButton.dataset.value;
+            });
+            var isDisabled = Boolean(nativeOption && nativeOption.disabled);
+            var isHidden = Boolean(nativeOption && nativeOption.hidden);
+            optionButton.hidden = isHidden;
+            optionButton.style.display = isHidden ? 'none' : '';
+            optionButton.classList.toggle('is-selected', isSelected);
+            optionButton.classList.toggle('is-disabled', isDisabled);
+            optionButton.disabled = isDisabled;
+            optionButton.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+            optionButton.setAttribute('aria-disabled', isDisabled ? 'true' : 'false');
+        });
+
+        var button = wrapper.querySelector('.custom-select-button');
+        var isDependencyLocked = select.dataset.dependencyLocked === 'true';
+        var isNativeDisabled = select.disabled;
+        var isControlDisabled = isDependencyLocked || isNativeDisabled;
+        wrapper.classList.toggle('is-dependency-locked', isDependencyLocked);
+        wrapper.classList.toggle('is-disabled', isNativeDisabled);
+        if (button) {
+            button.disabled = isControlDisabled;
+            button.setAttribute('aria-disabled', isControlDisabled ? 'true' : 'false');
+            button.title = isDependencyLocked
+                ? (select.dataset.dependencyMessage || 'Valore impostato automaticamente da un altro filtro')
+                : '';
+        }
+
+        var resetButton = wrapper.querySelector('.custom-select-reset');
+        var defaultValue = wrapper.dataset.defaultValue || '';
+        var canReset = !isControlDisabled && select.value !== defaultValue;
+        wrapper.classList.toggle('has-reset-value', canReset);
+        if (resetButton) {
+            resetButton.classList.toggle('is-visible', canReset);
+            resetButton.setAttribute('aria-hidden', canReset ? 'false' : 'true');
+            resetButton.tabIndex = canReset ? 0 : -1;
+        }
+    }
+
+    function initScrollableSelects(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.compact-filter-form select:not([data-scroll-select-ready="true"])').forEach(function (select) {
+            select.dataset.scrollSelectReady = 'true';
+            select.classList.add('native-select-hidden');
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'custom-select';
+            if (select.hasAttribute('data-custom-threshold-select')) {
+                wrapper.classList.add('custom-select-threshold');
+            }
+
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'custom-select-button';
+            button.setAttribute('aria-haspopup', 'listbox');
+            button.setAttribute('aria-expanded', 'false');
+
+            var current = document.createElement('span');
+            current.className = 'custom-select-current';
+            button.appendChild(current);
+
+            var arrow = document.createElement('span');
+            arrow.className = 'custom-select-arrow';
+            arrow.setAttribute('aria-hidden', 'true');
+            arrow.textContent = '⌄';
+            button.appendChild(arrow);
+
+            var resetButton = document.createElement('button');
+            resetButton.type = 'button';
+            resetButton.className = 'custom-select-reset';
+            resetButton.setAttribute('aria-label', 'Ripristina filtro');
+            resetButton.setAttribute('title', 'Ripristina filtro');
+            resetButton.setAttribute('aria-hidden', 'true');
+            resetButton.tabIndex = -1;
+
+            var menu = document.createElement('div');
+            menu.className = 'custom-select-menu';
+            menu.setAttribute('role', 'listbox');
+
+            Array.prototype.slice.call(select.options).forEach(function (option) {
+                var optionButton = document.createElement('button');
+                optionButton.type = 'button';
+                optionButton.className = 'custom-select-option';
+                optionButton.dataset.value = option.value;
+                optionButton.textContent = option.textContent;
+                optionButton.setAttribute('role', 'option');
+                optionButton.hidden = option.hidden;
+                optionButton.style.display = option.hidden ? 'none' : '';
+                optionButton.disabled = option.disabled;
+                optionButton.classList.toggle('is-disabled', option.disabled);
+                optionButton.setAttribute('aria-disabled', option.disabled ? 'true' : 'false');
+                optionButton.addEventListener('click', function () {
+                    if (optionButton.disabled || option.disabled) {
+                        return;
+                    }
+                    select.value = option.value;
+                    updateCustomSelect(select);
+                    closeCustomSelect(wrapper);
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                menu.appendChild(optionButton);
+            });
+
+            wrapper.dataset.defaultValue = select.options.length > 0 ? select.options[0].value : '';
+            wrapper.appendChild(button);
+            wrapper.appendChild(resetButton);
+            wrapper.appendChild(menu);
+            select.insertAdjacentElement('afterend', wrapper);
+            updateCustomSelect(select);
+
+            button.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                wrapper.classList.toggle('is-open', shouldOpen);
+                button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+            });
+
+            resetButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+                select.value = wrapper.dataset.defaultValue || '';
+                updateCustomSelect(select);
+                closeCustomSelect(wrapper);
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            select.addEventListener('change', function () {
+                updateCustomSelect(select);
+            });
+        });
+    }
+
+    document.addEventListener('click', function (event) {
+        var insideSelect = event.target.closest
+            && (event.target.closest('.custom-select') || event.target.closest('[data-sim-multi-select]'));
+        var insidePicker = event.target.closest && event.target.closest('.site-picker');
+        if (!insideSelect) {
+            document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+            document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
+        }
+        if (!insidePicker) {
+            closeAllSitePickers(null);
+        }
+    });
 
 
     function updateClearButton(input) {
@@ -159,7 +868,7 @@
             button.className = 'clear-input-button';
             button.setAttribute('aria-label', 'Svuota campo');
             button.setAttribute('title', 'Svuota campo');
-            button.textContent = 'Ã—';
+            button.textContent = '×';
             wrapper.appendChild(button);
 
             input.addEventListener('input', function () {
@@ -189,6 +898,915 @@
     }
 
 
+    /* =========================================================
+       V61 - Soglie durata e selettori data/ora personalizzati
+       ========================================================= */
+
+    function dispatchFilterValueChange(field) {
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function syncDurationControl(control, focusCustom, preserveHiddenValues) {
+        if (!control) {
+            return;
+        }
+        var select = control.querySelector('[data-duration-preset-select]');
+        var panel = control.querySelector('[data-duration-custom-panel]');
+        if (!select || !panel) {
+            return;
+        }
+        var isCustom = select.value === 'custom';
+        control.classList.toggle('is-custom', isCustom);
+        panel.classList.toggle('is-hidden', !isCustom);
+        panel.setAttribute('aria-hidden', isCustom ? 'false' : 'true');
+
+        panel.querySelectorAll('input').forEach(function (input) {
+            input.disabled = !isCustom;
+            if (!isCustom && !preserveHiddenValues) {
+                input.value = '';
+            }
+            if (input.matches('input[data-clearable="true"]')) {
+                updateClearButton(input);
+            }
+        });
+
+        updateCustomSelect(select);
+        if (isCustom && focusCustom) {
+            var firstInput = panel.querySelector('input:not([disabled])');
+            if (firstInput) {
+                window.setTimeout(function () {
+                    firstInput.focus();
+                    firstInput.select();
+                }, 0);
+            }
+        }
+        updateStickyLayout();
+    }
+
+    function initDurationControls(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-duration-control]:not([data-duration-ready="true"])').forEach(function (control) {
+            control.dataset.durationReady = 'true';
+            var select = control.querySelector('[data-duration-preset-select]');
+            var backButton = control.querySelector('[data-duration-custom-back]');
+            if (!select) {
+                return;
+            }
+
+            syncDurationControl(control, false, true);
+            select.addEventListener('change', function () {
+                syncDurationControl(control, select.value === 'custom', false);
+            });
+
+            if (backButton) {
+                backButton.addEventListener('click', function () {
+                    select.value = '';
+                    updateCustomSelect(select);
+                    syncDurationControl(control, false, false);
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            }
+        });
+    }
+
+    var SITE_DATE_MONTHS = [
+        'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+        'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'
+    ];
+    var SITE_DATE_WEEKDAYS = ['LU', 'MA', 'ME', 'GI', 'VE', 'SA', 'DO'];
+
+    function padTwo(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    function parseIsoDate(value) {
+        var match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        if (!match) {
+            return null;
+        }
+        var date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+        if (date.getFullYear() !== Number(match[1])
+                || date.getMonth() !== Number(match[2]) - 1
+                || date.getDate() !== Number(match[3])) {
+            return null;
+        }
+        return date;
+    }
+
+    function dateToIso(date) {
+        return date.getFullYear() + '-' + padTwo(date.getMonth() + 1) + '-' + padTwo(date.getDate());
+    }
+
+    function formatDateForDisplay(value) {
+        var date = parseIsoDate(value);
+        return date ? padTwo(date.getDate()) + '/' + padTwo(date.getMonth() + 1) + '/' + date.getFullYear() : '';
+    }
+
+    function syncSitePickerOverlayState() {
+        if (!document.body) {
+            return;
+        }
+        document.body.classList.toggle(
+            'site-picker-overlay-active',
+            Boolean(document.querySelector('.site-picker.is-open'))
+        );
+    }
+
+    function closeSitePicker(wrapper) {
+        if (!wrapper) {
+            return;
+        }
+        wrapper.classList.remove('is-open');
+        var trigger = wrapper.querySelector('.site-picker-trigger');
+        if (trigger) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+        syncSitePickerOverlayState();
+    }
+
+    function closeAllSitePickers(except) {
+        document.querySelectorAll('.site-picker.is-open').forEach(function (wrapper) {
+            if (wrapper !== except) {
+                closeSitePicker(wrapper);
+            }
+        });
+    }
+
+    function setSiteDateValue(input, value) {
+        if (input.readOnly || input.dataset.pickerReadonly === 'true') {
+            return;
+        }
+        input.value = value || '';
+        syncSiteDatePicker(input);
+        dispatchFilterValueChange(input);
+    }
+
+    function getSiteDateYearLimits(input) {
+        var minimum = parseIsoDate(input.dataset.pickerMin || '');
+        var maximum = parseIsoDate(input.dataset.pickerMax || '');
+        var currentYear = new Date().getFullYear();
+        return {
+            min: minimum ? minimum.getFullYear() : 1980,
+            max: maximum ? maximum.getFullYear() : Math.max(2037, currentYear + 10)
+        };
+    }
+
+    function setSiteDateYearWindow(input, requestedStart) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || wrapper.dataset.calendarMode !== 'years') {
+            return;
+        }
+        var limits = getSiteDateYearLimits(input);
+        var latestStart = Math.max(limits.min, limits.max - 11);
+        var nextStart = Math.max(limits.min, Math.min(latestStart, Math.round(requestedStart)));
+        var currentStart = Number(wrapper.dataset.yearBlockStart);
+        if (Number.isFinite(currentStart) && nextStart === currentStart) {
+            return;
+        }
+        wrapper.dataset.yearBlockStart = String(nextStart);
+        renderSiteDateYearSelector(input);
+    }
+
+    function shiftSiteDateYearWindow(input, direction) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || wrapper.dataset.calendarMode !== 'years') {
+            return;
+        }
+        var limits = getSiteDateYearLimits(input);
+        var currentStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(currentStart)) {
+            currentStart = limits.min;
+        }
+        setSiteDateYearWindow(input, currentStart + direction);
+    }
+
+    function updateSiteDateYearScrollbar(input) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || !wrapper._sitePicker || !wrapper._sitePicker.yearScrollbar) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        var limits = getSiteDateYearLimits(input);
+        var latestStart = Math.max(limits.min, limits.max - 11);
+        var blockStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(blockStart)) {
+            blockStart = limits.min;
+        }
+        var totalYears = Math.max(1, limits.max - limits.min + 1);
+        var visibleYears = Math.min(12, totalYears);
+        var thumbPercent = Math.max(18, Math.min(100, (visibleYears / totalYears) * 100));
+        var travelPercent = 100 - thumbPercent;
+        var progress = latestStart > limits.min
+            ? (blockStart - limits.min) / (latestStart - limits.min)
+            : 0;
+        var topPercent = Math.max(0, Math.min(travelPercent, progress * travelPercent));
+
+        ui.yearScrollbarThumb.style.height = thumbPercent.toFixed(3) + '%';
+        ui.yearScrollbarThumb.style.top = topPercent.toFixed(3) + '%';
+        ui.yearScrollbar.setAttribute('aria-valuemin', String(limits.min));
+        ui.yearScrollbar.setAttribute('aria-valuemax', String(latestStart));
+        ui.yearScrollbar.setAttribute('aria-valuenow', String(blockStart));
+        ui.yearScrollbar.setAttribute(
+            'aria-valuetext',
+            blockStart + '–' + Math.min(blockStart + 11, limits.max)
+        );
+    }
+
+    function renderSiteDateYearSelector(input) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || !wrapper._sitePicker) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        var viewYear = Number(wrapper.dataset.viewYear);
+        if (!Number.isFinite(viewYear)) {
+            var selected = parseIsoDate(input.value);
+            viewYear = selected ? selected.getFullYear() : new Date().getFullYear();
+            wrapper.dataset.viewYear = String(viewYear);
+        }
+
+        var limits = getSiteDateYearLimits(input);
+        var blockStart = Number(wrapper.dataset.yearBlockStart);
+        if (!Number.isFinite(blockStart)) {
+            blockStart = Math.floor(viewYear / 12) * 12;
+        }
+        var latestStart = Math.max(limits.min, limits.max - 11);
+        blockStart = Math.max(limits.min, Math.min(blockStart, latestStart));
+        wrapper.dataset.yearBlockStart = String(blockStart);
+        wrapper.dataset.calendarMode = 'years';
+
+        ui.grid.classList.add('is-hidden');
+        ui.yearGrid.classList.remove('is-hidden');
+        ui.yearGrid.querySelectorAll('.site-calendar-year').forEach(function (button) {
+            button.remove();
+        });
+        if (!ui.yearGrid.contains(ui.yearScrollbar)) {
+            ui.yearGrid.appendChild(ui.yearScrollbar);
+        }
+
+        var blockEnd = Math.min(blockStart + 11, limits.max);
+        wrapper.classList.add('is-year-mode');
+        ui.title.textContent = blockStart === blockEnd ? String(blockStart) : blockStart + '–' + blockEnd;
+        ui.title.setAttribute('aria-expanded', 'true');
+        ui.title.setAttribute('aria-label', 'Torna alla visualizzazione del mese');
+        ui.previous.textContent = '↑';
+        ui.next.textContent = '↓';
+        ui.previous.setAttribute('aria-label', 'Scorri verso gli anni precedenti');
+        ui.next.setAttribute('aria-label', 'Scorri verso gli anni successivi');
+        ui.previous.disabled = blockStart <= limits.min;
+        ui.next.disabled = blockStart >= latestStart;
+
+        var selected = parseIsoDate(input.value);
+        for (var year = blockStart; year <= blockEnd; year += 1) {
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'site-calendar-year';
+            button.textContent = String(year);
+            button.dataset.year = String(year);
+            button.classList.toggle('is-current-view', year === viewYear);
+            button.classList.toggle('is-selected', Boolean(selected && year === selected.getFullYear()));
+            button.addEventListener('click', function () {
+                wrapper.dataset.viewYear = this.dataset.year;
+                wrapper.dataset.calendarMode = 'month';
+                renderSiteDateCalendar(input);
+            });
+            ui.yearGrid.appendChild(button);
+        }
+        updateSiteDateYearScrollbar(input);
+    }
+
+    function renderSiteDateCalendar(input) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || !wrapper._sitePicker) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        wrapper.dataset.calendarMode = 'month';
+        ui.grid.classList.remove('is-hidden');
+        ui.yearGrid.classList.add('is-hidden');
+        var selected = parseIsoDate(input.value);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        var viewYear = Number(wrapper.dataset.viewYear);
+        var viewMonth = Number(wrapper.dataset.viewMonth);
+        if (!Number.isFinite(viewYear) || !Number.isFinite(viewMonth)) {
+            var base = selected || today;
+            viewYear = base.getFullYear();
+            viewMonth = base.getMonth();
+            wrapper.dataset.viewYear = String(viewYear);
+            wrapper.dataset.viewMonth = String(viewMonth);
+        }
+
+        var limits = getSiteDateYearLimits(input);
+        wrapper.classList.remove('is-year-mode');
+        ui.title.textContent = SITE_DATE_MONTHS[viewMonth] + ' ' + viewYear;
+        ui.title.setAttribute('aria-expanded', 'false');
+        ui.title.setAttribute('aria-label', 'Scegli rapidamente l’anno');
+        ui.previous.textContent = '‹';
+        ui.next.textContent = '›';
+        ui.previous.setAttribute('aria-label', 'Mese precedente');
+        ui.next.setAttribute('aria-label', 'Mese successivo');
+        ui.previous.disabled = viewYear <= limits.min && viewMonth === 0;
+        ui.next.disabled = viewYear >= limits.max && viewMonth === 11;
+        ui.grid.innerHTML = '';
+
+        SITE_DATE_WEEKDAYS.forEach(function (weekday) {
+            var label = document.createElement('span');
+            label.className = 'site-calendar-weekday';
+            label.textContent = weekday;
+            ui.grid.appendChild(label);
+        });
+
+        var firstDay = new Date(viewYear, viewMonth, 1);
+        var startOffset = (firstDay.getDay() + 6) % 7;
+        var daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        var previousMonthDays = new Date(viewYear, viewMonth, 0).getDate();
+        var minDate = parseIsoDate(input.dataset.pickerMin || '');
+        var maxDate = parseIsoDate(input.dataset.pickerMax || '');
+
+        for (var index = 0; index < 42; index += 1) {
+            var dayNumber = index - startOffset + 1;
+            var cellDate;
+            var outside = false;
+            if (dayNumber < 1) {
+                cellDate = new Date(viewYear, viewMonth - 1, previousMonthDays + dayNumber);
+                outside = true;
+            } else if (dayNumber > daysInMonth) {
+                cellDate = new Date(viewYear, viewMonth + 1, dayNumber - daysInMonth);
+                outside = true;
+            } else {
+                cellDate = new Date(viewYear, viewMonth, dayNumber);
+            }
+            cellDate.setHours(0, 0, 0, 0);
+            var iso = dateToIso(cellDate);
+            var button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'site-calendar-day';
+            button.textContent = String(cellDate.getDate());
+            button.dataset.date = iso;
+            button.classList.toggle('is-outside-month', outside);
+            button.classList.toggle('is-today', cellDate.getTime() === today.getTime());
+            button.classList.toggle('is-selected', Boolean(selected && cellDate.getTime() === selected.getTime()));
+            var readOnlyPicker = input.readOnly || input.dataset.pickerReadonly === 'true';
+            var disabled = Boolean(readOnlyPicker || (minDate && cellDate < minDate) || (maxDate && cellDate > maxDate));
+            button.disabled = disabled;
+            button.setAttribute('aria-label', padTwo(cellDate.getDate()) + '/' + padTwo(cellDate.getMonth() + 1) + '/' + cellDate.getFullYear());
+            button.addEventListener('click', function () {
+                setSiteDateValue(input, this.dataset.date || '');
+                closeSitePicker(wrapper);
+            });
+            ui.grid.appendChild(button);
+        }
+    }
+
+    function syncSiteDatePicker(input) {
+        var wrapper = input.closest('.site-date-picker');
+        if (!wrapper || !wrapper._sitePicker) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        var displayValue = formatDateForDisplay(input.value);
+        var readOnlyPicker = input.readOnly || input.dataset.pickerReadonly === 'true';
+        var canEdit = !input.disabled && !readOnlyPicker;
+        ui.value.textContent = displayValue || 'gg/mm/aaaa';
+        ui.trigger.classList.toggle('has-value', Boolean(displayValue));
+        var invalid = input.getAttribute('aria-invalid') === 'true' || input.classList.contains('input-invalid');
+        ui.trigger.classList.toggle('input-invalid', invalid);
+        ui.trigger.setAttribute('aria-invalid', invalid ? 'true' : 'false');
+        ui.clear.classList.toggle('is-visible', Boolean(displayValue) && canEdit);
+        ui.clear.setAttribute('aria-hidden', displayValue && canEdit ? 'false' : 'true');
+        ui.clear.tabIndex = displayValue && canEdit ? 0 : -1;
+        ui.trigger.disabled = input.disabled;
+        wrapper.classList.toggle('is-disabled', input.disabled);
+        wrapper.classList.toggle('is-readonly', readOnlyPicker && !input.disabled);
+        if (ui.clearFooter) {
+            ui.clearFooter.textContent = readOnlyPicker ? 'Chiudi' : 'Cancella';
+        }
+        if (ui.todayButton) {
+            ui.todayButton.hidden = readOnlyPicker;
+        }
+        if (input.disabled) {
+            closeSitePicker(wrapper);
+        }
+        var selected = parseIsoDate(input.value);
+        if (selected) {
+            wrapper.dataset.viewYear = String(selected.getFullYear());
+            wrapper.dataset.viewMonth = String(selected.getMonth());
+        }
+        renderSiteDateCalendar(input);
+    }
+
+    function initCustomDatePickers(root) {
+        var scope = root || document;
+        scope.querySelectorAll('input[type="date"]:not([data-custom-date-ready="true"])').forEach(function (input) {
+            input.dataset.customDateReady = 'true';
+            input.dataset.customDateValue = 'true';
+            input.dataset.pickerMin = input.getAttribute('min') || '';
+            input.dataset.pickerMax = input.getAttribute('max') || '';
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'site-picker site-date-picker';
+            if (input.parentElement && input.parentElement.lastElementChild === input) {
+                wrapper.classList.add('is-range-end');
+            }
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+            input.type = 'hidden';
+
+            var trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'site-picker-trigger site-date-trigger';
+            trigger.setAttribute('aria-haspopup', 'dialog');
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.setAttribute('aria-label', input.getAttribute('aria-label') || 'Seleziona una data');
+
+            var value = document.createElement('span');
+            value.className = 'site-picker-value';
+            trigger.appendChild(value);
+            var icon = document.createElement('span');
+            icon.className = 'site-picker-icon site-calendar-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            trigger.appendChild(icon);
+
+            var clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'site-picker-clear';
+            clear.textContent = '×';
+            clear.setAttribute('aria-label', 'Cancella data');
+            clear.setAttribute('title', 'Cancella data');
+            clear.setAttribute('aria-hidden', 'true');
+            clear.tabIndex = -1;
+
+            var panel = document.createElement('div');
+            panel.className = 'site-picker-panel site-date-panel';
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-label', 'Calendario');
+
+            var header = document.createElement('div');
+            header.className = 'site-picker-header';
+            var previous = document.createElement('button');
+            previous.type = 'button';
+            previous.className = 'site-picker-nav';
+            previous.textContent = '‹';
+            previous.setAttribute('aria-label', 'Mese precedente');
+            var title = document.createElement('button');
+            title.type = 'button';
+            title.className = 'site-picker-title';
+            title.setAttribute('aria-haspopup', 'listbox');
+            title.setAttribute('aria-expanded', 'false');
+            var next = document.createElement('button');
+            next.type = 'button';
+            next.className = 'site-picker-nav';
+            next.textContent = '›';
+            next.setAttribute('aria-label', 'Mese successivo');
+            header.appendChild(previous);
+            header.appendChild(title);
+            header.appendChild(next);
+
+            var grid = document.createElement('div');
+            grid.className = 'site-calendar-grid';
+
+            var yearGrid = document.createElement('div');
+            yearGrid.className = 'site-calendar-year-grid is-hidden';
+            yearGrid.setAttribute('role', 'listbox');
+            yearGrid.setAttribute('aria-label', 'Seleziona l’anno');
+
+            var yearScrollbar = document.createElement('div');
+            yearScrollbar.className = 'site-calendar-year-scrollbar';
+            yearScrollbar.setAttribute('role', 'scrollbar');
+            yearScrollbar.setAttribute('aria-label', 'Scorri l’intervallo degli anni');
+            yearScrollbar.setAttribute('aria-orientation', 'vertical');
+            yearScrollbar.tabIndex = 0;
+            var yearScrollbarThumb = document.createElement('span');
+            yearScrollbarThumb.className = 'site-calendar-year-scrollbar-thumb';
+            yearScrollbarThumb.setAttribute('aria-hidden', 'true');
+            yearScrollbar.appendChild(yearScrollbarThumb);
+            yearGrid.appendChild(yearScrollbar);
+
+            var footer = document.createElement('div');
+            footer.className = 'site-picker-footer';
+            var clearFooter = document.createElement('button');
+            clearFooter.type = 'button';
+            clearFooter.className = 'site-picker-text-button';
+            clearFooter.textContent = 'Cancella';
+            var todayButton = document.createElement('button');
+            todayButton.type = 'button';
+            todayButton.className = 'site-picker-text-button is-primary';
+            todayButton.textContent = 'Oggi';
+            footer.appendChild(clearFooter);
+            footer.appendChild(todayButton);
+
+            panel.appendChild(header);
+            panel.appendChild(grid);
+            panel.appendChild(yearGrid);
+            panel.appendChild(footer);
+            wrapper.appendChild(trigger);
+            wrapper.appendChild(clear);
+            wrapper.appendChild(panel);
+            wrapper._sitePicker = {
+                trigger: trigger, value: value, clear: clear, panel: panel,
+                title: title, grid: grid, yearGrid: yearGrid,
+                yearScrollbar: yearScrollbar, yearScrollbarThumb: yearScrollbarThumb,
+                previous: previous, next: next,
+                clearFooter: clearFooter, todayButton: todayButton
+            };
+
+            trigger.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                closeAllSitePickers(wrapper);
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
+                wrapper.classList.toggle('is-open', shouldOpen);
+                trigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+                syncSitePickerOverlayState();
+                if (shouldOpen) {
+                    renderSiteDateCalendar(input);
+                }
+            });
+            clear.addEventListener('click', function (event) {
+                event.stopPropagation();
+                setSiteDateValue(input, '');
+            });
+            clearFooter.addEventListener('click', function () {
+                if (!input.readOnly && input.dataset.pickerReadonly !== 'true') {
+                    setSiteDateValue(input, '');
+                }
+                closeSitePicker(wrapper);
+            });
+            todayButton.addEventListener('click', function () {
+                if (input.readOnly || input.dataset.pickerReadonly === 'true') {
+                    return;
+                }
+                setSiteDateValue(input, dateToIso(new Date()));
+                closeSitePicker(wrapper);
+            });
+            title.addEventListener('click', function () {
+                if (wrapper.dataset.calendarMode === 'years') {
+                    renderSiteDateCalendar(input);
+                } else {
+                    delete wrapper.dataset.yearBlockStart;
+                    renderSiteDateYearSelector(input);
+                }
+            });
+            previous.addEventListener('click', function () {
+                if (wrapper.dataset.calendarMode === 'years') {
+                    shiftSiteDateYearWindow(input, -1);
+                    return;
+                }
+                var year = Number(wrapper.dataset.viewYear);
+                var month = Number(wrapper.dataset.viewMonth) - 1;
+                if (month < 0) {
+                    month = 11;
+                    year -= 1;
+                }
+                wrapper.dataset.viewYear = String(year);
+                wrapper.dataset.viewMonth = String(month);
+                renderSiteDateCalendar(input);
+            });
+            next.addEventListener('click', function () {
+                if (wrapper.dataset.calendarMode === 'years') {
+                    shiftSiteDateYearWindow(input, 1);
+                    return;
+                }
+                var year = Number(wrapper.dataset.viewYear);
+                var month = Number(wrapper.dataset.viewMonth) + 1;
+                if (month > 11) {
+                    month = 0;
+                    year += 1;
+                }
+                wrapper.dataset.viewYear = String(year);
+                wrapper.dataset.viewMonth = String(month);
+                renderSiteDateCalendar(input);
+            });
+            yearScrollbar.addEventListener('click', function (event) {
+                event.stopPropagation();
+                if (event.target === yearScrollbarThumb || wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                var limits = getSiteDateYearLimits(input);
+                var latestStart = Math.max(limits.min, limits.max - 11);
+                var rect = yearScrollbar.getBoundingClientRect();
+                var ratio = rect.height > 0
+                    ? Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))
+                    : 0;
+                setSiteDateYearWindow(input, limits.min + ratio * (latestStart - limits.min));
+            });
+            yearScrollbar.addEventListener('keydown', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                var limits = getSiteDateYearLimits(input);
+                var latestStart = Math.max(limits.min, limits.max - 11);
+                var handled = true;
+                if (event.key === 'ArrowUp') {
+                    shiftSiteDateYearWindow(input, -1);
+                } else if (event.key === 'ArrowDown') {
+                    shiftSiteDateYearWindow(input, 1);
+                } else if (event.key === 'PageUp') {
+                    shiftSiteDateYearWindow(input, -12);
+                } else if (event.key === 'PageDown') {
+                    shiftSiteDateYearWindow(input, 12);
+                } else if (event.key === 'Home') {
+                    setSiteDateYearWindow(input, limits.min);
+                } else if (event.key === 'End') {
+                    setSiteDateYearWindow(input, latestStart);
+                } else {
+                    handled = false;
+                }
+                if (handled) {
+                    event.preventDefault();
+                }
+            });
+            yearScrollbarThumb.addEventListener('pointerdown', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years') {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                var trackRect = yearScrollbar.getBoundingClientRect();
+                var thumbRect = yearScrollbarThumb.getBoundingClientRect();
+                var dragOffset = event.clientY - thumbRect.top;
+                yearScrollbarThumb.setPointerCapture(event.pointerId);
+                yearScrollbarThumb.classList.add('is-dragging');
+
+                function moveThumb(moveEvent) {
+                    var limits = getSiteDateYearLimits(input);
+                    var latestStart = Math.max(limits.min, limits.max - 11);
+                    var available = Math.max(1, trackRect.height - thumbRect.height);
+                    var top = Math.max(0, Math.min(available, moveEvent.clientY - trackRect.top - dragOffset));
+                    var ratio = top / available;
+                    setSiteDateYearWindow(input, limits.min + ratio * (latestStart - limits.min));
+                }
+
+                function stopDragging(stopEvent) {
+                    yearScrollbarThumb.classList.remove('is-dragging');
+                    try {
+                        yearScrollbarThumb.releasePointerCapture(stopEvent.pointerId);
+                    } catch (error) {
+                        // Il puntatore può essere già stato rilasciato dal browser.
+                    }
+                    yearScrollbarThumb.removeEventListener('pointermove', moveThumb);
+                    yearScrollbarThumb.removeEventListener('pointerup', stopDragging);
+                    yearScrollbarThumb.removeEventListener('pointercancel', stopDragging);
+                }
+
+                yearScrollbarThumb.addEventListener('pointermove', moveThumb);
+                yearScrollbarThumb.addEventListener('pointerup', stopDragging);
+                yearScrollbarThumb.addEventListener('pointercancel', stopDragging);
+            });
+            panel.addEventListener('wheel', function (event) {
+                if (wrapper.dataset.calendarMode !== 'years' || event.deltaY === 0) {
+                    return;
+                }
+                event.preventDefault();
+                if (wrapper._yearWheelLocked) {
+                    return;
+                }
+                wrapper._yearWheelLocked = true;
+                shiftSiteDateYearWindow(input, event.deltaY < 0 ? -1 : 1);
+                window.setTimeout(function () {
+                    wrapper._yearWheelLocked = false;
+                }, 90);
+            }, { passive: false });
+            panel.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+            input.addEventListener('change', function () {
+                syncSiteDatePicker(input);
+            });
+            syncSiteDatePicker(input);
+        });
+    }
+
+    function parseTimeValue(value) {
+        var match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value || '');
+        return match ? { hour: Number(match[1]), minute: Number(match[2]) } : null;
+    }
+
+    function syncTimePickerButtons(wrapper) {
+        if (!wrapper || !wrapper._sitePicker) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        ui.preview.textContent = padTwo(ui.tempHour) + ':' + padTwo(ui.tempMinute);
+        ui.hours.querySelectorAll('button').forEach(function (button) {
+            button.classList.toggle('is-selected', Number(button.dataset.value) === ui.tempHour);
+        });
+        ui.minutes.querySelectorAll('button').forEach(function (button) {
+            button.classList.toggle('is-selected', Number(button.dataset.value) === ui.tempMinute);
+        });
+    }
+
+    function syncSiteTimePicker(input) {
+        var wrapper = input.closest('.site-time-picker');
+        if (!wrapper || !wrapper._sitePicker) {
+            return;
+        }
+        var ui = wrapper._sitePicker;
+        var parsed = parseTimeValue(input.value);
+        ui.value.textContent = parsed ? padTwo(parsed.hour) + ':' + padTwo(parsed.minute) : '--:--';
+        ui.trigger.classList.toggle('has-value', Boolean(parsed));
+        ui.clear.classList.toggle('is-visible', Boolean(parsed) && !input.disabled);
+        ui.clear.setAttribute('aria-hidden', parsed && !input.disabled ? 'false' : 'true');
+        ui.clear.tabIndex = parsed && !input.disabled ? 0 : -1;
+        ui.trigger.disabled = input.disabled;
+        wrapper.classList.toggle('is-disabled', input.disabled);
+        if (parsed) {
+            ui.tempHour = parsed.hour;
+            ui.tempMinute = parsed.minute;
+        }
+        if (input.disabled) {
+            closeSitePicker(wrapper);
+        }
+        syncTimePickerButtons(wrapper);
+    }
+
+    function setSiteTimeValue(input, value) {
+        input.value = value || '';
+        syncSiteTimePicker(input);
+        dispatchFilterValueChange(input);
+    }
+
+    function initCustomTimePickers(root) {
+        var scope = root || document;
+        scope.querySelectorAll('.compact-filter-form input[type="time"]:not([data-custom-time-ready="true"])').forEach(function (input) {
+            input.dataset.customTimeReady = 'true';
+            input.dataset.customTimeValue = 'true';
+
+            var wrapper = document.createElement('div');
+            wrapper.className = 'site-picker site-time-picker';
+            if (input.parentElement && input.parentElement.lastElementChild === input) {
+                wrapper.classList.add('is-range-end');
+            }
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+            input.type = 'hidden';
+
+            var trigger = document.createElement('button');
+            trigger.type = 'button';
+            trigger.className = 'site-picker-trigger site-time-trigger';
+            trigger.setAttribute('aria-haspopup', 'dialog');
+            trigger.setAttribute('aria-expanded', 'false');
+            trigger.setAttribute('aria-label', input.getAttribute('aria-label') || 'Seleziona un orario');
+            var value = document.createElement('span');
+            value.className = 'site-picker-value';
+            trigger.appendChild(value);
+            var icon = document.createElement('span');
+            icon.className = 'site-picker-icon site-clock-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            trigger.appendChild(icon);
+
+            var clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'site-picker-clear';
+            clear.textContent = '×';
+            clear.setAttribute('aria-label', 'Cancella orario');
+            clear.setAttribute('title', 'Cancella orario');
+            clear.setAttribute('aria-hidden', 'true');
+            clear.tabIndex = -1;
+
+            var panel = document.createElement('div');
+            panel.className = 'site-picker-panel site-time-panel';
+            panel.setAttribute('role', 'dialog');
+            panel.setAttribute('aria-label', 'Selettore orario');
+            var header = document.createElement('div');
+            header.className = 'site-time-header';
+            var heading = document.createElement('strong');
+            heading.textContent = 'Seleziona orario';
+            var preview = document.createElement('span');
+            preview.className = 'site-time-preview';
+            header.appendChild(heading);
+            header.appendChild(preview);
+
+            var labels = document.createElement('div');
+            labels.className = 'site-time-column-labels';
+            labels.innerHTML = '<span>Ore</span><span>Minuti</span>';
+            var columns = document.createElement('div');
+            columns.className = 'site-time-columns';
+            var hours = document.createElement('div');
+            hours.className = 'site-time-column';
+            var minutes = document.createElement('div');
+            minutes.className = 'site-time-column';
+            for (var hour = 0; hour < 24; hour += 1) {
+                var hourButton = document.createElement('button');
+                hourButton.type = 'button';
+                hourButton.dataset.value = String(hour);
+                hourButton.textContent = padTwo(hour);
+                hourButton.addEventListener('click', function () {
+                    wrapper._sitePicker.tempHour = Number(this.dataset.value);
+                    syncTimePickerButtons(wrapper);
+                });
+                hours.appendChild(hourButton);
+            }
+            for (var minute = 0; minute < 60; minute += 1) {
+                var minuteButton = document.createElement('button');
+                minuteButton.type = 'button';
+                minuteButton.dataset.value = String(minute);
+                minuteButton.textContent = padTwo(minute);
+                minuteButton.addEventListener('click', function () {
+                    wrapper._sitePicker.tempMinute = Number(this.dataset.value);
+                    syncTimePickerButtons(wrapper);
+                });
+                minutes.appendChild(minuteButton);
+            }
+            columns.appendChild(hours);
+            columns.appendChild(minutes);
+
+            var footer = document.createElement('div');
+            footer.className = 'site-picker-footer';
+            var clearFooter = document.createElement('button');
+            clearFooter.type = 'button';
+            clearFooter.className = 'site-picker-text-button';
+            clearFooter.textContent = 'Cancella';
+            var apply = document.createElement('button');
+            apply.type = 'button';
+            apply.className = 'site-picker-text-button is-primary';
+            apply.textContent = 'Applica';
+            footer.appendChild(clearFooter);
+            footer.appendChild(apply);
+
+            panel.appendChild(header);
+            panel.appendChild(labels);
+            panel.appendChild(columns);
+            panel.appendChild(footer);
+            wrapper.appendChild(trigger);
+            wrapper.appendChild(clear);
+            wrapper.appendChild(panel);
+            wrapper._sitePicker = {
+                trigger: trigger,
+                value: value,
+                clear: clear,
+                panel: panel,
+                preview: preview,
+                hours: hours,
+                minutes: minutes,
+                tempHour: 0,
+                tempMinute: 0
+            };
+
+            trigger.addEventListener('click', function (event) {
+                event.stopPropagation();
+                var shouldOpen = !wrapper.classList.contains('is-open');
+                closeAllSitePickers(wrapper);
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
+                if (shouldOpen) {
+                    var parsed = parseTimeValue(input.value);
+                    wrapper._sitePicker.tempHour = parsed ? parsed.hour : 0;
+                    wrapper._sitePicker.tempMinute = parsed ? parsed.minute : 0;
+                    syncTimePickerButtons(wrapper);
+                    wrapper.classList.add('is-open');
+                    trigger.setAttribute('aria-expanded', 'true');
+                    syncSitePickerOverlayState();
+                    window.setTimeout(function () {
+                        var selectedHour = hours.querySelector('.is-selected');
+                        var selectedMinute = minutes.querySelector('.is-selected');
+                        if (selectedHour) {
+                            selectedHour.scrollIntoView({ block: 'center' });
+                        }
+                        if (selectedMinute) {
+                            selectedMinute.scrollIntoView({ block: 'center' });
+                        }
+                    }, 0);
+                } else {
+                    closeSitePicker(wrapper);
+                }
+            });
+            clear.addEventListener('click', function (event) {
+                event.stopPropagation();
+                setSiteTimeValue(input, '');
+            });
+            clearFooter.addEventListener('click', function () {
+                setSiteTimeValue(input, '');
+                closeSitePicker(wrapper);
+            });
+            apply.addEventListener('click', function () {
+                var ui = wrapper._sitePicker;
+                setSiteTimeValue(input, padTwo(ui.tempHour) + ':' + padTwo(ui.tempMinute));
+                closeSitePicker(wrapper);
+            });
+            panel.addEventListener('click', function (event) {
+                event.stopPropagation();
+            });
+            input.addEventListener('change', function () {
+                syncSiteTimePicker(input);
+            });
+            syncSiteTimePicker(input);
+        });
+    }
+
+    function syncCustomPickers(root) {
+        var scope = root || document;
+        scope.querySelectorAll('input[data-custom-date-value="true"]').forEach(syncSiteDatePicker);
+        scope.querySelectorAll('input[data-custom-time-value="true"]').forEach(syncSiteTimePicker);
+        scope.querySelectorAll('[data-duration-control]').forEach(function (control) {
+            syncDurationControl(control, false, true);
+        });
+    }
+
+
     function getFieldError(field) {
         var form = field.closest('form');
         if (!form || !field.name) {
@@ -201,6 +1819,12 @@
         var error = getFieldError(field);
         field.classList.toggle('input-invalid', Boolean(message));
         field.setAttribute('aria-invalid', message ? 'true' : 'false');
+        var dateWrapper = field.closest ? field.closest('.site-date-picker') : null;
+        var dateTrigger = dateWrapper ? dateWrapper.querySelector('.site-picker-trigger') : null;
+        if (dateTrigger) {
+            dateTrigger.classList.toggle('input-invalid', Boolean(message));
+            dateTrigger.setAttribute('aria-invalid', message ? 'true' : 'false');
+        }
         if (error) {
             error.textContent = message || '';
             error.classList.toggle('is-visible', Boolean(message));
@@ -234,7 +1858,7 @@
 
         var value = (field.value || '').trim();
         var requiredMessage = field.dataset.requiredMessage || 'Compilare questo campo.';
-        var formatMessage = field.dataset.formatMessage || 'Il valore inserito non Ã¨ valido.';
+        var formatMessage = field.dataset.formatMessage || 'Il valore inserito non è valido.';
 
         if (field.hasAttribute('required') && value === '') {
             setFieldError(field, requiredMessage);
@@ -263,12 +1887,12 @@
         var max = field.getAttribute('max');
 
         if (min && field.value < min) {
-            setFieldError(field, 'La data di disattivazione non puÃ² essere precedente a ' + formatItalianDate(min) + '.');
+            setFieldError(field, 'La data di disattivazione non può essere precedente a ' + formatItalianDate(min) + '.');
             return false;
         }
 
         if (max && field.value > max) {
-            setFieldError(field, 'La data di disattivazione non puÃ² essere successiva a ' + formatItalianDate(max) + '.');
+            setFieldError(field, 'La data di disattivazione non può essere successiva a ' + formatItalianDate(max) + '.');
             return false;
         }
 
@@ -286,7 +1910,7 @@
     function validateSimCrudForm(form) {
         var valid = true;
         form.querySelectorAll('input, select, textarea').forEach(function (field) {
-            if (field.type === 'hidden' || field.disabled) {
+            if ((field.type === 'hidden' && field.dataset.customDateValue !== 'true') || field.disabled) {
                 return;
             }
             if (!validateSimCrudField(field)) {
@@ -310,6 +1934,9 @@
         }
         field.value = value || '';
         updateClearButton(field);
+        if (field.dataset.customDateReady === 'true') {
+            syncSiteDatePicker(field);
+        }
     }
 
     function setSystemRecoveredField(field, locked) {
@@ -324,6 +1951,9 @@
 
         if (field.matches && field.matches('input[data-clearable="true"]')) {
             updateClearButton(field);
+        }
+        if (field.dataset.customDateReady === 'true') {
+            syncSiteDatePicker(field);
         }
     }
 
@@ -357,10 +1987,20 @@
         }
         if (activationField) {
             activationField.value = payload.dataAttivazione || '';
+            if (activationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(activationField);
+            }
         }
         if (deactivationField) {
-            deactivationField.setAttribute('min', payload.dataMinimaDisattivazione || payload.dataAttivazione || '');
-            deactivationField.setAttribute('max', payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10));
+            var minimumDate = payload.dataMinimaDisattivazione || payload.dataAttivazione || '';
+            var maximumDate = payload.dataMassimaDisattivazione || new Date().toISOString().slice(0, 10);
+            deactivationField.setAttribute('min', minimumDate);
+            deactivationField.setAttribute('max', maximumDate);
+            deactivationField.dataset.pickerMin = minimumDate;
+            deactivationField.dataset.pickerMax = maximumDate;
+            if (deactivationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(deactivationField);
+            }
             validateDeactivationDate(deactivationField);
         }
 
@@ -391,15 +2031,22 @@
         }
         if (activationField) {
             activationField.value = '';
+            if (activationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(activationField);
+            }
         }
         if (deactivationField) {
             deactivationField.removeAttribute('min');
+            deactivationField.dataset.pickerMin = '';
+            if (deactivationField.dataset.customDateReady === 'true') {
+                syncSiteDatePicker(deactivationField);
+            }
         }
     }
 
     function setCrudDependentFieldsState(form, disabled) {
         /* La presenza di una SIM non utilizzabile viene comunicata con un messaggio
-           sotto il campo codice. Gli altri campi restano compilabili: l'utente puÃ²
+           sotto il campo codice. Gli altri campi restano compilabili: l'utente può
            correggere il codice o completare il form senza trovare controlli bloccati. */
         form.dataset.crudBlocked = 'false';
         form.classList.remove('crud-form-blocked');
@@ -462,7 +2109,7 @@
                 applyLinkedSimData(form, payload);
             })
             .catch(function () {
-                setFieldError(codeField, 'Non Ã¨ stato possibile controllare la SIM indicata. Riprovare.');
+                setFieldError(codeField, 'Non è stato possibile controllare la SIM indicata. Riprovare.');
             });
     }
 
@@ -524,7 +2171,7 @@
                 }
             })
             .catch(function () {
-                setFieldError(phoneField, 'Non Ã¨ stato possibile controllare il numero indicato. Riprovare.');
+                setFieldError(phoneField, 'Non è stato possibile controllare il numero indicato. Riprovare.');
             });
     }
 
@@ -606,6 +2253,7 @@
 
     var cardModalPreviousFocus = null;
     var cardModalHistory = [];
+    var cardModalRootIsCall = false;
 
     function getFocusableElements(container) {
         if (!container) {
@@ -763,8 +2411,196 @@
         return card;
     }
 
+    function getCardModalType(card) {
+        if (!card || !card.classList) {
+            return 'generic';
+        }
+        if (card.classList.contains('call-card')) {
+            return 'call';
+        }
+        if (card.classList.contains('phone-card')) {
+            return 'phone';
+        }
+        if (card.classList.contains('sim-card')) {
+            return 'sim';
+        }
+        if (card.classList.contains('card-modal-card-group')) {
+            return 'sim-group';
+        }
+        return 'generic';
+    }
+
+    function getCardModalIdentity(card) {
+        var type = getCardModalType(card);
+        var value = '';
+
+        if (type === 'phone') {
+            var phoneTitle = card.querySelector('.phone-card-header .card-title, .card-title');
+            value = phoneTitle ? phoneTitle.textContent.trim() : '';
+        } else if (type === 'sim') {
+            value = card.getAttribute('data-sim-code') || '';
+            if (!value) {
+                var simTitle = card.querySelector('.card-title');
+                value = simTitle ? simTitle.textContent.trim() : '';
+            }
+        } else if (type === 'call') {
+            var callTitle = card.querySelector('.call-expanded-title');
+            if (callTitle) {
+                value = callTitle.textContent.trim();
+            } else {
+                var date = card.querySelector('.call-card-date span');
+                var time = card.querySelector('.call-card-date strong');
+                var number = card.querySelector('.call-number-link .card-title');
+                value = [
+                    date ? date.textContent.trim() : '',
+                    time ? time.textContent.trim() : '',
+                    number ? number.textContent.trim() : ''
+                ].join('|');
+            }
+        }
+
+        return type + ':' + value;
+    }
+
+    function cloneCardModalSnapshot(card) {
+        return resetCardModalTransientState(card.cloneNode(true));
+    }
+
+    function updateCardModalHistory(currentCard, targetCard) {
+        var currentSnapshot = cloneCardModalSnapshot(currentCard);
+
+        if (!cardModalRootIsCall) {
+            /* Manteniamo invariato il comportamento già usato tra Numero e SIM:
+               una sola scheda precedente evita cronologie cicliche molto lunghe. */
+            cardModalHistory = [currentSnapshot];
+            return;
+        }
+
+        /* Quando la navigazione nasce da una chiamata conserviamo il percorso
+           Chiamata -> Numero -> SIM. Se si torna su una scheda già presente
+           (per esempio SIM -> Numero associato), eliminiamo il ciclo e il tasto
+           Indietro riporta direttamente alla chiamata di partenza. */
+        var path = cardModalHistory.concat([currentSnapshot]);
+        var targetIdentity = getCardModalIdentity(targetCard);
+        var repeatedIndex = -1;
+
+        for (var index = 0; index < path.length; index += 1) {
+            if (getCardModalIdentity(path[index]) === targetIdentity) {
+                repeatedIndex = index;
+                break;
+            }
+        }
+
+        cardModalHistory = repeatedIndex >= 0 ? path.slice(0, repeatedIndex) : path;
+    }
+
+    function buildExpandedCallModalCard(card) {
+        if (!card || !card.classList || !card.classList.contains('call-card') || card.classList.contains('call-card-expanded-detail')) {
+            return card;
+        }
+
+        var dateNode = card.querySelector('.call-card-date span');
+        var timeNode = card.querySelector('.call-card-date strong');
+        var sourceNumberLink = card.querySelector('.call-number-link');
+        var numberNode = sourceNumberLink ? sourceNumberLink.querySelector('.card-title') : null;
+        var values = {};
+
+        card.querySelectorAll('.call-detail-grid > div').forEach(function (item) {
+            var label = item.querySelector('dt');
+            var value = item.querySelector('dd');
+            if (label && value) {
+                values[label.textContent.trim().toLowerCase()] = value.textContent.trim();
+            }
+        });
+
+        var dateText = dateNode ? dateNode.textContent.trim() : '';
+        var timeText = timeNode ? timeNode.textContent.trim() : '';
+        var numberText = numberNode ? numberNode.textContent.trim() : (sourceNumberLink ? sourceNumberLink.textContent.trim() : '');
+        var durationText = values.durata || '';
+        var planText = values.piano || '';
+        var chargeText = values.addebito || '';
+
+        var expanded = document.createElement('article');
+        expanded.className = 'data-card call-card call-card-expanded-detail';
+
+        var header = document.createElement('div');
+        header.className = 'data-card-header call-expanded-header';
+
+        var heading = document.createElement('div');
+        var kicker = document.createElement('span');
+        kicker.className = 'card-kicker';
+        kicker.textContent = 'Chiamata effettuata';
+        var title = document.createElement('h3');
+        title.className = 'card-title call-expanded-title';
+        title.textContent = dateText && timeText ? dateText + ' alle ' + timeText : (dateText || timeText || 'Dettaglio chiamata');
+        heading.appendChild(kicker);
+        heading.appendChild(title);
+
+        var status = document.createElement('span');
+        status.className = 'status-pill call-status-pill';
+        status.textContent = 'Chiamata registrata';
+        header.appendChild(heading);
+        header.appendChild(status);
+
+        var callerBanner;
+        if (sourceNumberLink) {
+            callerBanner = sourceNumberLink.cloneNode(false);
+            callerBanner.className = 'call-caller-banner call-caller-banner-link';
+            callerBanner.removeAttribute('role');
+            callerBanner.removeAttribute('tabindex');
+            callerBanner.setAttribute('aria-label', 'Apri il dettaglio del numero chiamante ' + numberText);
+        } else {
+            callerBanner = document.createElement('div');
+            callerBanner.className = 'call-caller-banner call-caller-banner-static';
+        }
+
+        var callerLabel = document.createElement('span');
+        callerLabel.textContent = 'Numero chiamante';
+        var callerValue = document.createElement('strong');
+        callerValue.className = 'call-modal-number-value';
+        callerValue.textContent = numberText;
+        callerBanner.appendChild(callerLabel);
+        callerBanner.appendChild(callerValue);
+
+        var primaryMetric = document.createElement('div');
+        primaryMetric.className = 'call-expanded-primary-metric';
+        var primaryLabel = document.createElement('span');
+        primaryLabel.textContent = 'Durata della chiamata';
+        var primaryValue = document.createElement('strong');
+        primaryValue.textContent = durationText;
+        primaryMetric.appendChild(primaryLabel);
+        primaryMetric.appendChild(primaryValue);
+
+        var details = document.createElement('dl');
+        details.className = 'card-detail-grid call-expanded-detail-grid';
+
+        function appendDetail(labelText, valueText, extraClass) {
+            var item = document.createElement('div');
+            item.className = 'card-detail-tile' + (extraClass ? ' ' + extraClass : '');
+            var label = document.createElement('dt');
+            label.textContent = labelText;
+            var value = document.createElement('dd');
+            value.textContent = valueText;
+            item.appendChild(label);
+            item.appendChild(value);
+            details.appendChild(item);
+        }
+
+        appendDetail('Data della chiamata', dateText);
+        appendDetail('Ora della chiamata', timeText);
+        appendDetail('Piano tariffario', planText);
+        appendDetail('Addebito', chargeText, 'call-charge-detail');
+
+        expanded.appendChild(header);
+        expanded.appendChild(callerBanner);
+        expanded.appendChild(primaryMetric);
+        expanded.appendChild(details);
+        return expanded;
+    }
+
     function prepareCardModalClone(card) {
         var clone = resetCardModalTransientState(card.cloneNode(true));
+        clone = buildExpandedCallModalCard(clone);
         clone.classList.add('card-modal-card');
         clone.classList.remove('expandable-card');
         clone.removeAttribute('data-expandable-card');
@@ -782,6 +2618,9 @@
         });
         clone.querySelectorAll('[data-sim-card-modal-ready]').forEach(function (node) {
             node.removeAttribute('data-sim-card-modal-ready');
+        });
+        clone.querySelectorAll('[data-sim-history-modal-ready]').forEach(function (node) {
+            node.removeAttribute('data-sim-history-modal-ready');
         });
         clone.querySelectorAll('[data-table-row-modal-ready]').forEach(function (node) {
             node.removeAttribute('data-table-row-modal-ready');
@@ -821,11 +2660,16 @@
         }
 
         var preparedClone = prepareCardModalClone(clone);
+        var dialog = overlay.querySelector('.card-modal-dialog');
+        if (dialog) {
+            dialog.classList.toggle('card-modal-dialog-call', preparedClone.classList.contains('call-card-expanded-detail'));
+        }
         disableDisabledSimPhoneLinkInsideModal(preparedClone);
         content.innerHTML = '';
         content.appendChild(preparedClone);
         initPhoneCardModalLinks(preparedClone);
         initSimCardModalLinks(preparedClone);
+        initSimHistoryModalLinks(preparedClone);
         initClickableDetailTiles(preparedClone);
         initTableRowModals(preparedClone);
     }
@@ -837,15 +2681,24 @@
         }
 
         cardModalHistory = [];
+        cardModalRootIsCall = false;
         overlay.classList.remove('is-visible');
         overlay.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('card-modal-open');
         setBackgroundInert(false, overlay);
 
         if (cardModalPreviousFocus && document.contains(cardModalPreviousFocus)) {
-            cardModalPreviousFocus.focus({ preventScroll: true });
+            var shouldAvoidRestoringVisualFocus = Boolean(cardModalPreviousFocus.closest('.data-card, .call-number-link, .card-detail-link, [data-phone-card-modal="true"], [data-sim-card-modal="true"], [data-sim-history-modal="true"]'));
+            if (shouldAvoidRestoringVisualFocus) {
+                cardModalPreviousFocus.blur();
+            } else {
+                cardModalPreviousFocus.focus({ preventScroll: true });
+            }
         }
         cardModalPreviousFocus = null;
+        if (document.activeElement && document.activeElement !== document.body && document.activeElement.closest && document.activeElement.closest('.data-card, .card-modal-overlay')) {
+            document.activeElement.blur();
+        }
     }
 
     function goBackCardModal() {
@@ -879,10 +2732,11 @@
         if (wasVisible) {
             var currentCard = content.querySelector('.card-modal-card');
             if (currentCard) {
-                cardModalHistory.push(resetCardModalTransientState(currentCard.cloneNode(true)));
+                updateCardModalHistory(currentCard, card);
             }
         } else {
             cardModalHistory = [];
+            cardModalRootIsCall = getCardModalType(card) === 'call';
             if (document.activeElement instanceof HTMLElement) {
                 cardModalPreviousFocus = document.activeElement;
             }
@@ -997,6 +2851,75 @@
             });
     }
 
+    function openSimHistoryFromLink(link) {
+        if (!window.fetch || !window.URL) {
+            window.location.href = link.href;
+            return;
+        }
+
+        var requestUrl = new URL(link.href, window.location.href);
+        requestUrl.searchParams.set('ajax_rows', '1');
+        requestUrl.searchParams.set('limit', '60');
+        requestUrl.searchParams.set('offset', '0');
+        requestUrl.searchParams.set('stato', 'disattive');
+
+        setPhoneCardLinkLoading(link, true);
+
+        fetch(requestUrl.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+            .then(function (response) {
+                if (!response.ok) {
+                    throw new Error('Risposta non valida');
+                }
+                return response.json();
+            })
+            .then(function (payload) {
+                var wrapper = document.createElement('div');
+                wrapper.innerHTML = payload && payload.html ? payload.html : '';
+                var simCards = Array.prototype.slice.call(wrapper.querySelectorAll('.sim-card'));
+                if (simCards.length === 0) {
+                    throw new Error('SIM non trovate');
+                }
+
+                var group = document.createElement('div');
+                group.className = 'card-modal-card-group';
+                group.setAttribute('aria-label', 'SIM precedenti collegate al numero');
+                simCards.forEach(function (card) {
+                    card.classList.remove('expandable-card');
+                    card.removeAttribute('data-expandable-card');
+                    card.removeAttribute('tabindex');
+                    card.removeAttribute('role');
+                    card.removeAttribute('aria-label');
+                    group.appendChild(card);
+                });
+                openCardModal(group);
+            })
+            .catch(function () {
+                window.location.href = link.href;
+            })
+            .finally(function () {
+                setPhoneCardLinkLoading(link, false);
+            });
+    }
+
+    function initSimHistoryModalLinks(root) {
+        var scope = root || document;
+        scope.querySelectorAll('[data-sim-history-modal="true"]:not([data-sim-history-modal-ready="true"])').forEach(function (link) {
+            link.dataset.simHistoryModalReady = 'true';
+            link.addEventListener('click', function (event) {
+                if (shouldKeepDefaultLinkNavigation(event)) {
+                    return;
+                }
+                event.preventDefault();
+                event.stopPropagation();
+                openSimHistoryFromLink(link);
+            });
+        });
+    }
+
     function initPhoneCardModalLinks(root) {
         var scope = root || document;
         scope.querySelectorAll('[data-phone-card-modal="true"]:not([data-phone-card-modal-ready="true"])').forEach(function (link) {
@@ -1066,7 +2989,7 @@
             return null;
         }
 
-        /* La vista a schede Ã¨ nascosta quando l'utente usa la vista tabellare.
+        /* La vista a schede è nascosta quando l'utente usa la vista tabellare.
            Per aprire comunque il dettaglio della riga, qui non possiamo usare
            getBoundingClientRect(): le card nascoste avrebbero altezza 0 e quindi
            non verrebbero trovate. Manteniamo l'allineamento riga-card per indice. */
@@ -1081,7 +3004,7 @@
     }
 
     function isTableRowModalAction(target) {
-        return Boolean(target.closest('button, input, select, textarea, label, .table-action-group, .action-disable-sim, .action-edit-sim, .action-delete-sim, [data-card-modal-exclude="true"]'));
+        return Boolean(target.closest('a[data-phone-card-modal="true"], a[data-sim-card-modal="true"], a[data-sim-history-modal="true"], button, input, select, textarea, label, .table-action-group, .action-disable-sim, .action-edit-sim, .action-delete-sim, [data-card-modal-exclude="true"]'));
     }
 
     function initTableRowModals(root) {
@@ -1319,7 +3242,7 @@
             label.textContent = normalizedView === 'table' ? 'Vista a schede' : 'Vista tabellare';
         }
         if (icon) {
-            icon.textContent = normalizedView === 'table' ? 'â–¦' : 'â–¤';
+            icon.textContent = normalizedView === 'table' ? '▦' : '▤';
         }
         if (persist) {
             storeResultsView(normalizedView);
@@ -1354,15 +3277,21 @@
         }
 
         var counter = nav.querySelector('[data-results-counter="true"]');
+        var firstButton = nav.querySelector('[data-results-first="true"]');
         var prevButton = nav.querySelector('[data-results-page-prev="true"]');
         var nextButton = nav.querySelector('[data-results-page-next="true"]');
-        var total = parseInt(container.dataset.totalCount || '0', 10);
+        var lastButton = nav.querySelector('[data-results-last="true"]');
+        var totalRaw = container.dataset.totalCount || '';
+        var countPending = container.dataset.countPending === '1';
+        var totalKnown = !countPending && totalRaw !== '';
+        var total = totalKnown ? parseInt(totalRaw, 10) : 0;
         var loaded = getLoadedResultsCountForView(root);
         var prevOffset = parseInt(container.dataset.prevOffset || '0', 10);
         var nextOffset = parseInt(container.dataset.nextOffset || String(prevOffset + loaded), 10);
 
         if (!Number.isFinite(total) || total < 0) {
             total = 0;
+            totalKnown = false;
         }
         if (!Number.isFinite(prevOffset) || prevOffset < 0) {
             prevOffset = 0;
@@ -1371,12 +3300,14 @@
             nextOffset = prevOffset + loaded;
         }
 
-        var start = total === 0 || loaded === 0 ? 0 : prevOffset + 1;
-        var end = total === 0 || loaded === 0 ? 0 : Math.min(total, nextOffset);
+        var start = loaded === 0 ? 0 : prevOffset + 1;
+        var end = loaded === 0 ? 0 : (totalKnown ? Math.min(total, nextOffset) : nextOffset);
 
         if (counter) {
-            if (total === 0) {
+            if (loaded === 0 && (!totalKnown || total === 0)) {
                 counter.textContent = '0 risultati';
+            } else if (!totalKnown) {
+                counter.textContent = 'Calcolo totale…';
             } else {
                 counter.textContent = start + '-' + end + ' di ' + total + ' risultati';
             }
@@ -1385,6 +3316,10 @@
         var canMovePrev = container.scrollTop > 4 || container.dataset.hasPrev === '1';
         var canMoveNext = (container.scrollTop + container.clientHeight) < (container.scrollHeight - 4) || container.dataset.hasMore === '1';
 
+        if (firstButton) {
+            firstButton.disabled = !canMovePrev;
+            firstButton.setAttribute('aria-disabled', canMovePrev ? 'false' : 'true');
+        }
         if (prevButton) {
             prevButton.disabled = !canMovePrev;
             prevButton.setAttribute('aria-disabled', canMovePrev ? 'false' : 'true');
@@ -1392,6 +3327,12 @@
         if (nextButton) {
             nextButton.disabled = !canMoveNext;
             nextButton.setAttribute('aria-disabled', canMoveNext ? 'false' : 'true');
+        }
+        if (lastButton) {
+            var canJumpLast = totalKnown && canMoveNext;
+            lastButton.disabled = !canJumpLast;
+            lastButton.setAttribute('aria-disabled', canJumpLast ? 'false' : 'true');
+            lastButton.title = totalKnown ? 'Vai all\'ultimo risultato' : 'Calcolo del totale in corso';
         }
     }
 
@@ -1407,8 +3348,23 @@
             if (!nav.dataset.resultsNavigationReady) {
                 nav.dataset.resultsNavigationReady = 'true';
 
+                var firstButton = nav.querySelector('[data-results-first="true"]');
                 var prevButton = nav.querySelector('[data-results-page-prev="true"]');
                 var nextButton = nav.querySelector('[data-results-page-next="true"]');
+                var lastButton = nav.querySelector('[data-results-last="true"]');
+
+                if (firstButton) {
+                    firstButton.addEventListener('click', function () {
+                        if (firstButton.disabled || !(window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function')) {
+                            return;
+                        }
+                        firstButton.classList.add('is-working');
+                        window.ProgWeb.resetResultsToFirstBlock(container).finally(function () {
+                            firstButton.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                        });
+                    });
+                }
 
                 if (prevButton) {
                     prevButton.addEventListener('click', function () {
@@ -1456,6 +3412,19 @@
                     });
                 }
 
+                if (lastButton) {
+                    lastButton.addEventListener('click', function () {
+                        if (lastButton.disabled || !(window.ProgWeb && typeof window.ProgWeb.jumpResultsToLastBlock === 'function')) {
+                            return;
+                        }
+                        lastButton.classList.add('is-working');
+                        window.ProgWeb.jumpResultsToLastBlock(container).finally(function () {
+                            lastButton.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                        });
+                    });
+                }
+
                 container.addEventListener('scroll', function () {
                     window.requestAnimationFrame(function () {
                         updateResultsNavigation(viewRoot);
@@ -1487,7 +3456,10 @@
 
         var canScroll = container.scrollHeight > container.clientHeight + 24;
         var loadedResults = getLoadedResultsCountForView(viewRoot);
-        var shouldShow = canScroll && loadedResults >= 15 && container.scrollTop > getResultsScrollTopThreshold(container);
+        var isRemoteBlock = container.dataset.fromEnd === '1' || parseInt(container.dataset.prevOffset || '0', 10) > 0;
+        var shouldShow = (canScroll || isRemoteBlock)
+            && (loadedResults >= 15 || isRemoteBlock)
+            && (container.scrollTop > getResultsScrollTopThreshold(container) || isRemoteBlock);
         button.classList.toggle('is-visible', shouldShow);
         button.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
         button.tabIndex = shouldShow ? 0 : -1;
@@ -1511,13 +3483,13 @@
                 button.setAttribute('title', "Torna all'inizio dei risultati");
                 button.setAttribute('aria-hidden', 'true');
                 button.tabIndex = -1;
-                button.innerHTML = '<img src="assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">';
+                button.innerHTML = '<img src="/static/assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">';
                 viewRoot.appendChild(button);
             }
 
             if (!button.querySelector('.results-scroll-top-icon')) {
                 button.textContent = '';
-                button.insertAdjacentHTML('beforeend', '<img src="assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">');
+                button.insertAdjacentHTML('beforeend', '<img src="/static/assets/images/icons/scroll-top-arrow.png?v=1" class="results-scroll-top-icon" alt="" aria-hidden="true">');
             }
 
             if (button.dataset.resultsScrollTopReady !== 'true') {
@@ -1531,28 +3503,33 @@
                     button.disabled = true;
                     button.classList.add('is-working');
 
-                    var needsFirstBlock = container.dataset.hasPrev === '1' || parseInt(container.dataset.prevOffset || '0', 10) > 0;
-                    var delay = container.scrollTop > 8 ? 460 : 120;
+                    var needsFirstBlock = container.dataset.fromEnd === '1'
+                        || container.dataset.hasPrev === '1'
+                        || parseInt(container.dataset.prevOffset || '0', 10) > 0;
 
-                    container.scrollTo({ top: 0, behavior: 'smooth' });
+                    var resetPromise = Promise.resolve(false);
+                    if (needsFirstBlock && window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function') {
+                        /* Quando siamo molto lontani dall'inizio sostituiamo subito
+                           il blocco corrente: uno scroll animato attraverso milioni
+                           di record attiverebbe caricamenti intermedi inutili. */
+                        resetPromise = window.ProgWeb.resetResultsToFirstBlock(container);
+                    } else {
+                        container.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
 
-                    window.setTimeout(function () {
-                        var resetPromise = Promise.resolve(false);
-                        if (needsFirstBlock && window.ProgWeb && typeof window.ProgWeb.resetResultsToFirstBlock === 'function') {
-                            resetPromise = window.ProgWeb.resetResultsToFirstBlock(container);
-                        }
-
-                        resetPromise.finally(function () {
-                            container.scrollTo({ top: 0, behavior: 'smooth' });
-                            window.setTimeout(function () {
-                                delete container.dataset.returningTop;
-                                button.disabled = false;
-                                button.classList.remove('is-working');
-                                updateResultsNavigation(viewRoot);
-                                updateResultsScrollTopControl(viewRoot);
-                            }, 260);
+                    resetPromise.finally(function () {
+                        container.scrollTop = 0;
+                        window.requestAnimationFrame(function () {
+                            container.scrollTop = 0;
                         });
-                    }, delay);
+                        window.setTimeout(function () {
+                            delete container.dataset.returningTop;
+                            button.disabled = false;
+                            button.classList.remove('is-working');
+                            updateResultsNavigation(viewRoot);
+                            updateResultsScrollTopControl(viewRoot);
+                        }, 180);
+                    });
                 });
             }
 
@@ -1669,6 +3646,11 @@
             return;
         }
 
+        if (link.matches('[data-sim-history-modal="true"]')) {
+            openSimHistoryFromLink(link);
+            return;
+        }
+
         if (link.matches('[data-phone-card-modal="true"]')) {
             openPhoneCardFromCallLink(link);
             return;
@@ -1711,6 +3693,11 @@
                     return;
                 }
 
+                if (link.matches('[data-sim-history-modal="true"]')) {
+                    openSimHistoryFromLink(link);
+                    return;
+                }
+
                 if (link.matches('[data-phone-card-modal="true"]')) {
                     openPhoneCardFromCallLink(link);
                     return;
@@ -1721,14 +3708,677 @@
         });
     }
 
+
+    function initDashboardQuickSearchReset(root) {
+        var scope = root || document;
+        var input = scope.querySelector('#ricerca_globale');
+
+        if (!input || input.dataset.dashboardResetReady === 'true') {
+            return;
+        }
+
+        input.dataset.dashboardResetReady = 'true';
+
+        function clearPreviousResultsWhenEmpty() {
+            if ((input.value || '').trim() !== '') {
+                return;
+            }
+
+            var layout = input.closest('.dashboard-search-layout');
+            if (!layout) {
+                return;
+            }
+
+            var output = layout.querySelector('.dashboard-search-output');
+            if (output) {
+                output.innerHTML = '<div class="dashboard-search-placeholder">I risultati o gli eventuali suggerimenti di correzione appariranno qui durante la digitazione.</div>';
+            }
+        }
+
+        input.addEventListener('input', clearPreviousResultsWhenEmpty);
+        input.addEventListener('change', clearPreviousResultsWhenEmpty);
+    }
+
+
+    /* =========================================================
+       Stato dei filtri e posizione dei risultati nella sessione
+       ========================================================= */
+    var FILTER_SESSION_PREFIX = 'progweb:filter-session:v1:';
+    var filterDefaultStates = new WeakMap();
+    var pendingFilterRestores = Object.create(null);
+    var filterSaveTimers = new WeakMap();
+    var filterSessionGlobalsReady = false;
+
+    function getFilterSessionStorageKey(form) {
+        var key = form ? (form.dataset.filterSessionKey || '') : '';
+        return key ? FILTER_SESSION_PREFIX + key : '';
+    }
+
+    function readFilterSessionState(form) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return null;
+        }
+        try {
+            var parsed = JSON.parse(window.sessionStorage.getItem(key) || 'null');
+            return parsed && typeof parsed === 'object' ? parsed : null;
+        } catch (error) {
+            window.sessionStorage.removeItem(key);
+            return null;
+        }
+    }
+
+    function writeFilterSessionState(form, state) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(key, JSON.stringify(state));
+        } catch (error) {
+            /* Il sito resta pienamente utilizzabile anche se lo storage non e disponibile. */
+        }
+    }
+
+    function removeFilterSessionState(form) {
+        var key = getFilterSessionStorageKey(form);
+        if (!key || !window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.removeItem(key);
+        } catch (error) {
+            /* Nessuna azione necessaria. */
+        }
+    }
+
+    function isPersistableFilterControl(control) {
+        if (!control || !control.name || control.matches('[data-export-submit="true"]')) {
+            return false;
+        }
+        var type = (control.type || '').toLowerCase();
+        return ['submit', 'button', 'reset', 'image', 'file'].indexOf(type) === -1;
+    }
+
+    function captureFilterValues(form) {
+        var values = Object.create(null);
+        if (!form) {
+            return values;
+        }
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (!isPersistableFilterControl(control)) {
+                return;
+            }
+            var name = control.name;
+            if (!Object.prototype.hasOwnProperty.call(values, name)) {
+                values[name] = [];
+            }
+
+            var type = (control.type || '').toLowerCase();
+            if (type === 'checkbox' || type === 'radio') {
+                if (control.checked) {
+                    values[name].push(control.value);
+                }
+                return;
+            }
+
+            if (control instanceof HTMLSelectElement && control.multiple) {
+                Array.prototype.forEach.call(control.options, function (option) {
+                    if (option.selected) {
+                        values[name].push(option.value);
+                    }
+                });
+                return;
+            }
+
+            values[name] = [control.value || ''];
+        });
+
+        return values;
+    }
+
+    function applyFilterValues(form, values) {
+        if (!form || !values || typeof values !== 'object') {
+            return;
+        }
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (!isPersistableFilterControl(control) || !Object.prototype.hasOwnProperty.call(values, control.name)) {
+                return;
+            }
+            var savedValues = Array.isArray(values[control.name]) ? values[control.name] : [values[control.name]];
+            var type = (control.type || '').toLowerCase();
+
+            if (type === 'checkbox' || type === 'radio') {
+                control.checked = savedValues.indexOf(control.value) !== -1;
+                return;
+            }
+
+            if (control instanceof HTMLSelectElement && control.multiple) {
+                Array.prototype.forEach.call(control.options, function (option) {
+                    option.selected = savedValues.indexOf(option.value) !== -1;
+                });
+                return;
+            }
+
+            control.value = savedValues.length ? savedValues[0] : '';
+        });
+    }
+
+    function canonicalFilterDefaults(form) {
+        var defaults = captureFilterValues(form);
+        if (!form) {
+            return defaults;
+        }
+
+        var overrides = {};
+        if (form.id === 'contratti-filter') {
+            overrides = {
+                numero: [''],
+                stato_numero: [''],
+                data_da: [''],
+                data_a: [''],
+                tipo: [''],
+                residuo: [''],
+                min_chiamate: [''],
+                min_chiamate_custom: [''],
+                durata_preset: [''],
+                durata_ore: [''],
+                durata_min: [''],
+                durata_sec: [''],
+                ordine: ['recenti']
+            };
+        } else if (form.id === 'telefonate-filter') {
+            overrides = {
+                contratto: [''],
+                stato_numero: [''],
+                data_da: [''],
+                data_a: [''],
+                ora_da: [''],
+                ora_a: [''],
+                durata_preset: [''],
+                durata_ore: [''],
+                durata_min: [''],
+                durata_sec: [''],
+                piano: [''],
+                costo_max: [''],
+                ordine: ['recenti']
+            };
+        } else if (form.id === 'sim-filter') {
+            overrides = {
+                stato: ['tutte'],
+                'sim_states[]': ['attive', 'disponibili', 'disattive'],
+                codice: [''],
+                numero: [''],
+                data_da: [''],
+                data_a: [''],
+                tipoSIM: [''],
+                piano: [''],
+                ordine_sim: ['nessuno']
+            };
+        }
+
+        Object.keys(overrides).forEach(function (name) {
+            if (Object.prototype.hasOwnProperty.call(defaults, name)) {
+                defaults[name] = overrides[name].slice();
+            }
+        });
+        return defaults;
+    }
+
+    function formHasExplicitUrlFilters(form) {
+        if (!form || !window.location.search || typeof URLSearchParams === 'undefined') {
+            return false;
+        }
+
+        var controlNames = Object.create(null);
+        Array.prototype.forEach.call(form.elements, function (control) {
+            if (isPersistableFilterControl(control)) {
+                controlNames[control.name] = true;
+            }
+        });
+
+        var params = new URLSearchParams(window.location.search);
+        var hasExplicitFilter = false;
+        params.forEach(function (_value, key) {
+            if (controlNames[key]) {
+                hasExplicitFilter = true;
+            }
+        });
+        return hasExplicitFilter;
+    }
+
+    function stableFilterValuesString(values) {
+        var normalized = {};
+        Object.keys(values || {}).sort().forEach(function (key) {
+            normalized[key] = (values[key] || []).slice().sort();
+        });
+        return JSON.stringify(normalized);
+    }
+
+    function updateFilterResetButton(form) {
+        if (!form) {
+            return;
+        }
+        var button = form.querySelector('[data-filter-reset="true"]');
+        var defaults = filterDefaultStates.get(form);
+        if (!button || !defaults) {
+            return;
+        }
+        var isDefault = stableFilterValuesString(captureFilterValues(form)) === stableFilterValuesString(defaults);
+        button.disabled = isDefault;
+        button.classList.toggle('is-disabled', isDefault);
+        button.setAttribute('aria-disabled', isDefault ? 'true' : 'false');
+    }
+
+    function getResultsRootForFilterForm(form) {
+        var selector = form ? (form.dataset.updateTarget || '') : '';
+        return selector ? document.querySelector(selector) : null;
+    }
+
+    function getActiveLazyList(container) {
+        if (!container) {
+            return null;
+        }
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        var currentView = viewRoot ? (viewRoot.dataset.currentView || 'cards') : 'cards';
+        var listType = currentView === 'table' ? 'table' : 'cards';
+        return container.querySelector('[data-view-panel="' + currentView + '"] [data-lazy-list="' + listType + '"]')
+            || container.querySelector('[data-lazy-list="' + listType + '"]');
+    }
+
+    function getResultsContentTop(container) {
+        var rect = container.getBoundingClientRect();
+        var viewRoot = container.closest('[data-results-view-root="true"]');
+        if (viewRoot && viewRoot.dataset.currentView === 'table') {
+            var head = container.querySelector('[data-view-panel="table"] thead');
+            if (head) {
+                return rect.top + head.getBoundingClientRect().height;
+            }
+        }
+        return rect.top;
+    }
+
+    function captureFilterResultsPosition(form) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container) {
+            return {
+                anchorOffset: 0,
+                anchorViewportOffset: 0,
+                scrollTop: 0,
+                scrollLeft: 0,
+                windowScrollX: window.pageXOffset || 0,
+                windowScrollY: window.pageYOffset || 0
+            };
+        }
+
+        var list = getActiveLazyList(container);
+        var items = list ? Array.prototype.slice.call(list.children) : [];
+        var contentTop = getResultsContentTop(container);
+        var containerRect = container.getBoundingClientRect();
+        var anchorIndex = 0;
+        var anchorViewportOffset = 0;
+
+        for (var index = 0; index < items.length; index += 1) {
+            var itemRect = items[index].getBoundingClientRect();
+            if (itemRect.bottom > contentTop + 1 && itemRect.top < containerRect.bottom) {
+                anchorIndex = index;
+                anchorViewportOffset = itemRect.top - contentTop;
+                break;
+            }
+        }
+
+        var loadedStart = parseInt(container.dataset.prevOffset || '0', 10);
+        if (!Number.isFinite(loadedStart) || loadedStart < 0) {
+            loadedStart = 0;
+        }
+        var totalCount = parseInt(container.dataset.totalCount || '0', 10);
+
+        return {
+            anchorOffset: loadedStart + anchorIndex,
+            anchorViewportOffset: anchorViewportOffset,
+            scrollTop: container.scrollTop,
+            scrollLeft: container.scrollLeft,
+            windowScrollX: window.pageXOffset || 0,
+            windowScrollY: window.pageYOffset || 0,
+            fromEnd: container.dataset.fromEnd === '1',
+            totalCount: Number.isFinite(totalCount) ? totalCount : 0
+        };
+    }
+
+    function saveFilterSessionState(form, preserveStoredPosition) {
+        if (!form || form.dataset.sessionResetting === 'true') {
+            return;
+        }
+        var previous = readFilterSessionState(form) || {};
+        var position = preserveStoredPosition && previous.position
+            ? previous.position
+            : captureFilterResultsPosition(form);
+        writeFilterSessionState(form, {
+            fields: captureFilterValues(form),
+            position: position,
+            savedAt: Date.now()
+        });
+        updateFilterResetButton(form);
+    }
+
+    function scheduleFilterSessionSave(form) {
+        if (!form || form.dataset.sessionRestoring === 'true' || form.dataset.sessionResetting === 'true') {
+            return;
+        }
+        var previousTimer = filterSaveTimers.get(form);
+        if (previousTimer) {
+            window.clearTimeout(previousTimer);
+        }
+        var timer = window.setTimeout(function () {
+            filterSaveTimers.delete(form);
+            saveFilterSessionState(form, false);
+        }, 180);
+        filterSaveTimers.set(form, timer);
+    }
+
+    function synchronizeFilterFormUi(form) {
+        if (!form) {
+            return;
+        }
+
+        if (form.matches('.contratti-filter-form')) {
+            delete form.dataset.planAutoSet;
+            delete form.dataset.planPreviousValue;
+            var plan = form.querySelector('#tipo');
+            var residual = form.querySelector('#residuo');
+            if (plan) {
+                setDependencyLocked(plan, false);
+            }
+            if (residual) {
+                setSelectOptionDisabled(residual, [
+                    'credito_basso',
+                    'credito_disponibile',
+                    'minuti_bassi',
+                    'minuti_disponibili'
+                ], false);
+            }
+            applyPhonePlanResidualDependencies(form, null);
+            updatePhoneDateLabel(form);
+            updatePhoneOrderOptions(form);
+            var threshold = form.querySelector('[data-custom-threshold-select]');
+            if (threshold) {
+                toggleCustomThreshold(threshold, false);
+            }
+        }
+
+        if (form.matches('.sim-filter-form')) {
+            applySimState(form, getSelectedSimStates(form));
+        }
+
+        form.querySelectorAll('select').forEach(function (select) {
+            updateCustomSelect(select);
+        });
+        form.querySelectorAll('input[data-clearable="true"]').forEach(function (input) {
+            updateClearButton(input);
+        });
+        syncCustomPickers(form);
+        updateFilterResetButton(form);
+        updateStickyLayout();
+    }
+
+    function positionRestoredResults(form, position, startOffset) {
+        return new Promise(function (resolve) {
+            var resultsRoot = getResultsRootForFilterForm(form);
+            var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+            if (!container || !position) {
+                resolve(false);
+                return;
+            }
+
+            var list = getActiveLazyList(container);
+            var items = list ? Array.prototype.slice.call(list.children) : [];
+            var firstOffset = Number.isFinite(startOffset) ? startOffset : parseInt(container.dataset.prevOffset || '0', 10);
+            var itemIndex = Math.max(0, Math.min(items.length - 1, (parseInt(position.anchorOffset || '0', 10) || 0) - firstOffset));
+
+            container.scrollTop = 0;
+            container.scrollLeft = parseInt(position.scrollLeft || '0', 10) || 0;
+
+            window.requestAnimationFrame(function () {
+                if (items.length && items[itemIndex]) {
+                    var contentTop = getResultsContentTop(container);
+                    var currentOffset = items[itemIndex].getBoundingClientRect().top - contentTop;
+                    var desiredOffset = Number(position.anchorViewportOffset || 0);
+                    container.scrollTop = Math.max(0, container.scrollTop + currentOffset - desiredOffset);
+                } else {
+                    container.scrollTop = Math.max(0, parseInt(position.scrollTop || '0', 10) || 0);
+                }
+                container.scrollLeft = Math.max(0, parseInt(position.scrollLeft || '0', 10) || 0);
+                window.scrollTo(
+                    Math.max(0, parseInt(position.windowScrollX || '0', 10) || 0),
+                    Math.max(0, parseInt(position.windowScrollY || '0', 10) || 0)
+                );
+
+                window.requestAnimationFrame(function () {
+                    container.scrollLeft = Math.max(0, parseInt(position.scrollLeft || '0', 10) || 0);
+                    window.scrollTo(
+                        Math.max(0, parseInt(position.windowScrollX || '0', 10) || 0),
+                        Math.max(0, parseInt(position.windowScrollY || '0', 10) || 0)
+                    );
+                    resolve(true);
+                });
+            });
+        });
+    }
+
+    function restoreFilterResultsPosition(form, position) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container || !position) {
+            return Promise.resolve(false);
+        }
+
+        var anchorOffset = Math.max(0, parseInt(position.anchorOffset || '0', 10) || 0);
+        var restorePromise;
+        if (anchorOffset > 0 && window.ProgWeb && typeof window.ProgWeb.restoreResultsBlock === 'function') {
+            restorePromise = window.ProgWeb.restoreResultsBlock(container, position);
+        } else {
+            restorePromise = Promise.resolve({ ok: true, startOffset: 0 });
+        }
+
+        return restorePromise.then(function (result) {
+            var startOffset = result && Number.isFinite(result.startOffset) ? result.startOffset : 0;
+            return positionRestoredResults(form, position, startOffset).then(function () {
+                return Boolean(result && result.ok !== false);
+            });
+        });
+    }
+
+    function handleFilterReset(form) {
+        var defaults = filterDefaultStates.get(form);
+        if (!defaults) {
+            return;
+        }
+
+        form.dataset.sessionResetting = 'true';
+        form.dataset.sessionRestoring = 'false';
+        delete pendingFilterRestores[form.id];
+        removeFilterSessionState(form);
+        applyFilterValues(form, defaults);
+        synchronizeFilterFormUi(form);
+
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit();
+        } else {
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        }
+    }
+
+    function prepareFilterSessionForms(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-filter-session-key]:not([data-filter-session-ready="true"])').forEach(function (form) {
+            form.dataset.filterSessionReady = 'true';
+            filterDefaultStates.set(form, canonicalFilterDefaults(form));
+
+            var hasExplicitUrlFilters = formHasExplicitUrlFilters(form);
+            var saved = hasExplicitUrlFilters ? null : readFilterSessionState(form);
+            if (hasExplicitUrlFilters) {
+                /* I collegamenti interni e le ricerche frequenti devono prevalere
+                   sullo stato dei filtri precedentemente salvato nel browser. */
+                removeFilterSessionState(form);
+                form.dataset.filterSessionFromUrl = 'true';
+            } else if (saved && saved.fields) {
+                applyFilterValues(form, saved.fields);
+                pendingFilterRestores[form.id] = saved.position || null;
+                form.dataset.sessionRestoring = 'true';
+                form.dataset.filterSessionNeedsSync = 'true';
+            }
+
+            form.addEventListener('input', function () {
+                updateFilterResetButton(form);
+                scheduleFilterSessionSave(form);
+            });
+            form.addEventListener('change', function () {
+                updateFilterResetButton(form);
+                scheduleFilterSessionSave(form);
+            });
+            form.addEventListener('submit', function () {
+                if (form.dataset.sessionResetting === 'true') {
+                    return;
+                }
+                saveFilterSessionState(form, form.dataset.sessionRestoring === 'true');
+            });
+
+            var resetButton = form.querySelector('[data-filter-reset="true"]');
+            if (resetButton) {
+                resetButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    handleFilterReset(form);
+                });
+            }
+        });
+    }
+
+    function attachFilterPositionTracking(form) {
+        var resultsRoot = getResultsRootForFilterForm(form);
+        var container = resultsRoot ? resultsRoot.querySelector('[data-lazy-container="true"]') : null;
+        if (!container || container.dataset.filterPositionReady === 'true') {
+            return;
+        }
+        container.dataset.filterPositionReady = 'true';
+        container.addEventListener('scroll', function () {
+            scheduleFilterSessionSave(form);
+        }, { passive: true });
+    }
+
+    function finalizeFilterSessionForms(root) {
+        var scope = root || document;
+        scope.querySelectorAll('form[data-filter-session-key]').forEach(function (form) {
+            if (form.dataset.filterSessionNeedsSync === 'true') {
+                synchronizeFilterFormUi(form);
+                delete form.dataset.filterSessionNeedsSync;
+            } else {
+                updateFilterResetButton(form);
+            }
+            attachFilterPositionTracking(form);
+
+            if (Object.prototype.hasOwnProperty.call(pendingFilterRestores, form.id)
+                    && form.dataset.filterSessionRestoreStarted !== 'true') {
+                form.dataset.filterSessionRestoreStarted = 'true';
+                window.setTimeout(function () {
+                    if (typeof form.requestSubmit === 'function') {
+                        form.requestSubmit();
+                    } else {
+                        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+                    }
+                }, 0);
+            }
+        });
+    }
+
+    function saveAllFilterSessionStates() {
+        document.querySelectorAll('form[data-filter-session-key]').forEach(function (form) {
+            if (form.dataset.sessionRestoring !== 'true' && form.dataset.sessionResetting !== 'true') {
+                saveFilterSessionState(form, false);
+            }
+        });
+    }
+
+    function ensureFilterSessionGlobalListeners() {
+        if (filterSessionGlobalsReady) {
+            return;
+        }
+        filterSessionGlobalsReady = true;
+
+        document.addEventListener('progweb:ajax-results-updated', function (event) {
+            var detail = event.detail || {};
+            var form = detail.formId ? document.getElementById(detail.formId) : null;
+            if (!form || !form.matches('[data-filter-session-key]')) {
+                return;
+            }
+
+            attachFilterPositionTracking(form);
+
+            if (form.dataset.sessionResetting === 'true') {
+                var resetRoot = getResultsRootForFilterForm(form);
+                var resetContainer = resetRoot ? resetRoot.querySelector('[data-lazy-container="true"]') : null;
+                if (resetContainer) {
+                    resetContainer.scrollTop = 0;
+                    resetContainer.scrollLeft = 0;
+                }
+                form.dataset.sessionResetting = 'false';
+                delete form.dataset.filterSessionRestoreStarted;
+                removeFilterSessionState(form);
+                updateFilterResetButton(form);
+                return;
+            }
+
+            if (Object.prototype.hasOwnProperty.call(pendingFilterRestores, form.id)) {
+                var position = pendingFilterRestores[form.id];
+                delete pendingFilterRestores[form.id];
+                restoreFilterResultsPosition(form, position).finally(function () {
+                    form.dataset.sessionRestoring = 'false';
+                    delete form.dataset.filterSessionRestoreStarted;
+                    saveFilterSessionState(form, false);
+                });
+                return;
+            }
+
+            saveFilterSessionState(form, false);
+        });
+
+        var windowScrollTimer = null;
+        window.addEventListener('scroll', function () {
+            if (windowScrollTimer) {
+                window.clearTimeout(windowScrollTimer);
+            }
+            windowScrollTimer = window.setTimeout(saveAllFilterSessionStates, 220);
+        }, { passive: true });
+        window.addEventListener('pagehide', saveAllFilterSessionStates);
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                saveAllFilterSessionStates();
+            }
+        });
+    }
+
     function initDynamicBehaviors(root) {
         var scope = root || document;
+        ensureFilterSessionGlobalListeners();
+        prepareFilterSessionForms(scope);
         initAlerts(scope);
+        initScrollableSelects(scope);
+        initDurationControls(scope);
+        initCustomDatePickers(scope);
+        initCustomTimePickers(scope);
+        initPhonePlanResidualDependencies(scope);
+        initTrafficThresholdControls(scope);
+        initPhoneDateLabelControls(scope);
+        initPhoneTrafficOrderControls(scope);
         initSimStateControls(scope);
         initClearableInputs(scope);
+        initDashboardQuickSearchReset(scope);
         initSimCrudForms(scope);
         initPhoneCardModalLinks(scope);
         initSimCardModalLinks(scope);
+        initSimHistoryModalLinks(scope);
         initSimReturnLinks(scope);
         initResultsViewControls(scope);
         initClickableDetailTiles(scope);
@@ -1743,6 +4393,7 @@
         if (window.ProgWeb && typeof window.ProgWeb.initLazyTables === 'function') {
             window.ProgWeb.initLazyTables(scope);
         }
+        finalizeFilterSessionForms(scope);
     }
 
     window.ProgWeb = window.ProgWeb || {};
@@ -1780,6 +4431,9 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeCardModal();
+                closeAllSitePickers(null);
+                document.querySelectorAll('.custom-select.is-open').forEach(closeCustomSelect);
+                document.querySelectorAll('[data-sim-multi-select].is-open').forEach(closeSimMultiSelect);
             }
         });
     });

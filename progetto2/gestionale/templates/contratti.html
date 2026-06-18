@@ -1,148 +1,207 @@
 {% extends 'base.html' %}
-{% load static %}
-
+{% load gestionale_tags %}
 {% block content %}
 <h2>Ricerca numeri telefonici</h2>
 
 <div class="sticky-data-panel">
-    <div class="search-filter">
-        <form id="contratti-filter" class="d-flex flex-wrap align-items-end gap-3" method="GET" action="{% url 'lista_contratti' %}" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results">
-            
-            <div class="form-group mb-0">
-                <label for="numero">Numero di telefono:</label>
-                <input type="text" id="numero" name="numero" value="{{ request.GET.numero }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
-            </div>
-            
-            <div class="form-group mb-0">
-                <label for="tipo">Piano del numero:</label>
-                <select id="tipo" name="tipo">
-                    <option value="">Mostra tutti</option>
-                    <option value="consumo" {% if request.GET.tipo == 'consumo' %}selected{% endif %}>A consumo</option>
-                    <option value="ricarica" {% if request.GET.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
-                </select>
-            </div>
-            
-            <div class="form-group mb-0">
-                <label for="stato_numero">Stato del numero:</label>
-                <select id="stato_numero" name="stato_numero">
-                    <option value="">Mostra tutti</option>
-                    <option value="attivo" {% if request.GET.stato_numero == 'attivo' %}selected{% endif %}>Attivi</option>
-                    <option value="disattivato" {% if request.GET.stato_numero == 'disattivato' %}selected{% endif %}>Disattivati</option>
-                </select>
-            </div>
-            
-            <div class="form-group mb-0">
-                <label for="data_da">Attivata dal:</label>
-                <input type="date" id="data_da" name="data_da" value="{{ request.GET.data_da }}">
-            </div>
-            
-            <div class="form-group mb-0">
-                <label for="data_a">Attivata fino al:</label>
-                <input type="date" id="data_a" name="data_a" value="{{ request.GET.data_a }}">
-            </div>
-            
-            <div class="mb-0 ms-auto">
-                <button type="submit" class="btn">Cerca</button>
-            </div>
-        </form>
-    </div>
-
-    <div id="contratti-results" class="results-view-root" data-results-view-root="true" data-view-key="contratti" data-current-view="cards">
-        <div class="results-actions-row d-flex justify-content-between align-items-center" data-card-modal-exclude="true">
-            
-            <div class="results-navigation d-flex align-items-center" aria-label="Navigazione risultati">
-                <button type="button" class="results-page-button btn btn-sm" data-results-page-prev="true" aria-label="Scorri ai risultati precedenti">↑</button>
-                
-                <span class="results-counter mx-2 fw-bold">
-                    {% if contratti|length > 0 %}
-                        1-{% if contratti|length > 12 %}12{% else %}{{ contratti|length }}{% endif %} di {{ contratti|length }} risultati
-                    {% else %}
-                        0 risultati
-                    {% endif %}
-                </span>
-                
-                <button type="button" class="results-page-button btn btn-sm" data-results-page-next="true" aria-label="Scorri ai risultati successivi">↓</button>
-            </div>
-
-            <div class="results-tools d-flex gap-2" data-card-modal-exclude="true">
-                <button type="button" class="btn btn-view-toggle d-flex align-items-center" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
-                    <span data-view-toggle-text>Vista tabellare</span>
-                </button>
-                <button type="button" class="btn btn-export">Esporta in .CSV</button>
+<div class="search-filter">
+    <form id="contratti-filter" class="compact-filter-form contratti-filter-form" method="get" action="{% url 'lista_contratti' %}" data-plan-residual-sync="true" data-filter-session-key="contratti">
+        <div class="form-group phone-number-filter-group">
+            <label for="numero">Numero di telefono:</label>
+            <input type="text" id="numero" name="numero" value="{{ filters.numero }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
+        </div>
+        <div class="form-group phone-status-filter-group">
+            <label for="stato_numero">Stato del numero:</label>
+            <select id="stato_numero" name="stato_numero">
+                <option value="">Mostra tutti</option>
+                <option value="attivo" {% if filters.stato_numero == 'attivo' %}selected{% endif %}>Numeri attivi</option>
+                <option value="disattivato" {% if filters.stato_numero == 'disattivato' %}selected{% endif %}>Numeri disattivati</option>
+            </select>
+        </div>
+        <div class="form-group phone-date-filter-group range-filter-group">
+            <label data-phone-date-label>{% if filters.stato_numero == 'disattivato' %}Disattivato dal/al:{% else %}Attivato dal/al:{% endif %}</label>
+            <div class="range-pair compact-range-pair date-range-pair">
+                <input type="date" id="data_da" name="data_da" value="{{ filters.data_da }}" aria-label="Data inizio">
+                <span class="range-separator" aria-hidden="true">–</span>
+                <input type="date" id="data_a" name="data_a" value="{{ filters.data_a }}" aria-label="Data fine">
             </div>
         </div>
+        <div class="form-group phone-plan-filter-group">
+            <label for="tipo">Piano del numero:</label>
+            <select id="tipo" name="tipo">
+                <option value="">Mostra tutti</option>
+                <option value="consumo" {% if filters.tipo == 'consumo' %}selected{% endif %}>A consumo</option>
+                <option value="ricarica" {% if filters.tipo == 'ricarica' %}selected{% endif %}>Ricaricabile</option>
+            </select>
+        </div>
+        <div class="form-group residual-filter-group">
+            <label for="residuo">Disponibilità del piano:</label>
+            <select id="residuo" name="residuo" data-scroll-select="true">
+                <option value="">Tutti i piani</option>
+                <option value="esaurito" {% if filters.residuo == 'esaurito' %}selected{% endif %}>Piani esauriti</option>
+                <option value="credito_basso" {% if filters.residuo == 'credito_basso' %}selected{% endif %}>Ricaricabili: credito &lt; 5 €</option>
+                <option value="minuti_bassi" {% if filters.residuo == 'minuti_bassi' %}selected{% endif %}>A consumo: minuti &lt; 30</option>
+                <option value="credito_disponibile" {% if filters.residuo == 'credito_disponibile' %}selected{% endif %}>Ricaricabili: credito ≥ 5 €</option>
+                <option value="minuti_disponibili" {% if filters.residuo == 'minuti_disponibili' %}selected{% endif %}>A consumo: minuti ≥ 30</option>
+            </select>
+        </div>
+        <div class="form-group traffic-filter-group">
+            <label for="min_chiamate">Filtro chiamate:</label>
+            <select id="min_chiamate" name="min_chiamate" data-scroll-select="true" data-custom-threshold-select>
+                <option value="">Mostra tutti i numeri</option>
+                <option value="1" {% if filters.min_chiamate == '1' %}selected{% endif %}>Con almeno 1 chiamata</option>
+                <option value="50" {% if filters.min_chiamate == '50' %}selected{% endif %}>Con almeno 50 chiamate</option>
+                <option value="100" {% if filters.min_chiamate == '100' %}selected{% endif %}>Con almeno 100 chiamate</option>
+                <option value="custom" {% if filters.min_chiamate == 'custom' %}selected{% endif %}>Soglia personalizzata</option>
+            </select>
+            <div class="custom-threshold-inline{% if filters.min_chiamate != 'custom' %} is-hidden{% endif %}" data-custom-threshold-container>
+                <input type="text" id="min_chiamate_custom" name="min_chiamate_custom" value="{% if filters.min_chiamate == 'custom' %}{{ filters.min_chiamate_custom }}{% endif %}" placeholder="Scrivi numero minimo" inputmode="numeric" autocomplete="off" data-custom-threshold-input {% if filters.min_chiamate != 'custom' %}disabled{% endif %}>
+            </div>
+        </div>
+        <div class="form-group phone-duration-filter-group">
+            <label for="durata_preset">Durata minima chiamate:</label>
+            <div class="duration-smart-control{% if filters.durata_preset == 'custom' %} is-custom{% endif %}" data-duration-control>
+                <select id="durata_preset" name="durata_preset" data-scroll-select="true" data-duration-preset-select>
+                    <option value="" {% if not filters.durata_preset %}selected{% endif %}>Qualsiasi durata</option>
+                    <option value="30m" {% if filters.durata_preset == '30m' %}selected{% endif %}>Almeno 30 minuti</option>
+                    <option value="1h" {% if filters.durata_preset == '1h' %}selected{% endif %}>Almeno 1 ora</option>
+                    <option value="5h" {% if filters.durata_preset == '5h' %}selected{% endif %}>Almeno 5 ore</option>
+                    <option value="24h" {% if filters.durata_preset == '24h' %}selected{% endif %}>Almeno 24 ore</option>
+                    <option value="custom" {% if filters.durata_preset == 'custom' %}selected{% endif %}>Durata personalizzata…</option>
+                </select>
+                <div class="duration-custom-editor duration-range-control duration-three-part{% if filters.durata_preset != 'custom' %} is-hidden{% endif %}" data-duration-custom-panel aria-hidden="{% if filters.durata_preset == 'custom' %}false{% else %}true{% endif %}">
+                    <div class="duration-segment">
+                        <input type="text" id="durata_ore" name="durata_ore" value="{% if filters.durata_preset == 'custom' %}{{ filters.durata_ore }}{% endif %}" placeholder="Ore" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in ore" {% if filters.durata_preset != 'custom' %}disabled{% endif %}>
+                        <span class="duration-unit">h</span>
+                    </div>
+                    <span class="compound-control-divider" aria-hidden="true"></span>
+                    <div class="duration-segment">
+                        <input type="text" id="durata_min" name="durata_min" value="{% if filters.durata_preset == 'custom' %}{{ filters.durata_min }}{% endif %}" placeholder="Minuti" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in minuti" {% if filters.durata_preset != 'custom' %}disabled{% endif %}>
+                        <span class="duration-unit">min</span>
+                    </div>
+                    <span class="compound-control-divider" aria-hidden="true"></span>
+                    <div class="duration-segment">
+                        <input type="text" id="durata_sec" name="durata_sec" value="{% if filters.durata_preset == 'custom' %}{{ filters.durata_sec }}{% endif %}" placeholder="Secondi" inputmode="numeric" autocomplete="off" aria-label="Durata complessiva minima in secondi" {% if filters.durata_preset != 'custom' %}disabled{% endif %}>
+                        <span class="duration-unit">sec</span>
+                    </div>
+                    <button type="button" class="duration-custom-back" data-duration-custom-back aria-label="Torna alle soglie rapide" title="Torna alle soglie rapide">↩</button>
+                </div>
+            </div>
+        </div>
+        <div class="form-group order-filter-group">
+            <label for="ordine">Mostra prima:</label>
+            <select id="ordine" name="ordine" data-scroll-select="true">
+                <option value="recenti" {% if filters.ordine == 'recenti' %}selected{% endif %}>Numeri attivati più di recente</option>
+                <option value="disattivati_recenti" {% if filters.ordine == 'disattivati_recenti' %}selected{% endif %}>Numeri disattivati più di recente</option>
+                <option value="chiamate_crescenti" {% if filters.ordine == 'chiamate_crescenti' %}selected{% endif %}>Numeri con meno chiamate</option>
+                <option value="piu_chiamate" {% if filters.ordine == 'piu_chiamate' %}selected{% endif %}>Numeri con più chiamate</option>
+                <option value="maggiore_durata" {% if filters.ordine == 'maggiore_durata' %}selected{% endif %}>Numeri con più ore di chiamata</option>
+                <option value="maggiore_spesa" {% if filters.ordine == 'maggiore_spesa' %}selected{% endif %}>Numeri con maggior addebito</option>
+            </select>
+        </div>
+        <button type="button" class="btn btn-reset-filters" data-filter-reset="true">Azzera filtri</button>
+        <button type="submit" class="btn btn-filter-submit">Cerca</button>
+    </form>
+</div>
 
-        <div class="cards-container results-data-container">
-            {% if contratti %}
-                <div class="view-panel view-panel-cards" data-view-panel="cards">
-                    <div class="result-grid phone-card-grid row row-cols-1 row-cols-md-3 g-3 m-0">
-                        {% for contratto in contratti %}
-                        <div class="col p-1">
-                            <article class="data-card phone-card card h-100">
-                                <div class="card-header border-0 bg-transparent p-0 d-flex justify-content-between align-items-center">
-                                    <span class="card-kicker">Numero telefonico</span>
-                                    <span class="status-pill status-pill-number-active">Attivo</span>
-                                </div>
-                                <div class="card-main">
-                                    <h3 class="card-title card-title-mono">{{ contratto.numero }}</h3>
-                                </div>
-                                <dl class="card-detail-grid phone-detail-grid">
-                                    <div>
-                                        <dt>Piano</dt>
-                                        <dd>{{ contratto.get_tipo_display }}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</dt>
-                                        <dd>
-                                            {% if contratto.tipo == 'consumo' %}
-                                                {{ contratto.minutiResidui }} min
-                                            {% else %}
-                                                &euro; {{ contratto.creditoResiduo }}
-                                            {% endif %}
-                                        </dd>
-                                    </div>
-                                </dl>
-                                <div class="card-footer-actions mt-auto text-end">
-                                    <a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="btn btn-sm text-decoration-none">Storico</a>
-                                </div>
-                            </article>
+{% if search_errors %}<div class="alert alert-error">{{ search_errors|join:' ' }}</div>{% endif %}
+
+<div id="contratti-results" class="results-view-root" data-results-view-root="true" data-view-key="contratti" data-current-view="cards">
+    <div class="results-actions-row" data-card-modal-exclude="true">
+        {% include '_pagination.html' %}
+        <div class="results-tools" data-card-modal-exclude="true">
+            <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
+                <span class="view-toggle-icon" aria-hidden="true">▤</span>
+                <span data-view-toggle-text>Vista tabellare</span>
+            </button>
+            <button type="submit" form="contratti-filter" name="export" value="excel" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
+        </div>
+    </div>
+
+    <div class="cards-container results-data-container">
+        {% if contratti %}
+            <div class="view-panel view-panel-cards" data-view-panel="cards">
+                <div class="result-grid phone-card-grid{% if contratti|length == 1 %} is-single-result-grid{% endif %}">
+                    {% for contratto in contratti %}
+                    <article class="data-card phone-card {% if contratto.is_active %}phone-card-active-number{% else %}phone-card-disabled-number{% endif %} expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio del numero {{ contratto.numero }}">
+                        <div class="data-card-header phone-card-header">
+                            <div>
+                                <span class="card-kicker">Numero telefonico</span>
+                                <h3 class="card-title card-title-mono">{{ contratto.numero }}</h3>
+                            </div>
+                            <span class="status-pill {% if contratto.is_active %}status-pill-number-active{% else %}status-pill-number-disabled{% endif %}">{% if contratto.is_active %}Numero attivo{% else %}Numero disattivato{% endif %}</span>
                         </div>
-                        {% endfor %}
-                    </div>
+                        <div class="phone-plan-banner" aria-label="Piano tariffario del numero">
+                            <span>Piano tariffario</span>
+                            <strong>{{ contratto.get_tipo_display }}</strong>
+                        </div>
+                        <div class="card-primary-metric">
+                            <span>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</span>
+                            <strong>{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui|minutes_remaining }}{% else %}{{ contratto.creditoResiduo|euro }}{% endif %}</strong>
+                        </div>
+                        <dl class="card-detail-grid phone-detail-grid">
+                            <div class="card-detail-tile{% if not contratto.is_active %} phone-disabled-date-tile{% endif %}">
+                                <dt>{% if contratto.is_active %}Data attivazione{% else %}Data disattivazione{% endif %}</dt>
+                                <dd>{% if contratto.is_active %}{{ contratto.dataAttivazione|date:'d/m/Y' }}{% else %}{{ contratto.latest_disabled_date|date:'d/m/Y' }}{% endif %}</dd>
+                            </div>
+                            {% if not contratto.is_active %}
+                            <div class="card-detail-tile phone-activation-modal-only"><dt>Data attivazione</dt><dd>{{ contratto.dataAttivazione|date:'d/m/Y' }}</dd></div>
+                            {% endif %}
+                            {% if contratto.num_calls %}
+                            <div class="card-detail-tile card-detail-link phone-calls-tile">
+                                <dt><a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="tile-overlay-link" title="Visualizza le chiamate di questo numero telefonico">Chiamate registrate</a></dt>
+                                <dd>{{ contratto.num_calls|int_it }}</dd>
+                            </div>
+                            {% else %}<div class="card-detail-tile"><dt>Chiamate registrate</dt><dd>0</dd></div>{% endif %}
+                            <div class="card-detail-tile phone-duration-tile"><dt>Durata chiamate tot</dt><dd>{{ contratto.total_duration|duration_compact }}</dd></div>
+                            <div class="card-detail-tile phone-charge-tile"><dt>Addebiti totali</dt><dd>{{ contratto.total_cost|euro }}</dd></div>
+                            {% if contratto.active_sim_code %}
+                            <div class="card-detail-tile card-detail-link active-sim-tile{% if not contratto.disabled_count %} phone-sim-tile-single{% endif %}">
+                                <dt><a href="{% url 'gestione_sim' %}?sim_states=attive&amp;codice={{ contratto.active_sim_code }}" class="tile-overlay-link" title="Apri il dettaglio della SIM attualmente associata">SIM in uso</a></dt>
+                                <dd>{{ contratto.active_sim_code }}</dd>
+                            </div>
+                            {% endif %}
+                            {% if contratto.latest_disabled_code %}
+                            <div class="card-detail-tile card-detail-link disabled-sim-tile{% if contratto.disabled_count > 1 %} disabled-sim-tile-multiple{% endif %}{% if not contratto.active_sim_code %} phone-sim-tile-single{% endif %}">
+                                <dt><a href="{% url 'gestione_sim' %}?sim_states=disattive&amp;{% if contratto.disabled_count > 1 %}numero={{ contratto.numero }}{% else %}codice={{ contratto.latest_disabled_code }}{% endif %}" class="tile-overlay-link">{% if contratto.disabled_count > 1 %}SIM precedenti{% elif contratto.active_sim_code %}SIM precedente{% else %}SIM disattivata{% endif %}</a></dt>
+                                <dd>{% if contratto.disabled_count > 1 %}{{ contratto.disabled_count }} SIM disattivate nello storico{% else %}{{ contratto.latest_disabled_code }}{% endif %}</dd>
+                            </div>
+                            {% endif %}
+                        </dl>
+                    </article>
+                    {% endfor %}
                 </div>
-                
-                <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
-                    <div class="table-container table-container-inner table-responsive">
-                        <table class="data-table table table-striped table-hover align-middle">
-                            <thead>
-                                <tr>
-                                    <th class="identifier">Numero di telefono</th>
-                                    <th>Stato</th>
-                                    <th>Data attivazione</th>
-                                    <th>Piano</th>
-                                    <th class="numeric">Tempo residuo</th>
-                                    <th class="numeric">Credito residuo</th>
-                                </tr>
-                            </thead>
-                            <tbody data-lazy-list="table">
-                                {% for contratto in contratti %}
-                                <tr>
-                                    <td class="identifier">{{ contratto.numero }}</td>
-                                    <td><span class="status-pill status-pill-number-active">Attivo</span></td>
-                                    <td>{{ contratto.dataAttivazione|date:"d/m/Y" }}</td>
-                                    <td>{{ contratto.get_tipo_display }}</td>
-                                    <td class="numeric duration-value">{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui }} min{% else %}-{% endif %}</td>
-                                    <td class="numeric">{% if contratto.tipo == 'ricarica' %}&euro; {{ contratto.creditoResiduo }}{% else %}-{% endif %}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+            <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
+                <div class="table-container table-container-inner">
+                    <table class="data-table">
+                        <thead><tr>
+                            <th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero di telefono</th>
+                            <th class="table-align-left"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
+                            <th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
+                            <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                            <th class="numeric table-align-right"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Tempo residuo</th>
+                            <th class="numeric table-align-right"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Credito residuo</th>
+                            <th class="numeric table-align-right"><span class="table-header-icon table-icon-calls" aria-hidden="true"></span>Chiamate registrate</th>
+                            <th class="numeric table-align-right"><span class="table-header-icon table-icon-timer" aria-hidden="true"></span>Durata totale</th>
+                            <th class="numeric table-align-right"><span class="table-header-icon table-icon-money" aria-hidden="true"></span>Addebiti totali</th>
+                        </tr></thead>
+                        <tbody>{% for contratto in contratti %}<tr>
+                            <td class="identifier table-align-right">{{ contratto.numero }}</td>
+                            <td class="table-align-left"><span class="status-pill {% if contratto.is_active %}status-pill-number-active{% else %}status-pill-number-disabled{% endif %}">{% if contratto.is_active %}Numero attivo{% else %}Numero disattivato{% endif %}</span></td>
+                            <td class="table-align-right">{{ contratto.dataAttivazione|date:'d/m/Y' }}</td>
+                            <td class="table-align-left">{{ contratto.get_tipo_display }}</td>
+                            <td class="numeric duration-value table-align-right">{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui|minutes_remaining }}{% else %}-{% endif %}</td>
+                            <td class="numeric table-align-right">{% if contratto.tipo == 'ricarica' %}{{ contratto.creditoResiduo|euro }}{% else %}-{% endif %}</td>
+                            <td class="numeric table-align-right">{% if contratto.num_calls %}<a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}">{{ contratto.num_calls|int_it }} chiamate</a>{% else %}0{% endif %}</td>
+                            <td class="numeric duration-value table-align-right">{{ contratto.total_duration|duration_compact }}</td>
+                            <td class="numeric table-align-right">{{ contratto.total_cost|euro }}</td>
+                        </tr>{% endfor %}</tbody>
+                    </table>
                 </div>
-            {% else %}
-                <div class="alert alert-error">Nessun risultato trovato.</div>
-            {% endif %}
-        </div>
+            </div>
+        {% else %}<div class="alert alert-error">Nessun numero telefonico trovato con i criteri selezionati.</div>{% endif %}
     </div>
+</div>
 </div>
 {% endblock %}

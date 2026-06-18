@@ -5,48 +5,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Gestione Numeri Telefonici{% endblock %}</title>
-
     <link rel="icon" type="image/png" href="{% static 'assets/images/logo.png' %}">
-    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}">
+    <link rel="apple-touch-icon" href="{% static 'assets/images/logo.png' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap-integration.css' %}">
     <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
-
     <script src="{% static 'assets/js/main.js' %}" defer></script>
     <script src="{% static 'assets/js/ajax.js' %}" defer></script>
 </head>
 <body>
-    <header class="main-header">
-        <div class="header-content">
-            <img
-                src="{% static 'assets/images/logo.png' %}"
-                alt="Logo Gestione Numeri Telefonici"
-                title="Gestione Numeri Telefonici"
-                class="header-logo"
-            >
-            <div class="header-titles">
-                <h1>Gestione Numeri Telefonici</h1>
-                <p>Consultazione operativa di numeri telefonici, SIM e chiamate</p>
-            </div>
+<a class="visually-hidden-focusable" href="#main-content">Vai al contenuto principale</a>
+<header class="main-header">
+    <div class="header-content">
+        <img src="{% static 'assets/images/logo.png' %}" alt="Logo Gestione Numeri Telefonici, icona smartphone e SIM" title="Logo Gestione Numeri Telefonici" class="header-logo">
+        <div class="header-titles">
+            <h1>Gestione Numeri Telefonici</h1>
+            <p>Consultazione operativa di numeri telefonici, SIM e chiamate</p>
         </div>
-    </header>
-
-    <nav class="main-nav" aria-label="Navigazione principale">
-        <ul class="main-nav-list">
-            <li><a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Panoramica</a></li>
-            <li><a href="{% url 'lista_contratti' %}" class="{% if request.resolver_match.url_name == 'lista_contratti' %}active{% endif %}">Numeri telefonici</a></li>
-            <li><a href="{% url 'lista_telefonate' %}" class="{% if request.resolver_match.url_name == 'lista_telefonate' %}active{% endif %}">Chiamate</a></li>
-            <li><a href="{% url 'gestione_sim' %}" class="{% if request.resolver_match.url_name == 'gestione_sim' %}active{% endif %}">SIM</a></li>
-        </ul>
-    </nav>
-
-    <main class="content">
-        {% block content %}{% endblock %}
-    </main>
-
-    <footer>
-        <p>&copy; 2026 Gestione Numeri Telefonici</p>
-        <p class="disclaimer">
-            Progetto d'esame per il corso di Programmazione Web. I dati presenti sono puramente dimostrativi e non corrispondono a numeri telefonici, SIM o utenti reali. L'applicazione non rappresenta un servizio realmente operativo.
-        </p>
-    </footer>
+    </div>
+</header>
+<nav class="main-nav" aria-label="Navigazione principale">
+    <ul class="main-nav-list">
+        <li><a href="{% url 'home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">Panoramica</a></li>
+        <li><a href="{% url 'lista_contratti' %}" class="{% if request.resolver_match.url_name == 'lista_contratti' %}active{% endif %}">Numeri telefonici</a></li>
+        <li><a href="{% url 'lista_telefonate' %}" class="{% if request.resolver_match.url_name == 'lista_telefonate' %}active{% endif %}">Chiamate</a></li>
+        <li><a href="{% url 'gestione_sim' %}" class="{% if request.resolver_match.url_name|slice:':3' == 'sim' or request.resolver_match.url_name == 'gestione_sim' %}active{% endif %}">SIM</a></li>
+    </ul>
+</nav>
+<main class="content" id="main-content">
+    {% if messages %}
+        <div class="page-messages" aria-live="polite">
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-error{% endif %}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+</main>
+<footer>
+    <p>&copy; 2026 Gestione Numeri Telefonici</p>
+    <p class="disclaimer">Progetto d'esame per il corso di Programmazione Web. I dati presenti sono puramente dimostrativi e non corrispondono a numeri telefonici, SIM o utenti reali. L'applicazione non rappresenta un servizio realmente operativo.</p>
+</footer>
 </body>
 </html>

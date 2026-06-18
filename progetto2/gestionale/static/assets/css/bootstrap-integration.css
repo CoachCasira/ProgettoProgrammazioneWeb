@@ -1,0 +1,6 @@
+/*
+ * Bootstrap è integrato come supporto (utility, accessibilità e componenti)
+ * in un cascade layer a priorità inferiore. Il foglio personalizzato del
+ * Progetto 1 resta quindi la fonte principale della grafica.
+ */
+@import url("./bootstrap.min.css") layer(bootstrap);

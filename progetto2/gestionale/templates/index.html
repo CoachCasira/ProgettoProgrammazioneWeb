@@ -5,7 +5,7 @@
 <div class="dashboard-search-layout">
     <section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
         <div class="dashboard-section-heading"><div><h3 id="dashboard-search-title">Ricerca rapida</h3><p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p></div></div>
-        <form id="dashboard-search-form" class="dashboard-global-search" method="get" action="{% url 'home' %}">
+        <form id="dashboard-search-form" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="dashboard-global-search" method="get" action="{% url 'home' %}">
             <div class="form-group">
                 <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
                 <input type="text" id="ricerca_globale" name="ricerca_globale" value="{{ global_query }}" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">

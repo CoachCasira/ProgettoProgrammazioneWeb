@@ -1,0 +1,20 @@
+{% load gestionale_tags %}
+{% for call in chiamate %}
+<article class="data-card call-card expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio della chiamata effettuata da {{ call.effettuataDa_id }} il {{ call.data|date:'d/m/Y' }} alle {{ call.ora|time:'H:i' }}">
+    <div class="call-card-date">
+        <span>{{ call.data|date:'d/m/Y' }}</span>
+        <strong>{{ call.ora|time:'H:i' }}</strong>
+    </div>
+    <div class="call-card-main">
+        <a class="call-number-link" href="{% url 'lista_contratti' %}?numero={{ call.effettuataDa_id }}" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="{{ call.effettuataDa_id }}">
+            <span class="card-kicker">Numero chiamante</span>
+            <h3 class="card-title card-title-mono">{{ call.effettuataDa_id }}</h3>
+        </a>
+    </div>
+    <dl class="card-detail-grid call-detail-grid">
+        <div><dt>Durata</dt><dd>{{ call.durata|duration_compact }}</dd></div>
+        <div><dt>Piano</dt><dd>{% if call.effettuataDa.tipo == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</dd></div>
+        <div><dt>Addebito</dt><dd>{{ call.costo|euro }}</dd></div>
+    </dl>
+</article>
+{% endfor %}

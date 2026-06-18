@@ -5,7 +5,7 @@
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="sim-filter" class="compact-filter-form sim-filter-form" method="get" action="{% url 'gestione_sim' %}" data-sim-state-filter="true" data-filter-session-key="sim">
+    <form id="sim-filter" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="compact-filter-form sim-filter-form" method="get" action="{% url 'gestione_sim' %}" data-sim-state-filter="true" data-filter-session-key="sim">
         <div class="form-group sim-code-filter-group">
             <label for="codice">Codice SIM:</label>
             <input type="text" id="codice" name="codice" value="{{ filters.codice }}" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -90,7 +90,7 @@
             {% include '_pagination.html' %}
             <div class="sim-toolbar-title">{{ state_title }}</div>
         </div>
-        <div class="results-tools sim-results-tools">
+        <div class="results-tools sim-results-tools d-flex align-items-center gap-2 flex-wrap">
             <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
                 <span class="view-toggle-icon" aria-hidden="true">▤</span>
                 <span data-view-toggle-text>Vista tabellare</span>
@@ -100,44 +100,22 @@
         </div>
     </div>
 
-    <div class="cards-container results-data-container">
-        {% if sim_rows %}
+    <div class="cards-container results-data-container{% if sim_rows|length == 1 %} is-single-result-container{% endif %}"
+         data-lazy-container="true"
+         data-lazy-form="#sim-filter"
+         data-next-offset="{{ pager.end }}"
+         data-prev-offset="{{ pager.start }}"
+         data-has-prev="{% if pager.has_prev %}1{% else %}0{% endif %}"
+         data-limit="{{ pager.limit }}"
+         data-has-more="{% if pager.has_next %}1{% else %}0{% endif %}"
+         data-total-count="{{ total_count }}"
+         data-count-pending="0">
+        {% if search_errors %}
+            <div class="alert alert-error">{{ search_errors|join:' ' }}</div>
+        {% elif sim_rows %}
         <div class="view-panel view-panel-cards" data-view-panel="cards">
-            <div class="result-grid sim-card-grid">
-                {% for sim in sim_rows %}
-                    {% if sim.state == 'attive' %}
-                    <article class="data-card sim-card sim-card-active expandable-card" data-expandable-card="true" data-sim-code="{{ sim.codice }}" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM in uso {{ sim.codice }}">
-                        <div class="data-card-header"><div><span class="card-kicker">SIM in uso</span><h3 class="card-title card-title-mono">{{ sim.codice }}</h3></div><span class="status-pill status-pill-active">In uso</span></div>
-                        <dl class="card-detail-grid">
-                            <div class="card-detail-tile card-detail-link sim-phone-tile"><dt><a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" class="tile-overlay-link" title="Apri il dettaglio del numero telefonico associato">Numero associato</a></dt><dd>{{ sim.numero }}</dd></div>
-                            <div><dt>Data attivazione</dt><dd>{{ sim.activation|date:'d/m/Y' }}</dd></div>
-                            <div><dt>Formato SIM</dt><dd>{{ sim.tipoSIM }}</dd></div>
-                            <div><dt>Piano</dt><dd>{% if sim.plan == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</dd></div>
-                        </dl>
-                        <div class="card-actions"><a href="{% url 'sim_create' %}?codice={{ sim.codice }}" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a></div>
-                    </article>
-                    {% elif sim.state == 'disponibili' %}
-                    <article class="data-card sim-card sim-card-available expandable-card" data-expandable-card="true" data-sim-code="{{ sim.codice }}" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM disponibile {{ sim.codice }}">
-                        <div class="data-card-header"><div><span class="card-kicker">SIM disponibile</span><h3 class="card-title card-title-mono">{{ sim.codice }}</h3></div><span class="status-pill status-pill-available">Disponibile</span></div>
-                        <dl class="card-detail-grid card-detail-grid-compact">
-                            <div><dt>Formato SIM</dt><dd>{{ sim.tipoSIM }}</dd></div>
-                            <div><dt>Stato operativo</dt><dd>Non associata a un numero</dd></div>
-                        </dl>
-                    </article>
-                    {% else %}
-                    <article class="data-card sim-card sim-card-disabled expandable-card" data-expandable-card="true" data-sim-code="{{ sim.codice }}" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM disattivata {{ sim.codice }}">
-                        <div class="data-card-header"><div><span class="card-kicker">SIM disattivata</span><h3 class="card-title card-title-mono">{{ sim.codice }}</h3></div><span class="status-pill status-pill-disabled">Storico</span></div>
-                        <dl class="card-detail-grid">
-                            <div class="card-detail-tile card-detail-link sim-phone-tile"><dt><a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" class="tile-overlay-link" title="Apri il dettaglio del numero telefonico precedentemente associato">Numero precedente</a></dt><dd>{{ sim.numero }}</dd></div>
-                            <div class="sim-activation-modal-only"><dt>Data attivazione</dt><dd>{{ sim.activation|date:'d/m/Y' }}</dd></div>
-                            <div><dt>Data disattivazione</dt><dd>{{ sim.deactivation|date:'d/m/Y' }}</dd></div>
-                            <div><dt>Formato SIM</dt><dd>{{ sim.tipoSIM }}</dd></div>
-                            <div><dt>Piano</dt><dd>{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</dd></div>
-                        </dl>
-                        <div class="card-actions card-actions-split"><a href="{% url 'sim_edit' sim.codice %}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}" class="action-delete action-delete-sim">Elimina</a></div>
-                    </article>
-                    {% endif %}
-                {% endfor %}
+            <div class="result-grid sim-card-grid{% if sim_rows|length == 1 %} is-single-result-grid{% endif %}" data-lazy-list="cards">
+                {% include '_sim_cards.html' %}
             </div>
         </div>
 
@@ -154,16 +132,7 @@
                         <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
                         <th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th>
                     </tr></thead>
-                    <tbody>{% for sim in sim_rows %}<tr data-sim-code="{{ sim.codice }}">
-                        <td class="identifier sim-code-cell table-align-right">{{ sim.codice }}</td>
-                        <td class="table-align-center"><span class="status-pill {% if sim.state == 'attive' %}status-pill-active{% elif sim.state == 'disponibili' %}status-pill-available{% else %}status-pill-disabled{% endif %}">{% if sim.state == 'attive' %}In uso{% elif sim.state == 'disponibili' %}Disponibile{% else %}Storico{% endif %}</span></td>
-                        <td class="identifier sim-phone-table-cell table-align-right">{% if sim.numero %}<a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}">{{ sim.numero }}</a>{% else %}-{% endif %}</td>
-                        <td class="table-align-right">{% if sim.activation %}{{ sim.activation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-                        <td class="table-align-right">{% if sim.deactivation %}{{ sim.deactivation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-                        <td class="table-align-left">{{ sim.tipoSIM }}</td>
-                        <td class="table-align-left">{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</td>
-                        <td class="sim-actions-column table-align-center">{% if sim.state == 'attive' %}<a href="{% url 'sim_create' %}?codice={{ sim.codice }}" class="card-action-link action-disable-sim">Disattiva SIM</a>{% elif sim.state == 'disattive' %}<div class="table-action-group"><a href="{% url 'sim_edit' sim.codice %}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}" class="action-delete action-delete-sim">Elimina</a></div>{% else %}-{% endif %}</td>
-                    </tr>{% endfor %}</tbody>
+                    <tbody data-lazy-list="table">{% include '_sim_table_rows.html' %}</tbody>
                 </table>
             </div>
         </div>

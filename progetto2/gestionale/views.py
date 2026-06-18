@@ -9,6 +9,7 @@ from django.db import transaction
 from django.db.models import Max, Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 
@@ -43,6 +44,57 @@ def _query_without(request, *keys: str) -> str:
         params.pop(key, None)
     return params.urlencode()
 
+
+
+
+def _safe_int_param(request, name: str, default: int = 0, minimum: int = 0, maximum: int | None = None) -> int:
+    try:
+        value = int(request.GET.get(name, default))
+    except (TypeError, ValueError):
+        value = default
+    value = max(minimum, value)
+    if maximum is not None:
+        value = min(value, maximum)
+    return value
+
+
+def _lazy_window(total: int, request, default_limit: int = PAGE_SIZE) -> dict[str, int | bool]:
+    limit = _safe_int_param(request, "limit", default_limit, 1, 60)
+    reverse_offset = _safe_int_param(request, "reverse_offset", 0, 0)
+    if request.GET.get("jump_last") == "1":
+        start = max(0, total - reverse_offset - limit)
+    else:
+        start = _safe_int_param(request, "offset", 0, 0)
+        if start >= total:
+            start = max(0, total - limit)
+    end = min(total, start + limit)
+    return {
+        "start": start,
+        "end": end,
+        "limit": limit,
+        "has_prev": start > 0,
+        "has_next": end < total,
+        "next_offset": end,
+        "prev_offset": start,
+        "reverse_offset": reverse_offset + max(0, end - start),
+        "from_end": request.GET.get("jump_last") == "1",
+    }
+
+
+def _json_fragments(cards_template: str, table_template: str, context: dict, meta: dict) -> JsonResponse:
+    payload = {
+        "html": render_to_string(cards_template, context),
+        "table_html": render_to_string(table_template, context),
+        "has_more": bool(meta["has_next"]),
+        "has_prev": bool(meta["has_prev"]),
+        "next_offset": meta["next_offset"],
+        "prev_offset": meta["prev_offset"],
+        "from_end": bool(meta.get("from_end")),
+        "reverse_offset": meta.get("reverse_offset", 0),
+    }
+    if "total_count" in meta:
+        payload["total_count"] = meta["total_count"]
+    return JsonResponse(payload)
 
 def home(request):
     stats = StatisticheTelefonate.objects.filter(pk=1).first()
@@ -139,6 +191,15 @@ def lista_contratti(request):
         )
 
     total = 0 if errors else qs.count()
+    if request.GET.get("count_only") == "1":
+        return JsonResponse({"total_count": total})
+    if request.GET.get("ajax_rows") == "1":
+        meta = _lazy_window(total, request, PAGE_SIZE)
+        contracts = [] if errors else list(qs[meta["start"]:meta["end"]])
+        context = {"contratti": contracts, "total_count": total, "filters": filters, "search_errors": errors}
+        meta["total_count"] = total
+        return _json_fragments("_contratti_cards.html", "_contratti_table_rows.html", context, meta)
+
     window = page_window(total, _safe_page(request), PAGE_SIZE)
     contracts = [] if errors else list(qs[window["start"]:window["end"]])
     context = {
@@ -150,7 +211,6 @@ def lista_contratti(request):
         "query_string": _query_without(request, "page", "export"),
     }
     return render(request, "contratti.html", context)
-
 
 def lista_telefonate(request):
     qs, errors, filters, active_filters = call_queryset(request.GET)
@@ -188,6 +248,16 @@ def lista_telefonate(request):
         total = qs.count()
     else:
         total = stats.totaleTelefonate
+    if request.GET.get("count_only") == "1":
+        return JsonResponse({"total_count": total})
+    if request.GET.get("ajax_rows") == "1":
+        meta = _lazy_window(total, request, PAGE_SIZE)
+        calls = [] if errors else list(qs[meta["start"]:meta["end"]])
+        context = {"chiamate": calls, "total_count": total, "filters": filters, "search_errors": errors}
+        if not request.GET.get("skip_count") == "1":
+            meta["total_count"] = total
+        return _json_fragments("_telefonate_cards.html", "_telefonate_table_rows.html", context, meta)
+
     window = page_window(total, _safe_page(request), PAGE_SIZE)
     calls = [] if errors else list(qs[window["start"]:window["end"]])
     context = {
@@ -199,7 +269,6 @@ def lista_telefonate(request):
         "query_string": _query_without(request, "page", "export"),
     }
     return render(request, "telefonate.html", context)
-
 
 def gestione_sim(request):
     rows, errors, filters = sim_rows(request.GET)
@@ -227,8 +296,6 @@ def gestione_sim(request):
         )
 
     total = 0 if errors else len(rows)
-    window = page_window(total, _safe_page(request), PAGE_SIZE)
-    page_rows = [] if errors else rows[window["start"]:window["end"]]
     selected_states = filters["sim_states"]
     state_title = "Tutte le SIM"
     state_filter_label = "Mostra tutte"
@@ -246,11 +313,7 @@ def gestione_sim(request):
         state_filter_label = "SIM disattivate"
         sim_state_key = "disattive"
     elif len(selected_states) == 2:
-        labels = {
-            "attive": "SIM in uso",
-            "disponibili": "SIM disponibili",
-            "disattive": "SIM disattivate",
-        }
+        labels = {"attive": "SIM in uso", "disponibili": "SIM disponibili", "disattive": "SIM disattivate"}
         state_filter_label = " + ".join(labels[state] for state in selected_states)
 
     has_associated_state_filter = "attive" in selected_states or "disattive" in selected_states
@@ -262,22 +325,37 @@ def gestione_sim(request):
         sim_date_filter_label = "Attivata/disattivata dal/al:"
     sim_state_order_locked = filters["ordine_sim"] in {"attivate_recenti", "disattivate_recenti"}
 
-    context = {
-        "sim_rows": page_rows,
-        "total_count": total,
-        "pager": window,
-        "filters": filters,
-        "state_title": state_title,
-        "state_filter_label": state_filter_label,
-        "sim_state_key": sim_state_key,
-        "has_associated_state_filter": has_associated_state_filter,
-        "sim_date_filter_label": sim_date_filter_label,
-        "sim_state_order_locked": sim_state_order_locked,
-        "search_errors": errors,
-        "query_string": _query_without(request, "page", "export"),
-    }
-    return render(request, "sim.html", context)
+    def base_context(page_rows):
+        return {
+            "sim_rows": page_rows,
+            "total_count": total,
+            "filters": filters,
+            "state_title": state_title,
+            "state_filter_label": state_filter_label,
+            "sim_state_key": sim_state_key,
+            "has_associated_state_filter": has_associated_state_filter,
+            "sim_date_filter_label": sim_date_filter_label,
+            "sim_state_order_locked": sim_state_order_locked,
+            "search_errors": errors,
+        }
 
+    if request.GET.get("count_only") == "1":
+        return JsonResponse({"total_count": total})
+    if request.GET.get("ajax_rows") == "1":
+        meta = _lazy_window(total, request, PAGE_SIZE)
+        page_rows = [] if errors else rows[meta["start"]:meta["end"]]
+        context = base_context(page_rows)
+        meta["total_count"] = total
+        return _json_fragments("_sim_cards.html", "_sim_table_rows.html", context, meta)
+
+    window = page_window(total, _safe_page(request), PAGE_SIZE)
+    page_rows = [] if errors else rows[window["start"]:window["end"]]
+    context = base_context(page_rows)
+    context.update({
+        "pager": window,
+        "query_string": _query_without(request, "page", "export"),
+    })
+    return render(request, "sim.html", context)
 
 def _sim_payload(active: SIMAttiva) -> dict:
     latest_call = Telefonata.objects.filter(effettuataDa_id=active.associataA_id).aggregate(latest=Max("data"))["latest"]

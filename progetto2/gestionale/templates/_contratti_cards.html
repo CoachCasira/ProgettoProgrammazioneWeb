@@ -1,0 +1,47 @@
+{% load gestionale_tags %}
+{% for contratto in contratti %}
+<article class="data-card phone-card {% if contratto.is_active %}phone-card-active-number{% else %}phone-card-disabled-number{% endif %} expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio del numero {{ contratto.numero }}">
+    <div class="data-card-header phone-card-header">
+        <div>
+            <span class="card-kicker">Numero telefonico</span>
+            <h3 class="card-title card-title-mono">{{ contratto.numero }}</h3>
+        </div>
+        <span class="status-pill {% if contratto.is_active %}status-pill-number-active{% else %}status-pill-number-disabled{% endif %}">{% if contratto.is_active %}Numero attivo{% else %}Numero disattivato{% endif %}</span>
+    </div>
+    <div class="phone-plan-banner" aria-label="Piano tariffario del numero">
+        <span>Piano tariffario</span>
+        <strong>{{ contratto.get_tipo_display }}</strong>
+    </div>
+    <div class="card-primary-metric">
+        <span>{% if contratto.tipo == 'consumo' %}Tempo residuo{% else %}Credito residuo{% endif %}</span>
+        <strong>{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui|minutes_remaining }}{% else %}{{ contratto.creditoResiduo|euro }}{% endif %}</strong>
+    </div>
+    <dl class="card-detail-grid phone-detail-grid">
+        <div class="card-detail-tile{% if not contratto.is_active %} phone-disabled-date-tile{% endif %}">
+            <dt>{% if contratto.is_active %}Data attivazione{% else %}Data disattivazione{% endif %}</dt>
+            <dd>{% if contratto.is_active %}{{ contratto.dataAttivazione|date:'d/m/Y' }}{% else %}{{ contratto.latest_disabled_date|date:'d/m/Y' }}{% endif %}</dd>
+        </div>
+        {% if not contratto.is_active %}<div class="card-detail-tile phone-activation-modal-only"><dt>Data attivazione</dt><dd>{{ contratto.dataAttivazione|date:'d/m/Y' }}</dd></div>{% endif %}
+        {% if contratto.num_calls %}
+        <div class="card-detail-tile card-detail-link phone-calls-tile">
+            <dt><a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" class="tile-overlay-link" title="Visualizza le chiamate di questo numero telefonico">Chiamate registrate</a></dt>
+            <dd>{{ contratto.num_calls|int_it }}</dd>
+        </div>
+        {% else %}<div class="card-detail-tile"><dt>Chiamate registrate</dt><dd>0</dd></div>{% endif %}
+        <div class="card-detail-tile phone-duration-tile"><dt>Durata chiamate tot</dt><dd>{{ contratto.total_duration|duration_compact }}</dd></div>
+        <div class="card-detail-tile phone-charge-tile"><dt>Addebiti totali</dt><dd>{{ contratto.total_cost|euro }}</dd></div>
+        {% if contratto.active_sim_code %}
+        <div class="card-detail-tile card-detail-link active-sim-tile{% if not contratto.disabled_count %} phone-sim-tile-single{% endif %}">
+            <dt><a href="{% url 'gestione_sim' %}?sim_states=attive&amp;codice={{ contratto.active_sim_code }}" class="tile-overlay-link" title="Apri il dettaglio della SIM attualmente associata" data-sim-card-modal="true" data-sim-code="{{ contratto.active_sim_code }}">SIM in uso</a></dt>
+            <dd>{{ contratto.active_sim_code }}</dd>
+        </div>
+        {% endif %}
+        {% if contratto.latest_disabled_code %}
+        <div class="card-detail-tile card-detail-link disabled-sim-tile{% if contratto.disabled_count > 1 %} disabled-sim-tile-multiple{% endif %}{% if not contratto.active_sim_code %} phone-sim-tile-single{% endif %}">
+            <dt><a href="{% url 'gestione_sim' %}?sim_states=disattive&amp;{% if contratto.disabled_count > 1 %}numero={{ contratto.numero }}{% else %}codice={{ contratto.latest_disabled_code }}{% endif %}" class="tile-overlay-link" {% if contratto.disabled_count > 1 %}title="Visualizza tutte le SIM precedenti collegate a questo numero" data-sim-history-modal="true" data-phone-number="{{ contratto.numero }}"{% else %}title="Apri il dettaglio della SIM precedente collegata" data-sim-card-modal="true" data-sim-code="{{ contratto.latest_disabled_code }}"{% endif %}>{% if contratto.disabled_count > 1 %}SIM precedenti{% elif contratto.active_sim_code %}SIM precedente{% else %}SIM disattivata{% endif %}</a></dt>
+            <dd>{% if contratto.disabled_count > 1 %}{{ contratto.disabled_count }} SIM disattivate nello storico{% else %}{{ contratto.latest_disabled_code }}{% endif %}</dd>
+        </div>
+        {% endif %}
+    </dl>
+</article>
+{% endfor %}

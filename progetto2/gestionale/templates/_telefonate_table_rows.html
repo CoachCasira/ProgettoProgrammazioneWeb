@@ -1,0 +1,9 @@
+{% load gestionale_tags %}
+{% for call in chiamate %}<tr>
+    <td class="identifier table-align-right"><a href="{% url 'lista_contratti' %}?numero={{ call.effettuataDa_id }}" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="{{ call.effettuataDa_id }}">{{ call.effettuataDa_id }}</a></td>
+    <td class="table-align-right">{{ call.data|date:'d/m/Y' }}</td>
+    <td class="table-align-right">{{ call.ora|time:'H:i:s' }}</td>
+    <td class="numeric table-align-right">{{ call.durata|duration_compact }}</td>
+    <td class="table-align-left">{% if call.effettuataDa.tipo == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</td>
+    <td class="numeric table-align-right">{{ call.costo|euro }}</td>
+</tr>{% endfor %}

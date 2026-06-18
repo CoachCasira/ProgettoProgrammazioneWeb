@@ -5,7 +5,7 @@
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="telefonate-filter" class="compact-filter-form telefonate-filter-form" method="get" action="{% url 'lista_telefonate' %}" data-filter-session-key="telefonate">
+    <form id="telefonate-filter" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="compact-filter-form telefonate-filter-form" method="get" action="{% url 'lista_telefonate' %}" data-filter-session-key="telefonate">
         <div class="form-group call-number-filter-group">
             <label for="contratto">Numero chiamante:</label>
             <input type="text" id="contratto" name="contratto" value="{{ filters.contratto }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -99,7 +99,7 @@
 <div id="telefonate-results" class="results-view-root" data-results-view-root="true" data-view-key="telefonate" data-current-view="cards">
     <div class="results-actions-row" data-card-modal-exclude="true">
         {% include '_pagination.html' %}
-        <div class="results-tools" data-card-modal-exclude="true">
+        <div class="results-tools d-flex align-items-center gap-2 flex-wrap" data-card-modal-exclude="true">
             <button type="button" class="btn btn-view-toggle" data-view-toggle="true" aria-label="Cambia visualizzazione risultati">
                 <span class="view-toggle-icon" aria-hidden="true">▤</span>
                 <span data-view-toggle-text>Vista tabellare</span>
@@ -108,29 +108,22 @@
         </div>
     </div>
 
-    <div class="cards-container results-data-container">
-        {% if chiamate %}
+    <div class="cards-container results-data-container{% if chiamate|length == 1 %} is-single-result-container{% endif %}"
+         data-lazy-container="true"
+         data-lazy-form="#telefonate-filter"
+         data-next-offset="{{ pager.end }}"
+         data-prev-offset="{{ pager.start }}"
+         data-has-prev="{% if pager.has_prev %}1{% else %}0{% endif %}"
+         data-limit="{{ pager.limit }}"
+         data-has-more="{% if pager.has_next %}1{% else %}0{% endif %}"
+         data-total-count="{{ total_count }}"
+         data-count-pending="0">
+        {% if search_errors %}
+            <div class="alert alert-error">{{ search_errors|join:' ' }}</div>
+        {% elif chiamate %}
         <div class="view-panel view-panel-cards" data-view-panel="cards">
-            <div class="result-grid call-card-grid">
-                {% for call in chiamate %}
-                <article class="data-card call-card expandable-card" data-expandable-card="true" tabindex="0" role="button" aria-label="Apri il dettaglio della chiamata effettuata da {{ call.effettuataDa_id }} il {{ call.data|date:'d/m/Y' }} alle {{ call.ora|time:'H:i' }}">
-                    <div class="call-card-date">
-                        <span>{{ call.data|date:'d/m/Y' }}</span>
-                        <strong>{{ call.ora|time:'H:i' }}</strong>
-                    </div>
-                    <div class="call-card-main">
-                        <a class="call-number-link" href="{% url 'lista_contratti' %}?numero={{ call.effettuataDa_id }}" title="Apri il dettaglio del numero telefonico associato">
-                            <span class="card-kicker">Numero chiamante</span>
-                            <h3 class="card-title card-title-mono">{{ call.effettuataDa_id }}</h3>
-                        </a>
-                    </div>
-                    <dl class="card-detail-grid call-detail-grid">
-                        <div><dt>Durata</dt><dd>{{ call.durata|duration_compact }}</dd></div>
-                        <div><dt>Piano</dt><dd>{% if call.effettuataDa.tipo == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</dd></div>
-                        <div><dt>Addebito</dt><dd>{{ call.costo|euro }}</dd></div>
-                    </dl>
-                </article>
-                {% endfor %}
+            <div class="result-grid call-card-grid" data-lazy-list="cards">
+                {% include '_telefonate_cards.html' %}
             </div>
         </div>
         <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
@@ -144,14 +137,7 @@
                         <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
                         <th class="numeric table-align-right"><span class="table-header-icon table-icon-credit" aria-hidden="true"></span>Addebito</th>
                     </tr></thead>
-                    <tbody>{% for call in chiamate %}<tr>
-                        <td class="identifier table-align-right"><a href="{% url 'lista_contratti' %}?numero={{ call.effettuataDa_id }}">{{ call.effettuataDa_id }}</a></td>
-                        <td class="table-align-right">{{ call.data|date:'d/m/Y' }}</td>
-                        <td class="table-align-right">{{ call.ora|time:'H:i:s' }}</td>
-                        <td class="numeric table-align-right">{{ call.durata|duration_compact }}</td>
-                        <td class="table-align-left">{% if call.effettuataDa.tipo == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</td>
-                        <td class="numeric table-align-right">{{ call.costo|euro }}</td>
-                    </tr>{% endfor %}</tbody>
+                    <tbody data-lazy-list="table">{% include '_telefonate_table_rows.html' %}</tbody>
                 </table>
             </div>
         </div>

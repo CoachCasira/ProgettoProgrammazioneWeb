@@ -464,4 +464,5 @@ def page_window(total: int, page: int, page_size: int = 12) -> dict[str, int | b
         "has_next": page < pages,
         "prev_page": max(1, page - 1),
         "next_page": min(pages, page + 1),
+        "limit": page_size,
     }

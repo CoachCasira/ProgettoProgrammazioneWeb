@@ -1,22 +1,36 @@
-# Conversione del database
+# Database PostgreSQL
 
-La cartella `source` è riservata al dump MySQL locale del primo progetto.
-Il dump contiene dati di grandi dimensioni e non viene versionato su GitHub.
+La consegna usa PostgreSQL come database locale.
 
-Dopo avere applicato le migration PostgreSQL, importare il dump con:
+## File sorgenti locali
 
-```powershell
-python manage.py import_mysql_dump "database/source/my_teoscbarce.zip"
-```
+La cartella `source` è riservata al dump MySQL del primo progetto usato solo durante la conversione iniziale. Il dump contiene molti dati e non viene versionato su GitHub.
 
-Il comando accetta anche un file `.sql`. Per svuotare le tabelle del dominio e
-ripetere una conversione usare esplicitamente `--replace`.
-
-Al termine verificare conteggi, statistiche e disgiunzione dei codici SIM:
+Per ripetere la conversione MySQL -> PostgreSQL in ambiente di sviluppo:
 
 ```powershell
+python manage.py import_mysql_dump "database/source/my_teoscbarce.zip" --replace
 python manage.py verify_import
 ```
 
-La cartella `generated` verrà utilizzata in una fase successiva per il backup
-PostgreSQL destinato alla consegna.
+## Backup di consegna
+
+La cartella `generated` è riservata al backup PostgreSQL compresso:
+
+```text
+progetto2_db.backup
+```
+
+Il backup viene ripristinato dagli script di installazione tramite `pg_restore`.
+Il file non viene versionato su GitHub, ma deve essere incluso nello ZIP finale di consegna.
+
+Conteggi attesi dopo il ripristino:
+
+- contratti telefonici: 647
+- telefonate: 3.326.428
+- SIM attive: 550
+- SIM disattivate: 392
+- SIM non attive: 337
+- statistiche contratti: 643
+- statistiche SIM: 1.279
+- statistiche telefonate: 1

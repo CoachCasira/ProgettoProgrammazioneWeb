@@ -331,13 +331,10 @@
             request.options.signal = activeSearchController.signal;
         }
 
-        /* Il COUNT parte insieme alla query del primo blocco, non dopo. In questo
-           modo, con filtri complessi, il totale è spesso già pronto quando il DOM
-           viene aggiornato e il contatore non passa visibilmente da "1-12" a
-           "1-12 di ..." alcuni secondi più tardi. */
-        var preparedCountPromise = telefonateNeedsDeferredCount(form)
-            ? requestDeferredCount(form, requestId)
-            : null;
+        /* Sui milioni di chiamate il COUNT filtrato può essere la parte più
+           costosa. Lo avviamo soltanto dopo aver mostrato il primo blocco, così
+           non compete con la query delle prime 12 righe e non ritarda i risultati. */
+        var shouldDeferCount = telefonateNeedsDeferredCount(form);
 
         if (!isLiveSearch) {
             setFormLoading(form, true);
@@ -352,28 +349,23 @@
                 return response.text();
             });
 
-        var completeResponsePromise = preparedCountPromise
-            ? Promise.all([rowsPromise, preparedCountPromise]).then(function (values) {
-                return { html: values[0], countPayload: values[1] };
-            })
-            : rowsPromise.then(function (html) {
-                return { html: html, countPayload: null };
-            });
-
-        completeResponsePromise
-            .then(function (result) {
+        /* Il primo blocco dei risultati non deve aspettare il COUNT completo.
+           Sui milioni di chiamate il conteggio filtrato può richiedere più tempo
+           della lettura delle prime 12 righe: mostriamo quindi subito le righe e
+           aggiorniamo il totale in background appena la richiesta parallela termina. */
+        rowsPromise
+            .then(function (html) {
                 if (requestId !== lastRequestId) {
                     return;
                 }
 
                 var scrollToTop = !isLiveSearch && targetSelector === '.content';
-                if (!updateFromResponse(result.html, targetSelector, scrollToTop, result.countPayload)) {
+                if (!updateFromResponse(html, targetSelector, scrollToTop, null)) {
                     showAjaxError(target);
                     return;
                 }
-                if (result.countPayload && Object.prototype.hasOwnProperty.call(result.countPayload, 'total_count')) {
-                    storeCachedCount(form, parseInt(result.countPayload.total_count, 10));
-                } else {
+
+                if (shouldDeferCount) {
                     refreshDeferredCount(form, targetSelector, requestId);
                 }
                 document.dispatchEvent(new CustomEvent('progweb:ajax-results-updated', {

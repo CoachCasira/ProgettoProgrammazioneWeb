@@ -9756,3 +9756,38 @@ form[data-sim-crud-form="true"] .site-date-picker.is-open .site-picker-trigger {
 .sim-crud-form .has-error select {
     border-color: #c85d5d;
 }
+
+/* =========================================================
+   Rifinitura durata personalizzata Chiamate
+   ========================================================= */
+/* Nel filtro Chiamate lo spazio disponibile è più stretto rispetto alla
+   pagina Numeri: assegniamo più spazio progressivo a Minuti e Secondi e
+   riduciamo soltanto le spaziature interne, mantenendo tutte le etichette
+   completamente leggibili. */
+.telefonate-filter-form .duration-custom-editor.duration-range-control {
+    grid-template-columns:
+        minmax(0, 0.78fr) 2px
+        minmax(0, 1fr) 2px
+        minmax(0, 1.22fr) 2.2rem !important;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-segment {
+    grid-template-columns: minmax(0, 1fr) max-content !important;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-segment > input {
+    padding-left: 0.48rem !important;
+    padding-right: 0.1rem !important;
+    font-size: 0.76rem !important;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-unit {
+    padding-left: 0.02rem !important;
+    padding-right: 0.28rem !important;
+    font-size: 0.72rem !important;
+}
+
+.telefonate-filter-form .duration-custom-editor .duration-custom-back {
+    min-width: 2.2rem;
+    width: 2.2rem;
+}

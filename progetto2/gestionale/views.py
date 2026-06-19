@@ -6,7 +6,7 @@ from itertools import chain
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Max, Q
+from django.db.models import Case, Exists, IntegerField, Max, OuterRef, Q, Subquery, Sum, Value, When
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -29,6 +29,94 @@ from .services import call_queryset, contract_queryset, page_window, sim_rows
 
 PAGE_SIZE = 12
 CALL_EXPORT_LIMIT = 50_000
+
+
+def _is_xhr(request) -> bool:
+    return request.headers.get("X-Requested-With", "").lower() == "xmlhttprequest"
+
+
+def _call_row_filters_active(filters: dict) -> bool:
+    return any(
+        str(filters.get(name, "")).strip()
+        for name in (
+            "data_da", "data_a", "ora_da", "ora_a",
+            "durata_preset", "durata_ore", "durata_min", "durata_sec",
+            "costo_max",
+        )
+    )
+
+
+def _fast_contract_scoped_call_count(filters: dict) -> int:
+    """Conta le chiamate tramite le statistiche per contratto.
+
+    È il percorso veloce usato quando i filtri riguardano soltanto numero,
+    stato o piano. Evita di scandire la tabella Telefonata, che può contenere
+    milioni di righe.
+    """
+
+    scope = ContrattoTelefonico.objects.all()
+    number = str(filters.get("contratto", "")).strip()
+    state = str(filters.get("stato_numero", "")).strip()
+    plan = str(filters.get("piano", "")).strip()
+
+    if number:
+        scope = scope.filter(numero=number) if len(number) >= 10 else scope.filter(numero__startswith=number)
+    if state:
+        scope = scope.annotate(
+            has_active_sim=Exists(SIMAttiva.objects.filter(associataA=OuterRef("pk")))
+        )
+        if state == "attivo":
+            scope = scope.filter(has_active_sim=True)
+        elif state == "disattivato":
+            scope = scope.filter(has_active_sim=False, sim_disattive__isnull=False).distinct()
+    if plan:
+        scope = scope.filter(tipo=plan)
+
+    result = StatisticheContratto.objects.filter(
+        numero_id__in=Subquery(scope.values("numero"))
+    ).aggregate(total=Sum("numeroTelefonate"))["total"]
+    return int(result or 0)
+
+
+def _lazy_queryset_block(qs, request, default_limit: int = PAGE_SIZE, allow_reverse: bool = False):
+    """Restituisce un blocco lazy senza eseguire COUNT né OFFSET enormi."""
+
+    limit = _safe_int_param(request, "limit", default_limit, 1, 60)
+    jump_last = allow_reverse and request.GET.get("jump_last") == "1"
+
+    if jump_last:
+        reverse_offset = _safe_int_param(request, "reverse_offset", 0, 0)
+        raw = list(qs.reverse()[reverse_offset:reverse_offset + limit + 1])
+        has_prev = len(raw) > limit
+        rows = raw[:limit]
+        rows.reverse()
+        return rows, {
+            "start": 0,
+            "end": len(rows),
+            "limit": limit,
+            "has_prev": has_prev,
+            "has_next": False,
+            "next_offset": None,
+            "prev_offset": None,
+            "reverse_offset": reverse_offset + len(rows),
+            "from_end": True,
+        }
+
+    offset = _safe_int_param(request, "offset", 0, 0)
+    raw = list(qs[offset:offset + limit + 1])
+    has_next = len(raw) > limit
+    rows = raw[:limit]
+    return rows, {
+        "start": offset,
+        "end": offset + len(rows),
+        "limit": limit,
+        "has_prev": offset > 0,
+        "has_next": has_next,
+        "next_offset": offset + len(rows),
+        "prev_offset": offset,
+        "reverse_offset": 0,
+        "from_end": False,
+    }
 
 
 def _safe_page(request) -> int:
@@ -117,25 +205,70 @@ def home(request):
         if not query.isdigit():
             search_error = "Inserire esclusivamente cifre di un numero telefonico o di un codice SIM."
         else:
-            phone_qs = ContrattoTelefonico.objects.filter(numero__contains=query).select_related("statistiche")[:6]
-            active_numbers = set(SIMAttiva.objects.filter(associataA_id__in=[item.numero for item in phone_qs]).values_list("associataA_id", flat=True))
+            exact_phone = Case(
+                When(numero=query, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+            phone_qs = (
+                ContrattoTelefonico.objects.filter(numero__contains=query)
+                .annotate(
+                    exact_match=exact_phone,
+                    has_active_sim=Exists(SIMAttiva.objects.filter(associataA=OuterRef("pk"))),
+                    has_disabled_sim=Exists(SIMDisattiva.objects.filter(eraAssociataA=OuterRef("pk"))),
+                )
+                .order_by("exact_match", "numero")[:6]
+            )
             for item in phone_qs:
+                if item.has_active_sim:
+                    status = "Numero attivo"
+                    is_disabled = False
+                elif item.has_disabled_sim:
+                    status = "Numero disattivato"
+                    is_disabled = True
+                else:
+                    status = "Nessuna SIM associata"
+                    is_disabled = False
                 phone_results.append({
                     "numero": item.numero,
                     "tipo": item.get_tipo_display(),
                     "data": item.dataAttivazione,
-                    "active": item.numero in active_numbers,
+                    "active": bool(item.has_active_sim),
+                    "status": status,
+                    "is_disabled": is_disabled,
                 })
-            for item in SIMAttiva.objects.filter(codice__contains=query).select_related("associataA")[:6]:
-                sim_results.append({"codice": item.codice, "state": "attive", "state_label": "In uso", "tipo": item.get_tipoSIM_display(), "numero": item.associataA_id})
-            remaining = max(0, 6 - len(sim_results))
-            if remaining:
-                for item in SIMNonAttiva.objects.filter(codice__contains=query)[:remaining]:
-                    sim_results.append({"codice": item.codice, "state": "disponibili", "state_label": "Disponibile", "tipo": item.get_tipoSIM_display(), "numero": ""})
-            remaining = max(0, 6 - len(sim_results))
-            if remaining:
-                for item in SIMDisattiva.objects.filter(codice__contains=query).select_related("eraAssociataA")[:remaining]:
-                    sim_results.append({"codice": item.codice, "state": "disattive", "state_label": "Disattivata", "tipo": item.get_tipoSIM_display(), "numero": item.eraAssociataA_id})
+
+            candidates = []
+            sim_sources = (
+                ("attive", "SIM in uso", 1, SIMAttiva.objects.filter(codice__contains=query).select_related("associataA")),
+                ("disponibili", "SIM disponibile", 2, SIMNonAttiva.objects.filter(codice__contains=query)),
+                ("disattive", "SIM disattivata", 3, SIMDisattiva.objects.filter(codice__contains=query).select_related("eraAssociataA")),
+            )
+            for state, label, state_order, queryset in sim_sources:
+                queryset = queryset.annotate(
+                    exact_match=Case(
+                        When(codice=query, then=Value(0)),
+                        default=Value(1),
+                        output_field=IntegerField(),
+                    )
+                ).order_by("exact_match", "codice")[:8]
+                for item in queryset:
+                    number = ""
+                    if state == "attive":
+                        number = item.associataA_id
+                    elif state == "disattive":
+                        number = item.eraAssociataA_id
+                    candidates.append({
+                        "codice": item.codice,
+                        "state": state,
+                        "state_label": label,
+                        "tipo": item.get_tipoSIM_display(),
+                        "numero": number,
+                        "exact": 0 if item.codice == query else 1,
+                        "state_order": state_order,
+                    })
+            candidates.sort(key=lambda row: (row["exact"], row["state_order"], row["codice"]))
+            sim_results = candidates[:8]
 
     latest_disabled = SIMDisattiva.objects.aggregate(latest=Max("dataDisattivazione"))["latest"]
     latest_disabled = latest_disabled or timezone.localdate()
@@ -160,7 +293,6 @@ def home(request):
         "recent_disabled_to": latest_disabled.isoformat(),
     }
     return render(request, "index.html", context)
-
 
 def lista_contratti(request):
     qs, errors, filters = contract_queryset(request.GET)
@@ -215,8 +347,17 @@ def lista_contratti(request):
 def lista_telefonate(request):
     qs, errors, filters, active_filters = call_queryset(request.GET)
     stats = StatisticheTelefonate.objects.filter(pk=1).first()
+    global_total = int(stats.totaleTelefonate) if stats else None
+    row_filters_active = _call_row_filters_active(filters)
+
     if request.GET.get("export") == "excel" and not errors:
-        total = qs.count() if active_filters or not stats else stats.totaleTelefonate
+        if not active_filters and global_total is not None:
+            export_total = global_total
+        elif not row_filters_active:
+            export_total = _fast_contract_scoped_call_count(filters)
+        else:
+            export_total = qs.order_by().count()
+
         limited = qs[:CALL_EXPORT_LIMIT]
         rows = (
             (
@@ -230,8 +371,11 @@ def lista_telefonate(request):
             for item in limited.iterator(chunk_size=2000)
         )
         note = None
-        if total > CALL_EXPORT_LIMIT:
-            note = f"Il file contiene i primi {CALL_EXPORT_LIMIT:,} risultati su {total:,}. Applicare filtri più specifici per esportare un insieme completo più ristretto.".replace(",", ".")
+        if export_total > CALL_EXPORT_LIMIT:
+            note = (
+                f"Il file contiene i primi {CALL_EXPORT_LIMIT:,} risultati su {export_total:,}. "
+                "Applicare filtri più specifici per esportare un insieme completo più ristretto."
+            ).replace(",", ".")
         return spreadsheet_response(
             "chiamate.xls",
             "Chiamate",
@@ -242,27 +386,81 @@ def lista_telefonate(request):
             note=note,
         )
 
-    if errors:
-        total = 0
-    elif active_filters or not stats:
-        total = qs.count()
-    else:
-        total = stats.totaleTelefonate
     if request.GET.get("count_only") == "1":
-        return JsonResponse({"total_count": total})
+        if errors:
+            total = 0
+        elif not active_filters and global_total is not None:
+            total = global_total
+        elif not row_filters_active:
+            total = _fast_contract_scoped_call_count(filters)
+        else:
+            # Solo i filtri che riguardano direttamente le righe richiedono un
+            # COUNT sulla tabella Telefonata. Il browser lo esegue in parallelo
+            # alla lettura del primo blocco, come nel Progetto 1.
+            total = qs.order_by().count()
+        return JsonResponse({"total_count": int(total)})
+
     if request.GET.get("ajax_rows") == "1":
-        meta = _lazy_window(total, request, PAGE_SIZE)
-        calls = [] if errors else list(qs[meta["start"]:meta["end"]])
-        context = {"chiamate": calls, "total_count": total, "filters": filters, "search_errors": errors}
-        if not request.GET.get("skip_count") == "1":
-            meta["total_count"] = total
+        calls, meta = _lazy_queryset_block(qs, request, PAGE_SIZE, allow_reverse=True) if not errors else ([], {
+            "start": 0,
+            "end": 0,
+            "limit": PAGE_SIZE,
+            "has_prev": False,
+            "has_next": False,
+            "next_offset": 0,
+            "prev_offset": 0,
+            "reverse_offset": 0,
+            "from_end": False,
+        })
+        context = {
+            "chiamate": calls,
+            "total_count": global_total if not active_filters else None,
+            "filters": filters,
+            "search_errors": errors,
+        }
+        if not active_filters and global_total is not None:
+            meta["total_count"] = global_total
         return _json_fragments("_telefonate_cards.html", "_telefonate_table_rows.html", context, meta)
 
-    window = page_window(total, _safe_page(request), PAGE_SIZE)
-    calls = [] if errors else list(qs[window["start"]:window["end"]])
+    # Nelle ricerche AJAX filtrate non ripetiamo qui il COUNT: ajax.js lo ha
+    # già avviato in parallelo. Mostriamo subito il primo blocco e aggiorniamo
+    # il totale appena la richiesta count_only termina.
+    defer_count = bool(active_filters and _is_xhr(request))
+    if errors:
+        total = 0
+        calls = []
+        window = page_window(0, 1, PAGE_SIZE)
+    elif defer_count:
+        raw = list(qs[: PAGE_SIZE + 1])
+        has_next = len(raw) > PAGE_SIZE
+        calls = raw[:PAGE_SIZE]
+        total = None
+        window = {
+            "page": 1,
+            "pages": 1,
+            "start": 0,
+            "end": len(calls),
+            "display_start": 1 if calls else 0,
+            "has_prev": False,
+            "has_next": has_next,
+            "prev_page": 1,
+            "next_page": 1,
+            "limit": PAGE_SIZE,
+        }
+    else:
+        if not active_filters and global_total is not None:
+            total = global_total
+        elif not row_filters_active:
+            total = _fast_contract_scoped_call_count(filters)
+        else:
+            total = qs.order_by().count()
+        window = page_window(total, _safe_page(request), PAGE_SIZE)
+        calls = list(qs[window["start"]:window["end"]])
+
     context = {
         "chiamate": calls,
         "total_count": total,
+        "count_pending": total is None,
         "pager": window,
         "filters": filters,
         "search_errors": errors,
@@ -336,6 +534,7 @@ def gestione_sim(request):
             "has_associated_state_filter": has_associated_state_filter,
             "sim_date_filter_label": sim_date_filter_label,
             "sim_state_order_locked": sim_state_order_locked,
+            "sim_return_url": reverse("gestione_sim") + ("" if sim_state_key == "tutte" else f"?sim_states={sim_state_key}"),
             "search_errors": errors,
         }
 
@@ -405,6 +604,19 @@ def numero_lookup(request):
     return JsonResponse({"exists": True, "hasActiveSim": False, "numero": number, "dataMassimaDisattivazione": timezone.localdate().isoformat()})
 
 
+def _safe_return_url(request, default: str) -> str:
+    candidate = (request.POST.get("return") or request.GET.get("return") or "").strip()
+    return candidate if candidate.startswith("/") and not candidate.startswith("//") else default
+
+
+def _configure_sim_form_dates(form, minimum=None) -> None:
+    maximum = timezone.localdate()
+    attrs = form.fields["dataDisattivazione"].widget.attrs
+    attrs["max"] = maximum.isoformat()
+    if minimum:
+        attrs["min"] = minimum.isoformat()
+
+
 def sim_create(request):
     initial = {}
     code = (request.GET.get("codice") or "").strip()
@@ -452,10 +664,23 @@ def sim_create(request):
                         StatisticheSIM.objects.filter(codice=cleaned["codice"]).delete()
                         StatisticheSIM.objects.create(codice=cleaned["codice"], stato="disattive", numeroChiamate=call_count)
                     messages.success(request, "SIM disattivata registrata nello storico correttamente.")
-                    return redirect(f"{reverse('gestione_sim')}?sim_states=disattive&codice={cleaned['codice']}")
+                    return redirect(_safe_return_url(request, f"{reverse('gestione_sim')}?sim_states=disattive&codice={cleaned['codice']}"))
     else:
         form = SIMDisattivaForm(initial=initial)
-    return render(request, "sim_form.html", {"form": form, "mode": "create", "return_url": request.GET.get("return", reverse("gestione_sim"))})
+
+    minimum = None
+    lookup_code = (form.data.get("codice") if form.is_bound else initial.get("codice")) or ""
+    if str(lookup_code).isdigit():
+        active_for_dates = SIMAttiva.objects.filter(pk=str(lookup_code)).first()
+        if active_for_dates:
+            latest_call = Telefonata.objects.filter(effettuataDa_id=active_for_dates.associataA_id).aggregate(latest=Max("data"))["latest"]
+            minimum = max(filter(None, [active_for_dates.dataAttivazione, latest_call]))
+    _configure_sim_form_dates(form, minimum)
+    return render(request, "sim_form.html", {
+        "form": form,
+        "mode": "create",
+        "return_url": _safe_return_url(request, reverse("gestione_sim")),
+    })
 
 
 def sim_edit(request, codice: str):
@@ -487,20 +712,30 @@ def sim_edit(request, codice: str):
                 call_count = Telefonata.objects.filter(effettuataDa=contract, data__gte=item.dataAttivazione, data__lte=item.dataDisattivazione).count()
                 StatisticheSIM.objects.update_or_create(codice=item.codice, stato="disattive", defaults={"numeroChiamate": call_count})
                 messages.success(request, "Dati della SIM disattivata aggiornati correttamente.")
-                return redirect(f"{reverse('gestione_sim')}?sim_states=disattive&codice={item.codice}")
+                return redirect(_safe_return_url(request, f"{reverse('gestione_sim')}?sim_states=disattive&codice={item.codice}"))
     else:
         form = SIMDisattivaForm(initial=initial)
-    form.fields["codice"].widget.attrs["readonly"] = "readonly"
+    code_attrs = form.fields["codice"].widget.attrs
+    code_attrs["readonly"] = "readonly"
+    code_attrs["class"] = "input-readonly"
+    code_attrs.pop("data-sim-code-lookup", None)
     form.fields["dataAttivazione"].widget.attrs["readonly"] = "readonly"
-    return render(request, "sim_form.html", {"form": form, "mode": "edit", "sim": item, "return_url": reverse("gestione_sim")})
+    _configure_sim_form_dates(form, item.dataAttivazione)
+    return render(request, "sim_form.html", {
+        "form": form,
+        "mode": "edit",
+        "sim": item,
+        "return_url": _safe_return_url(request, f"{reverse('gestione_sim')}?sim_states=disattive&codice={item.codice}"),
+    })
 
 
 def sim_delete(request, codice: str):
     item = get_object_or_404(SIMDisattiva.objects.select_related("eraAssociataA"), pk=codice)
+    return_url = _safe_return_url(request, f"{reverse('gestione_sim')}?sim_states=disattive")
     if request.method == "POST":
         with transaction.atomic():
             StatisticheSIM.objects.filter(codice=item.codice, stato="disattive").delete()
             item.delete()
         messages.success(request, "SIM disattivata rimossa dallo storico correttamente.")
-        return redirect(f"{reverse('gestione_sim')}?sim_states=disattive")
-    return render(request, "sim_confirm_delete.html", {"sim": item})
+        return redirect(return_url)
+    return render(request, "sim_confirm_delete.html", {"sim": item, "return_url": return_url})

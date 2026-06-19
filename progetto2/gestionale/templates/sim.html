@@ -5,7 +5,7 @@
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="sim-filter" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="compact-filter-form sim-filter-form" method="get" action="{% url 'gestione_sim' %}" data-sim-state-filter="true" data-filter-session-key="sim">
+    <form id="sim-filter" data-ajax-form="true" data-live-search="true" data-update-target="#sim-results" class="compact-filter-form sim-filter-form" method="get" action="{% url 'gestione_sim' %}" data-sim-state-filter="true" data-filter-session-key="sim">
         <div class="form-group sim-code-filter-group">
             <label for="codice">Codice SIM:</label>
             <input type="text" id="codice" name="codice" value="{{ filters.codice }}" placeholder="Es. 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -28,15 +28,15 @@
                         <span>Mostra tutte</span>
                     </label>
                     <label class="custom-select-option multi-select-option">
-                        <input type="checkbox" name="sim_states" value="attive" data-sim-state-checkbox {% if 'attive' in filters.sim_states %}checked{% endif %}>
+                        <input type="checkbox" name="sim_states[]" value="attive" data-sim-state-checkbox {% if 'attive' in filters.sim_states %}checked{% endif %}>
                         <span>SIM in uso</span>
                     </label>
                     <label class="custom-select-option multi-select-option">
-                        <input type="checkbox" name="sim_states" value="disponibili" data-sim-state-checkbox {% if 'disponibili' in filters.sim_states %}checked{% endif %}>
+                        <input type="checkbox" name="sim_states[]" value="disponibili" data-sim-state-checkbox {% if 'disponibili' in filters.sim_states %}checked{% endif %}>
                         <span>SIM disponibili</span>
                     </label>
                     <label class="custom-select-option multi-select-option">
-                        <input type="checkbox" name="sim_states" value="disattive" data-sim-state-checkbox {% if 'disattive' in filters.sim_states %}checked{% endif %}>
+                        <input type="checkbox" name="sim_states[]" value="disattive" data-sim-state-checkbox {% if 'disattive' in filters.sim_states %}checked{% endif %}>
                         <span>SIM disattivate</span>
                     </label>
                 </div>
@@ -96,7 +96,7 @@
                 <span data-view-toggle-text>Vista tabellare</span>
             </button>
             <button type="submit" form="sim-filter" name="export" value="excel" class="btn btn-export" data-export-submit="true">Esporta in Excel</button>
-            <a href="{% url 'sim_create' %}" class="btn btn-secondary btn-add-disattiva">+ Disattiva SIM</a>
+            <a href="{% url 'sim_create' %}?return={{ sim_return_url|urlencode }}" class="btn btn-secondary btn-add-disattiva">+ Disattiva SIM</a>
         </div>
     </div>
 
@@ -119,19 +119,20 @@
             </div>
         </div>
 
-        <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
+        <div class="view-panel view-panel-table" data-view-panel="table">
             <div class="table-container table-container-inner">
                 <table class="data-table sim-data-table sim-table-state-{{ sim_state_key }}">
-                    <thead><tr>
-                        <th class="identifier sim-code-cell table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th>
-                        <th class="table-align-center"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
-                        <th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th>
-                        <th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
-                        <th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th>
-                        <th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th>
-                        <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
-                        <th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th>
-                    </tr></thead>
+                    <thead>
+                        {% if sim_state_key == 'tutte' %}
+                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-center"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>
+                        {% elif sim_state_key == 'attive' %}
+                        <tr><th class="identifier sim-code-cell table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero associato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th></tr>
+                        {% elif sim_state_key == 'disponibili' %}
+                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato operativo</th></tr>
+                        {% else %}
+                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero precedente</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>
+                        {% endif %}
+                    </thead>
                     <tbody data-lazy-list="table">{% include '_sim_table_rows.html' %}</tbody>
                 </table>
             </div>

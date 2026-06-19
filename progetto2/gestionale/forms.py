@@ -15,24 +15,37 @@ class SIMDisattivaForm(forms.Form):
                 "autocomplete": "off",
                 "placeholder": "Inserire il codice SIM",
                 "data-clearable": "true",
+                "data-validation": "digits",
                 "data-sim-code-lookup": "true",
+                "data-required-message": "Inserire il codice della SIM.",
+                "data-format-message": "Il codice SIM può contenere solo cifre.",
             }
         ),
     )
     tipoSIM = forms.ChoiceField(
         label="Formato SIM",
-        choices=[("", "Selezionare il formato")] + SIMBase.FORMATO_CHOICES,
+        choices=[("", "Seleziona formato")] + SIMBase.FORMATO_CHOICES,
+        widget=forms.Select(
+            attrs={
+                "data-crud-dependent": "true",
+                "data-required-message": "Selezionare il formato della SIM.",
+            }
+        ),
     )
     eraAssociataA = forms.CharField(
-        label="Numero precedentemente associato",
+        label="Numero di telefono precedentemente associato",
         max_length=20,
         widget=forms.TextInput(
             attrs={
                 "inputmode": "numeric",
                 "autocomplete": "off",
-                "placeholder": "Inserire il numero telefonico",
+                "placeholder": "Es. 3401234567",
                 "data-clearable": "true",
+                "data-crud-dependent": "true",
+                "data-validation": "digits",
                 "data-phone-lookup": "true",
+                "data-required-message": "Inserire il numero di telefono precedentemente associato.",
+                "data-format-message": "Il numero di telefono può contenere solo cifre.",
             }
         ),
     )
@@ -43,8 +56,11 @@ class SIMDisattivaForm(forms.Form):
             attrs={
                 "type": "date",
                 "readonly": "readonly",
+                "class": "input-readonly",
+                "data-crud-dependent": "true",
                 "data-auto-activation-date": "true",
-                "data-crud-date-picker": "true",
+                "data-site-date-picker": "true",
+                "aria-label": "Visualizza la data di attivazione",
             },
         ),
         input_formats=["%Y-%m-%d"],
@@ -55,8 +71,11 @@ class SIMDisattivaForm(forms.Form):
             format="%Y-%m-%d",
             attrs={
                 "type": "date",
+                "data-crud-dependent": "true",
                 "data-deactivation-date": "true",
-                "data-crud-date-picker": "true",
+                "data-site-date-picker": "true",
+                "data-required-message": "Inserire la data di disattivazione.",
+                "aria-label": "Seleziona la data di disattivazione",
             },
         ),
         input_formats=["%Y-%m-%d"],

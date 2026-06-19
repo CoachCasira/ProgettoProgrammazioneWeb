@@ -5,7 +5,7 @@
 <div class="dashboard-search-layout">
     <section class="dashboard-search-panel" aria-labelledby="dashboard-search-title">
         <div class="dashboard-section-heading"><div><h3 id="dashboard-search-title">Ricerca rapida</h3><p>Cerca direttamente un numero telefonico o un codice SIM, senza scegliere prima la sezione.</p></div></div>
-        <form id="dashboard-search-form" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="dashboard-global-search" method="get" action="{% url 'home' %}">
+        <form id="dashboard-search-form" data-ajax-form="true" data-live-search="true" data-update-target="#dashboard-search-output" class="dashboard-global-search" method="get" action="{% url 'home' %}">
             <div class="form-group">
                 <label for="ricerca_globale">Numero telefonico o codice SIM:</label>
                 <input type="text" id="ricerca_globale" name="ricerca_globale" value="{{ global_query }}" placeholder="Es. 340 oppure 8939" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -13,21 +13,21 @@
             <button type="submit" class="btn">Cerca</button>
         </form>
     </section>
-    <aside class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
+    <aside id="dashboard-search-output" class="dashboard-search-output" aria-live="polite" aria-label="Risultati della ricerca rapida">
         {% if global_error %}<div class="alert alert-error dashboard-search-feedback">{{ global_error }}</div>
         {% elif global_query %}
             <div class="dashboard-search-results">
                 {% if global_phone_results %}
                 <section class="dashboard-result-group"><div class="dashboard-result-group-header"><h4>Numeri telefonici</h4><span>{{ global_phone_results|length }} risultati</span></div><div class="dashboard-result-list">
-                    {% for row in global_phone_results %}<a class="dashboard-result-card" href="{% url 'lista_contratti' %}?numero={{ row.numero }}"><span class="dashboard-result-main"><strong>{{ row.numero }}</strong><span>{{ row.tipo }} · attivato il {{ row.data|date:'d/m/Y' }}</span></span><span class="dashboard-result-status {% if not row.active %}is-disabled{% endif %}">{% if row.active %}Numero attivo{% else %}Numero disattivato{% endif %}</span></a>{% endfor %}
+                    {% for row in global_phone_results %}<a class="dashboard-result-card" href="{% url 'lista_contratti' %}?numero={{ row.numero }}" data-phone-card-modal="true" data-phone-number="{{ row.numero }}" title="Apri il dettaglio del numero telefonico"><span class="dashboard-result-main"><strong>{{ row.numero }}</strong><span>{{ row.tipo }} · attivato il {{ row.data|date:'d/m/Y' }}</span></span><span class="dashboard-result-status {% if row.is_disabled %}is-disabled{% endif %}">{{ row.status }}</span></a>{% endfor %}
                 </div></section>{% endif %}
                 {% if global_sim_results %}
                 <section class="dashboard-result-group"><div class="dashboard-result-group-header"><h4>SIM</h4><span>{{ global_sim_results|length }} risultati</span></div><div class="dashboard-result-list">
-                    {% for row in global_sim_results %}<a class="dashboard-result-card" href="{% url 'gestione_sim' %}?sim_states={{ row.state }}&amp;codice={{ row.codice }}"><span class="dashboard-result-main"><strong>{{ row.codice }}</strong><span>{{ row.state_label }} · {{ row.tipo }}{% if row.numero %} · numero {{ row.numero }}{% endif %}</span></span><span class="dashboard-result-status sim-state-{{ row.state }}">{{ row.state_label }}</span></a>{% endfor %}
+                    {% for row in global_sim_results %}<a class="dashboard-result-card" href="{% url 'gestione_sim' %}?sim_states={{ row.state }}&amp;codice={{ row.codice }}" data-sim-card-modal="true" data-sim-code="{{ row.codice }}" title="Apri il dettaglio della SIM"><span class="dashboard-result-main"><strong>{{ row.codice }}</strong><span>{{ row.state_label }} · {{ row.tipo }}{% if row.numero %} · numero {{ row.numero }}{% endif %}</span></span><span class="dashboard-result-status sim-state-{{ row.state }}">{{ row.state_label }}</span></a>{% endfor %}
                 </div></section>{% endif %}
                 {% if not global_phone_results and not global_sim_results %}<div class="alert alert-error dashboard-search-feedback">Nessun numero telefonico o codice SIM contiene “{{ global_query }}”.</div>{% endif %}
             </div>
-        {% else %}<div class="dashboard-search-placeholder">I risultati o gli eventuali suggerimenti di correzione appariranno qui dopo la ricerca.</div>{% endif %}
+        {% else %}<div class="dashboard-search-placeholder">I risultati o gli eventuali suggerimenti di correzione appariranno qui durante la digitazione.</div>{% endif %}
     </aside>
 </div>
 <section class="stat-grid" aria-label="Indicatori principali">

@@ -5,7 +5,7 @@
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="telefonate-filter" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="compact-filter-form telefonate-filter-form" method="get" action="{% url 'lista_telefonate' %}" data-filter-session-key="telefonate">
+    <form id="telefonate-filter" data-ajax-form="true" data-live-search="true" data-update-target="#telefonate-results" class="compact-filter-form telefonate-filter-form" method="get" action="{% url 'lista_telefonate' %}" data-filter-session-key="telefonate">
         <div class="form-group call-number-filter-group">
             <label for="contratto">Numero chiamante:</label>
             <input type="text" id="contratto" name="contratto" value="{{ filters.contratto }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -116,8 +116,8 @@
          data-has-prev="{% if pager.has_prev %}1{% else %}0{% endif %}"
          data-limit="{{ pager.limit }}"
          data-has-more="{% if pager.has_next %}1{% else %}0{% endif %}"
-         data-total-count="{{ total_count }}"
-         data-count-pending="0">
+         data-total-count="{% if not count_pending %}{{ total_count }}{% endif %}"
+         data-count-pending="{% if count_pending %}1{% else %}0{% endif %}">
         {% if search_errors %}
             <div class="alert alert-error">{{ search_errors|join:' ' }}</div>
         {% elif chiamate %}
@@ -126,7 +126,7 @@
                 {% include '_telefonate_cards.html' %}
             </div>
         </div>
-        <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
+        <div class="view-panel view-panel-table" data-view-panel="table">
             <div class="table-container table-container-inner">
                 <table class="data-table">
                     <thead><tr>

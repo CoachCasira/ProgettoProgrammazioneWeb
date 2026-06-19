@@ -9,7 +9,7 @@
             <div><dt>Formato SIM</dt><dd>{{ sim.tipoSIM }}</dd></div>
             <div><dt>Piano</dt><dd>{% if sim.plan == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</dd></div>
         </dl>
-        <div class="card-actions"><a href="{% url 'sim_create' %}?codice={{ sim.codice }}" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a></div>
+        <div class="card-actions"><a href="{% url 'sim_create' %}?codice={{ sim.codice }}&amp;return={{ sim_return_url|urlencode }}" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a></div>
     </article>
     {% elif sim.state == 'disponibili' %}
     <article class="data-card sim-card sim-card-available expandable-card" data-expandable-card="true" data-sim-code="{{ sim.codice }}" tabindex="0" role="button" aria-label="Apri il dettaglio della SIM disponibile {{ sim.codice }}">
@@ -26,7 +26,7 @@
             <div><dt>Formato SIM</dt><dd>{{ sim.tipoSIM }}</dd></div>
             <div><dt>Piano</dt><dd>{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</dd></div>
         </dl>
-        <div class="card-actions card-actions-split"><a href="{% url 'sim_edit' sim.codice %}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}" class="action-delete action-delete-sim">Elimina</a></div>
+        <div class="card-actions card-actions-split"><a href="{% url 'sim_edit' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-delete action-delete-sim">Elimina</a></div>
     </article>
     {% endif %}
 {% endfor %}

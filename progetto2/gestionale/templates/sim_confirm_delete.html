@@ -1,5 +1,23 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Elimina SIM dallo storico</h2>
-<section class="crud-panel confirmation-panel"><h3>Confermare l’eliminazione</h3><p>La SIM <strong>{{ sim.codice }}</strong>, precedentemente associata al numero <strong>{{ sim.eraAssociataA_id }}</strong>, verrà rimossa dallo storico delle SIM disattivate.</p><div class="alert alert-warning">L’operazione non riattiva la SIM e non modifica il contratto telefonico o le chiamate registrate.</div><form method="post" class="form-actions">{% csrf_token %}<button type="submit" class="btn btn-danger">Elimina SIM</button><a href="{% url 'gestione_sim' %}?sim_states=disattive&amp;codice={{ sim.codice }}" class="btn btn-outline-reset">Annulla operazione</a></form></section>
+<h2>Gestione SIM</h2>
+<div class="confirm-box confirm-box-removal">
+    <span class="confirm-kicker">Azione importante</span>
+    <h3 class="crud-title">Conferma rimozione SIM disattivata</h3>
+    <p class="confirm-intro">Questa operazione rimuoverà la SIM dallo storico delle SIM disattivate.</p>
+
+    <div class="confirm-details" aria-label="Dati della SIM da rimuovere">
+        <div class="confirm-detail-row"><span class="confirm-detail-label">SIM da rimuovere</span><strong class="confirm-detail-value">{{ sim.codice }}</strong></div>
+        <div class="confirm-detail-row"><span class="confirm-detail-label">Numero di telefono precedentemente associato</span><strong class="confirm-detail-value">{{ sim.eraAssociataA_id }}</strong></div>
+    </div>
+
+    <p class="confirm-note">I numeri telefonici già registrati nel sistema non verranno modificati.</p>
+
+    <form method="post" class="form-actions" data-ajax-content="true" data-update-target=".content">
+        {% csrf_token %}
+        <input type="hidden" name="return" value="{{ return_url }}">
+        <button type="submit" class="btn btn-delete">Conferma rimozione</button>
+        <a href="{{ return_url }}" class="btn btn-cancel">Annulla</a>
+    </form>
+</div>
 {% endblock %}

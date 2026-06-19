@@ -249,6 +249,7 @@ def call_queryset(params):
     time_to = clean_time(params.get("ora_a", ""), "L’ora finale", errors)
     max_cost = clean_decimal(params.get("costo_max", ""), "L’addebito massimo", errors)
     min_duration, duration_values = duration_threshold(params, CALL_DURATION_PRESETS, errors)
+
     if date_from and date_to and date_from > date_to:
         errors.append("La data iniziale non può essere successiva alla data finale.")
     if time_from and time_to and time_from > time_to:
@@ -262,15 +263,29 @@ def call_queryset(params):
         errors.append("Il criterio di ordinamento selezionato non è valido.")
         order = "recenti"
 
-    qs = Telefonata.objects.select_related("effettuataDa").annotate(
-        number_active=Exists(SIMAttiva.objects.filter(associataA=OuterRef("effettuataDa_id")))
-    )
+    # Stato e piano appartengono al contratto, che contiene poche centinaia di
+    # righe. Filtriamo prima i numeri compatibili e poi usiamo l'indice di
+    # Telefonata.effettuataDa, evitando un EXISTS correlato su milioni di righe.
+    contract_scope = ContrattoTelefonico.objects.all()
+    if state:
+        contract_scope = contract_scope.annotate(
+            has_active_sim=Exists(SIMAttiva.objects.filter(associataA=OuterRef("pk")))
+        )
+        if state == "attivo":
+            contract_scope = contract_scope.filter(has_active_sim=True)
+        else:
+            contract_scope = contract_scope.filter(
+                has_active_sim=False, sim_disattive__isnull=False
+            ).distinct()
+    if plan:
+        contract_scope = contract_scope.filter(tipo=plan)
+
+    qs = Telefonata.objects.select_related("effettuataDa")
     if number:
-        qs = qs.filter(effettuataDa_id=number) if len(number) >= 10 else qs.filter(effettuataDa_id__contains=number)
-    if state == "attivo":
-        qs = qs.filter(number_active=True)
-    elif state == "disattivato":
-        qs = qs.filter(number_active=False, effettuataDa__sim_disattive__isnull=False).distinct()
+        # Il Progetto 1 interpreta un numero parziale come prefisso.
+        qs = qs.filter(effettuataDa_id=number) if len(number) >= 10 else qs.filter(effettuataDa_id__startswith=number)
+    if state or plan:
+        qs = qs.filter(effettuataDa_id__in=Subquery(contract_scope.values("numero")))
     if date_from:
         qs = qs.filter(data__gte=date_from)
     if date_to:
@@ -281,20 +296,29 @@ def call_queryset(params):
         qs = qs.filter(ora__lte=time_to)
     if min_duration:
         qs = qs.filter(durata__gte=min_duration)
-    if plan:
-        qs = qs.filter(effettuataDa__tipo=plan)
     if max_cost is not None:
         qs = qs.filter(costo__lte=max_cost)
 
-    ordering = {
-        "recenti": ("-data", "-ora", "-id"),
-        "meno_recenti": ("data", "ora", "id"),
-        "durata_desc": ("-durata", "-data", "-ora", "-id"),
-        "durata_asc": ("durata", "-data", "-ora", "-id"),
-        "costo_desc": ("-costo", "-data", "-ora", "-id"),
-        "costo_asc": ("costo", "-data", "-ora", "-id"),
-    }[order]
+    # Gli ordinamenti seguono il Progetto 1. Per durata e costo la chiave
+    # primaria chiude l'ordinamento e permette a PostgreSQL di sfruttare gli
+    # indici senza ordinare inutilmente milioni di righe per data e ora.
+    if order == "recenti" and min_duration and (time_from or time_to):
+        ordering = ("durata", "ora", "-data", "-id")
+    elif order == "recenti" and min_duration:
+        ordering = ("durata", "-data", "-ora", "-id")
+    elif order == "recenti" and (time_from or time_to):
+        ordering = ("ora", "-data", "-id")
+    else:
+        ordering = {
+            "recenti": ("-data", "-ora", "-id"),
+            "meno_recenti": ("data", "ora", "id"),
+            "durata_desc": ("-durata", "-id"),
+            "durata_asc": ("durata", "id"),
+            "costo_desc": ("-costo", "-id"),
+            "costo_asc": ("costo", "id"),
+        }[order]
     qs = qs.order_by(*ordering)
+
     values = {
         "contratto": number,
         "stato_numero": state,
@@ -310,7 +334,6 @@ def call_queryset(params):
     active_filters = any(str(values.get(key, "")).strip() for key in values if key != "ordine")
     return qs, errors, values, active_filters
 
-
 def sim_rows(params):
     errors: list[str] = []
     code = clean_digits(params.get("codice", ""), "Il codice SIM", errors)
@@ -318,7 +341,9 @@ def sim_rows(params):
     sim_type = (params.get("tipoSIM") or "").strip()
     plan = (params.get("piano") or "").strip()
     order = (params.get("ordine_sim") or "nessuno").strip()
-    selected_states = params.getlist("sim_states") if hasattr(params, "getlist") else []
+    selected_states = []
+    if hasattr(params, "getlist"):
+        selected_states = params.getlist("sim_states[]") or params.getlist("sim_states")
     if not selected_states:
         legacy = (params.get("stato") or "tutte").strip()
         selected_states = [legacy] if legacy in {"attive", "disponibili", "disattive"} else ["attive", "disponibili", "disattive"]

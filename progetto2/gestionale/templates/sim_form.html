@@ -1,15 +1,64 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>{% if mode == 'edit' %}Modifica SIM disattivata{% else %}Registra SIM disattivata{% endif %}</h2>
-<section class="crud-panel sim-crud-panel">
-<h3>{% if mode == 'edit' %}Aggiorna i dati nello storico{% else %}Registra SIM disattivata nello storico{% endif %}</h3>
-<p>{% if mode == 'edit' %}Modifica esclusivamente i dati storici della SIM selezionata.{% else %}Registra nello storico una SIM non più attiva. L’operazione non modifica i numeri telefonici già presenti nel sistema.{% endif %}</p>
-<p class="required-fields-note"><span aria-hidden="true">*</span> Campi obbligatori</p>
-<form method="post" class="sim-crud-form" data-sim-crud-form="true" data-form-mode="{{ mode }}" data-lookup-url="{% url 'numero_lookup' %}?source=crud" data-sim-lookup-url="{% url 'sim_lookup' %}?source=crud" novalidate>
-{% csrf_token %}
-{% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors }}</div>{% endif %}
-{% for field in form %}<div class="form-group {% if field.errors %}has-error{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }} <span aria-hidden="true">*</span></label>{{ field }}{% for error in field.errors %}<div class="field-error" id="{{ field.id_for_label }}-error">{{ error }}</div>{% endfor %}{% if field.name == 'dataAttivazione' %}<small>La data viene recuperata automaticamente dai dati della SIM.</small>{% elif field.name == 'dataDisattivazione' %}<small>La data deve essere coerente con l’attivazione della SIM e con le chiamate registrate.</small>{% endif %}</div>{% endfor %}
-<div class="form-actions"><button type="submit" class="btn" data-crud-submit="true">{% if mode == 'edit' %}Salva modifiche{% else %}Salva SIM disattivata{% endif %}</button><a href="{{ return_url }}" class="btn btn-outline-reset">Annulla operazione</a></div>
-</form>
-</section>
+<h2>Gestione SIM</h2>
+
+<div class="crud-form" id="sim-crud-form" data-page-auto-focus="sim-crud">
+    <h3 class="crud-title">{% if mode == 'edit' %}Aggiorna SIM disattivata nello storico{% else %}Registra SIM disattivata nello storico{% endif %}</h3>
+    <p class="intro-text">{% if mode == 'edit' %}Aggiorna i dati storici della SIM disattivata. La modifica serve a correggere formato, numero di telefono associato o date; non riattiva la SIM.{% else %}Registra nello storico una SIM non più attiva. L’operazione non modifica i numeri telefonici già presenti nel sistema.{% endif %}</p>
+    <p class="required-note"><span class="required-marker" aria-hidden="true">*</span> Campi obbligatori</p>
+
+    <form method="post"
+          data-ajax-content="true"
+          data-update-target=".content"
+          data-sim-crud-form="true"
+          data-form-mode="{{ mode }}"
+          data-crud-blocked="false"
+          data-lookup-url="{% url 'numero_lookup' %}?source=crud"
+          data-sim-lookup-url="{% url 'sim_lookup' %}?source=crud"
+          novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="return" value="{{ return_url }}">
+        {% if form.non_field_errors %}<div class="alert alert-error">{{ form.non_field_errors|join:' ' }}</div>{% endif %}
+
+        <div class="form-group">
+            <label for="{{ form.codice.id_for_label }}">Codice SIM <span class="required-marker" aria-hidden="true">*</span></label>
+            {{ form.codice }}
+            {% if mode == 'edit' %}<small class="help-text" id="codice-help">Il codice identifica la SIM e non è modificabile.</small>{% endif %}
+            <small class="field-error{% if form.codice.errors %} is-visible{% endif %}" id="codice-error" data-field-error-for="codice" aria-live="polite">{{ form.codice.errors|join:' ' }}</small>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.tipoSIM.id_for_label }}">Formato SIM <span class="required-marker" aria-hidden="true">*</span></label>
+            {{ form.tipoSIM }}
+            <small class="field-error{% if form.tipoSIM.errors %} is-visible{% endif %}" id="tipoSIM-error" data-field-error-for="tipoSIM" aria-live="polite">{{ form.tipoSIM.errors|join:' ' }}</small>
+        </div>
+
+        <div class="form-group">
+            <label for="{{ form.eraAssociataA.id_for_label }}">Numero di telefono precedentemente associato <span class="required-marker" aria-hidden="true">*</span></label>
+            {{ form.eraAssociataA }}
+            <small class="help-text" id="eraAssociataA-help">Il numero deve corrispondere a un numero telefonico già registrato.</small>
+            <small class="field-error{% if form.eraAssociataA.errors %} is-visible{% endif %}" id="eraAssociataA-error" data-field-error-for="eraAssociataA" aria-live="polite">{{ form.eraAssociataA.errors|join:' ' }}</small>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="{{ form.dataAttivazione.id_for_label }}">Data di attivazione <span class="required-marker" aria-hidden="true">*</span></label>
+                {{ form.dataAttivazione }}
+                <small class="help-text" id="dataAttivazione-help">La data viene recuperata automaticamente dai dati della SIM.</small>
+                <small class="field-error{% if form.dataAttivazione.errors %} is-visible{% endif %}" id="dataAttivazione-error" data-field-error-for="dataAttivazione" aria-live="polite">{{ form.dataAttivazione.errors|join:' ' }}</small>
+            </div>
+            <div class="form-group">
+                <label for="{{ form.dataDisattivazione.id_for_label }}">Data di disattivazione <span class="required-marker" aria-hidden="true">*</span></label>
+                {{ form.dataDisattivazione }}
+                <small class="help-text" id="dataDisattivazione-help">La data deve essere coerente con l’attivazione della SIM{% if mode != 'edit' %} e con le chiamate registrate{% endif %}.</small>
+                <small class="field-error{% if form.dataDisattivazione.errors %} is-visible{% endif %}" id="dataDisattivazione-error" data-field-error-for="dataDisattivazione" aria-live="polite">{{ form.dataDisattivazione.errors|join:' ' }}</small>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn" data-crud-submit="true">Salva SIM disattivata</button>
+            <a href="{{ return_url }}" class="btn btn-cancel">Annulla operazione</a>
+        </div>
+    </form>
+</div>
 {% endblock %}

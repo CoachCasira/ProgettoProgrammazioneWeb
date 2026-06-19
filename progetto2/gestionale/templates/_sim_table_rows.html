@@ -1,11 +1,35 @@
 {% load gestionale_tags %}
-{% for sim in sim_rows %}<tr data-sim-code="{{ sim.codice }}">
-    <td class="identifier sim-code-cell table-align-right">{{ sim.codice }}</td>
-    <td class="table-align-center"><span class="status-pill {% if sim.state == 'attive' %}status-pill-active{% elif sim.state == 'disponibili' %}status-pill-available{% else %}status-pill-disabled{% endif %}">{% if sim.state == 'attive' %}In uso{% elif sim.state == 'disponibili' %}Disponibile{% else %}Storico{% endif %}</span></td>
-    <td class="identifier sim-phone-table-cell table-align-right">{% if sim.numero %}<a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" data-phone-card-modal="true" data-phone-number="{{ sim.numero }}">{{ sim.numero }}</a>{% else %}-{% endif %}</td>
-    <td class="table-align-right">{% if sim.activation %}{{ sim.activation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-    <td class="table-align-right">{% if sim.deactivation %}{{ sim.deactivation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
-    <td class="table-align-left">{{ sim.tipoSIM }}</td>
-    <td class="table-align-left">{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</td>
-    <td class="sim-actions-column table-align-center">{% if sim.state == 'attive' %}<a href="{% url 'sim_create' %}?codice={{ sim.codice }}" class="card-action-link action-disable-sim">Disattiva SIM</a>{% elif sim.state == 'disattive' %}<div class="table-action-group"><a href="{% url 'sim_edit' sim.codice %}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}" class="action-delete action-delete-sim">Elimina</a></div>{% else %}-{% endif %}</td>
-</tr>{% endfor %}
+{% for sim in sim_rows %}
+    {% if sim_state_key == 'tutte' %}
+    <tr data-sim-code="{{ sim.codice }}">
+        <td class="identifier sim-code-cell table-align-right">{{ sim.codice }}</td>
+        <td class="table-align-center"><span class="status-pill {% if sim.state == 'attive' %}status-pill-active{% elif sim.state == 'disponibili' %}status-pill-available{% else %}status-pill-disabled{% endif %}">{% if sim.state == 'attive' %}In uso{% elif sim.state == 'disponibili' %}Disponibile{% else %}Storico{% endif %}</span></td>
+        <td class="identifier sim-phone-table-cell table-align-right">{% if sim.numero %}<a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" title="{% if sim.state == 'attive' %}Apri il dettaglio del numero telefonico associato{% else %}Apri il dettaglio del numero telefonico precedentemente associato{% endif %}" data-phone-card-modal="true" data-phone-number="{{ sim.numero }}">{{ sim.numero }}</a>{% else %}-{% endif %}</td>
+        <td class="table-align-right">{% if sim.activation %}{{ sim.activation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+        <td class="table-align-right">{% if sim.deactivation %}{{ sim.deactivation|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+        <td class="table-align-left">{{ sim.tipoSIM }}</td>
+        <td class="table-align-left">{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</td>
+        <td class="sim-actions-column table-align-center">{% if sim.state == 'attive' %}<a href="{% url 'sim_create' %}?codice={{ sim.codice }}&amp;return={{ sim_return_url|urlencode }}" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a>{% elif sim.state == 'disattive' %}<div class="table-action-group"><a href="{% url 'sim_edit' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-delete action-delete-sim">Elimina</a></div>{% else %}-{% endif %}</td>
+    </tr>
+    {% elif sim_state_key == 'attive' %}
+    <tr data-sim-code="{{ sim.codice }}">
+        <td class="identifier sim-code-cell table-align-right"><div class="sim-code-actions"><a href="{% url 'sim_create' %}?codice={{ sim.codice }}&amp;return={{ sim_return_url|urlencode }}" class="card-action-link action-disable-sim" title="Registra questa SIM nello storico delle disattivate">Disattiva SIM</a><span class="sim-code-value">{{ sim.codice }}</span></div></td>
+        <td class="identifier sim-phone-table-cell table-align-right"><a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" title="Apri il dettaglio del numero telefonico associato" data-phone-card-modal="true" data-phone-number="{{ sim.numero }}">{{ sim.numero }}</a></td>
+        <td class="table-align-right">{{ sim.activation|date:'d/m/Y' }}</td>
+        <td class="table-align-left">{{ sim.tipoSIM }}</td>
+        <td class="table-align-left">{% if sim.plan == 'consumo' %}Consumo{% else %}Ricarica{% endif %}</td>
+    </tr>
+    {% elif sim_state_key == 'disponibili' %}
+    <tr data-sim-code="{{ sim.codice }}"><td class="identifier table-align-right">{{ sim.codice }}</td><td class="table-align-left">{{ sim.tipoSIM }}</td><td class="table-align-left">Non associata a un numero</td></tr>
+    {% else %}
+    <tr data-sim-code="{{ sim.codice }}">
+        <td class="identifier table-align-right">{{ sim.codice }}</td>
+        <td class="identifier sim-phone-table-cell table-align-right"><a href="{% url 'lista_contratti' %}?numero={{ sim.numero }}" title="Apri il dettaglio del numero telefonico precedentemente associato" data-phone-card-modal="true" data-phone-number="{{ sim.numero }}">{{ sim.numero }}</a></td>
+        <td class="table-align-right">{{ sim.activation|date:'d/m/Y' }}</td>
+        <td class="table-align-right">{{ sim.deactivation|date:'d/m/Y' }}</td>
+        <td class="table-align-left">{{ sim.tipoSIM }}</td>
+        <td class="table-align-left">{% if sim.plan == 'consumo' %}Consumo{% elif sim.plan == 'ricarica' %}Ricarica{% else %}-{% endif %}</td>
+        <td class="sim-actions-column table-align-center"><div class="table-action-group"><a href="{% url 'sim_edit' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-edit action-edit-sim">Modifica</a><a href="{% url 'sim_delete' sim.codice %}?return={{ sim_return_url|urlencode }}" class="action-delete action-delete-sim">Elimina</a></div></td>
+    </tr>
+    {% endif %}
+{% endfor %}

@@ -5,7 +5,7 @@
 
 <div class="sticky-data-panel">
 <div class="search-filter">
-    <form id="contratti-filter" data-ajax-form="true" data-live-search="true" data-update-target=".content" class="compact-filter-form contratti-filter-form" method="get" action="{% url 'lista_contratti' %}" data-plan-residual-sync="true" data-filter-session-key="contratti">
+    <form id="contratti-filter" data-ajax-form="true" data-live-search="true" data-update-target="#contratti-results" class="compact-filter-form contratti-filter-form" method="get" action="{% url 'lista_contratti' %}" data-plan-residual-sync="true" data-filter-session-key="contratti">
         <div class="form-group phone-number-filter-group">
             <label for="numero">Numero di telefono:</label>
             <input type="text" id="numero" name="numero" value="{{ filters.numero }}" placeholder="Es. 340" inputmode="numeric" autocomplete="off" data-clearable="true">
@@ -136,7 +136,7 @@
                     {% include '_contratti_cards.html' %}
                 </div>
             </div>
-            <div class="view-panel view-panel-table is-hidden" data-view-panel="table">
+            <div class="view-panel view-panel-table" data-view-panel="table">
                 <div class="table-container table-container-inner">
                     <table class="data-table">
                         <thead><tr>

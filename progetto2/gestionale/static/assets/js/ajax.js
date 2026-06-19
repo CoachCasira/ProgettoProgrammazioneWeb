@@ -64,9 +64,9 @@
         target.appendChild(message);
     }
 
-    function refreshDynamicBehaviors() {
+    function refreshDynamicBehaviors(root, options) {
         if (window.ProgWeb && typeof window.ProgWeb.initDynamicBehaviors === 'function') {
-            window.ProgWeb.initDynamicBehaviors(document);
+            window.ProgWeb.initDynamicBehaviors(root || document, options || {});
         }
     }
 
@@ -109,7 +109,11 @@
             currentBlock.removeAttribute('data-results-view-ready');
         }
 
-        refreshDynamicBehaviors();
+        /* La risposta AJAX contiene già i valori correnti del form.
+           Inizializziamo i nuovi nodi senza rileggere lo stato salvato nella
+           sessione: altrimenti il form appena sostituito si auto-invia di nuovo
+           e genera un ciclo continuo di richieste GET. */
+        refreshDynamicBehaviors(currentBlock, { fromAjaxUpdate: true });
         return true;
     }
 

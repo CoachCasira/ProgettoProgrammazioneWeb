@@ -4211,24 +4211,40 @@
         }
     }
 
-    function prepareFilterSessionForms(root) {
+    function prepareFilterSessionForms(root, options) {
         var scope = root || document;
+        var fromAjaxUpdate = Boolean(options && options.fromAjaxUpdate);
         scope.querySelectorAll('form[data-filter-session-key]:not([data-filter-session-ready="true"])').forEach(function (form) {
             form.dataset.filterSessionReady = 'true';
             filterDefaultStates.set(form, canonicalFilterDefaults(form));
 
-            var hasExplicitUrlFilters = formHasExplicitUrlFilters(form);
-            var saved = hasExplicitUrlFilters ? null : readFilterSessionState(form);
-            if (hasExplicitUrlFilters) {
-                /* I collegamenti interni e le ricerche frequenti devono prevalere
-                   sullo stato dei filtri precedentemente salvato nel browser. */
-                removeFilterSessionState(form);
-                form.dataset.filterSessionFromUrl = 'true';
-            } else if (saved && saved.fields) {
-                applyFilterValues(form, saved.fields);
-                pendingFilterRestores[form.id] = saved.position || null;
-                form.dataset.sessionRestoring = 'true';
-                form.dataset.filterSessionNeedsSync = 'true';
+            if (fromAjaxUpdate) {
+                /* Il form restituito dal server contiene già i filtri applicati.
+                   Non bisogna ricaricare lo stato da sessionStorage e soprattutto
+                   non bisogna avviare un nuovo submit automatico. Manteniamo però
+                   un eventuale ripristino di posizione iniziato al caricamento
+                   iniziale della pagina. */
+                if (Object.prototype.hasOwnProperty.call(pendingFilterRestores, form.id)) {
+                    form.dataset.sessionRestoring = 'true';
+                    form.dataset.filterSessionRestoreStarted = 'true';
+                } else {
+                    form.dataset.sessionRestoring = 'false';
+                    delete form.dataset.filterSessionRestoreStarted;
+                }
+            } else {
+                var hasExplicitUrlFilters = formHasExplicitUrlFilters(form);
+                var saved = hasExplicitUrlFilters ? null : readFilterSessionState(form);
+                if (hasExplicitUrlFilters) {
+                    /* I collegamenti interni e le ricerche frequenti devono prevalere
+                       sullo stato dei filtri precedentemente salvato nel browser. */
+                    removeFilterSessionState(form);
+                    form.dataset.filterSessionFromUrl = 'true';
+                } else if (saved && saved.fields) {
+                    applyFilterValues(form, saved.fields);
+                    pendingFilterRestores[form.id] = saved.position || null;
+                    form.dataset.sessionRestoring = 'true';
+                    form.dataset.filterSessionNeedsSync = 'true';
+                }
             }
 
             form.addEventListener('input', function () {
@@ -4359,10 +4375,10 @@
         });
     }
 
-    function initDynamicBehaviors(root) {
+    function initDynamicBehaviors(root, options) {
         var scope = root || document;
         ensureFilterSessionGlobalListeners();
-        prepareFilterSessionForms(scope);
+        prepareFilterSessionForms(scope, options || {});
         initAlerts(scope);
         initScrollableSelects(scope);
         initDurationControls(scope);

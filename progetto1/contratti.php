@@ -193,7 +193,7 @@ function render_contratti_table_rows(array $rows): string
             <td class="numeric table-align-right"><?= htmlspecialchars($credito) ?></td>
             <td class="numeric table-align-right">
                 <?php if ($num_telefonate > 0): ?>
-                    <a href="telefonate.php?contratto=<?= urlencode($row['numero']) ?>" title="Visualizza le chiamate di questo numero telefonico">
+                    <a href="telefonate.php?contratto=<?= urlencode($row['numero']) ?>" title="Visualizza le chiamate di questo numero telefonico" data-card-modal-exclude="true">
                         <?= htmlspecialchars((string) $num_telefonate) ?> chiamate
                     </a>
                 <?php else: ?>

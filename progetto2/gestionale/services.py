@@ -385,7 +385,7 @@ def sim_rows(params):
         if code:
             qs = qs.filter(codice__contains=code)
         if number:
-            qs = qs.filter(associataA_id__contains=number)
+            qs = qs.filter(associataA__numero__contains=number)
         if sim_type:
             qs = qs.filter(tipoSIM=sim_type)
         if plan:
@@ -429,7 +429,7 @@ def sim_rows(params):
         if code:
             qs = qs.filter(codice__contains=code)
         if number:
-            qs = qs.filter(eraAssociataA_id__contains=number)
+            qs = qs.filter(eraAssociataA__numero__contains=number)
         if sim_type:
             qs = qs.filter(tipoSIM=sim_type)
         if plan:

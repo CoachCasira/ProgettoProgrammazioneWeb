@@ -6,7 +6,7 @@
     <td class="table-align-left">{{ contratto.get_tipo_display }}</td>
     <td class="numeric duration-value table-align-right">{% if contratto.tipo == 'consumo' %}{{ contratto.minutiResidui|minutes_remaining }}{% else %}-{% endif %}</td>
     <td class="numeric table-align-right">{% if contratto.tipo == 'ricarica' %}{{ contratto.creditoResiduo|euro }}{% else %}-{% endif %}</td>
-    <td class="numeric table-align-right">{% if contratto.num_calls %}<a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}">{{ contratto.num_calls|int_it }} chiamate</a>{% else %}0{% endif %}</td>
+    <td class="numeric table-align-right">{% if contratto.num_calls %}<a href="{% url 'lista_telefonate' %}?contratto={{ contratto.numero }}" data-card-modal-exclude="true" title="Visualizza le chiamate di questo numero telefonico">{{ contratto.num_calls|int_it }} chiamate</a>{% else %}0{% endif %}</td>
     <td class="numeric duration-value table-align-right">{{ contratto.total_duration|duration_compact }}</td>
     <td class="numeric table-align-right">{{ contratto.total_cost|euro }}</td>
 </tr>{% endfor %}

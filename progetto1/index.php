@@ -23,6 +23,11 @@ function singleValue($conn, $sql, $field, $default = 0) {
     return $default;
 }
 
+function format_integer_it($value): string
+{
+    return number_format((int)$value, 0, ',', '.');
+}
+
 function dashboard_phone_status(array $row): string
 {
     if (!empty($row['simAttivaCodice'])) {
@@ -244,13 +249,13 @@ $recent_disabled_from = date('Y-m-d', strtotime($latest_disabled_date . ' -29 da
 <section class="stat-grid" aria-label="Indicatori principali">
     <article class="stat-card">
         <span class="stat-label">Chiamate registrate</span>
-        <strong class="stat-value"><?= htmlspecialchars($total_telefonate) ?></strong>
+        <strong class="stat-value"><?= htmlspecialchars(format_integer_it($total_telefonate)) ?></strong>
         <span class="stat-detail">Durata media: <?= htmlspecialchars(format_duration_seconds($durata_media)) ?></span>
     </article>
     <article class="stat-card">
         <span class="stat-label">Numeri telefonici registrati</span>
-        <strong class="stat-value"><?= htmlspecialchars($total_contratti) ?></strong>
-        <span class="stat-detail"><?= htmlspecialchars($contratti_ricarica) ?> con credito, <?= htmlspecialchars($contratti_consumo) ?> a consumo</span>
+        <strong class="stat-value"><?= htmlspecialchars(format_integer_it($total_contratti)) ?></strong>
+        <span class="stat-detail"><?= htmlspecialchars(format_integer_it($contratti_ricarica)) ?> con credito, <?= htmlspecialchars(format_integer_it($contratti_consumo)) ?> a consumo</span>
     </article>
     <article class="stat-card">
         <span class="stat-label">Addebiti chiamate</span>
@@ -259,8 +264,8 @@ $recent_disabled_from = date('Y-m-d', strtotime($latest_disabled_date . ' -29 da
     </article>
     <article class="stat-card stat-card-wide">
         <span class="stat-label">SIM gestite</span>
-        <strong class="stat-value"><?= htmlspecialchars($total_sim_gestite) ?></strong>
-        <span class="stat-detail stat-detail-sim" aria-label="Dettaglio stato SIM"><?= htmlspecialchars($total_sim_attive) ?> in uso · <?= htmlspecialchars($total_sim_non_attive) ?> disponibili · <?= htmlspecialchars($total_sim_disattive) ?> disattivate</span>
+        <strong class="stat-value"><?= htmlspecialchars(format_integer_it($total_sim_gestite)) ?></strong>
+        <span class="stat-detail stat-detail-sim" aria-label="Dettaglio stato SIM"><?= htmlspecialchars(format_integer_it($total_sim_attive)) ?> in uso · <?= htmlspecialchars(format_integer_it($total_sim_non_attive)) ?> disponibili · <?= htmlspecialchars(format_integer_it($total_sim_disattive)) ?> disattivate</span>
     </article>
 </section>
 

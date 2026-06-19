@@ -458,8 +458,17 @@ def sim_rows(params):
     elif order == "disattivate_recenti":
         rows.sort(key=lambda row: (row["deactivation"] is None, -(row["deactivation"].toordinal() if row["deactivation"] else 0), row["codice"]))
     else:
-        state_order = {"attive": 0, "disponibili": 1, "disattive": 2}
-        rows.sort(key=lambda row: (state_order[row["state"]], row["codice"]))
+        # Ordinamento predefinito identico al Progetto 1: prima le SIM
+        # disponibili, poi quelle in uso e infine lo storico delle disattivate.
+        # Nei gruppi con una data operativa vengono mostrate prima le più recenti.
+        state_order = {"disponibili": 0, "attive": 1, "disattive": 2}
+
+        def default_sim_order(row):
+            reference_date = row["deactivation"] or row["activation"]
+            date_order = -(reference_date.toordinal()) if reference_date else 0
+            return state_order[row["state"]], date_order, row["codice"]
+
+        rows.sort(key=default_sim_order)
 
     values = {
         "codice": code,

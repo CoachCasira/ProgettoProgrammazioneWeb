@@ -3307,7 +3307,11 @@
             if (loaded === 0 && (!totalKnown || total === 0)) {
                 counter.textContent = '0 risultati';
             } else if (!totalKnown) {
-                counter.textContent = 'Calcolo totale…';
+                /* Le righe sono già disponibili, mentre il conteggio esatto
+                   continua in background. Mostriamo subito l'intervallo
+                   realmente caricato invece di un falso 0 o di lasciare
+                   soltanto il messaggio "Calcolo totale". */
+                counter.textContent = start + '-' + end + ' risultati';
             } else {
                 counter.textContent = start + '-' + end + ' di ' + total + ' risultati';
             }

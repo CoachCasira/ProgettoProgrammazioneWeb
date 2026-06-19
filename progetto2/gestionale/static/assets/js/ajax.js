@@ -114,6 +114,18 @@
            sessione: altrimenti il form appena sostituito si auto-invia di nuovo
            e genera un ciclo continuo di richieste GET. */
         refreshDynamicBehaviors(currentBlock, { fromAjaxUpdate: true });
+
+        /* currentBlock è esso stesso il results-view-root. querySelectorAll()
+           inizializza soltanto i discendenti, quindi dopo la sostituzione AJAX
+           aggiorniamo esplicitamente il contatore della radice appena ricevuta.
+           In questo modo non resta il valore server iniziale "0 risultati"
+           finché l'utente non scorre o carica un altro blocco. */
+        if (window.ProgWeb && typeof window.ProgWeb.updateResultsNavigation === 'function') {
+            window.ProgWeb.updateResultsNavigation(currentBlock);
+        }
+        if (window.ProgWeb && typeof window.ProgWeb.updateResultsScrollTopControl === 'function') {
+            window.ProgWeb.updateResultsScrollTopControl(currentBlock);
+        }
         return true;
     }
 

@@ -10,13 +10,12 @@ Il progetto è la ristrutturazione del primo progetto di Programmazione Web con:
 - Bootstrap integrato localmente;
 - CSS personalizzato mantenuto dal primo progetto.
 
-## Installazione rapida
+## Documentazione
 
 Consultare:
 
-```text
-docs/MANUALE_UTENTE.md
-```
+- `docs/MANUALE_UTENTE.pdf` per prerequisiti, installazione, avvio e uso dell'applicazione;
+- `docs/SCELTE_PROGETTUALI.pdf` per la sintesi delle principali scelte architetturali e tecniche.
 
 Il backup PostgreSQL deve essere presente in:
 

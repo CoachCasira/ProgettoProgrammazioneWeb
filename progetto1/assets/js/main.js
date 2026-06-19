@@ -2670,6 +2670,7 @@
         initPhoneCardModalLinks(preparedClone);
         initSimCardModalLinks(preparedClone);
         initSimHistoryModalLinks(preparedClone);
+        initSimReturnLinks(preparedClone);
         initClickableDetailTiles(preparedClone);
         initTableRowModals(preparedClone);
     }
@@ -2961,11 +2962,169 @@
         return container.querySelectorAll('[data-lazy-list="true"] > .data-card').length;
     }
 
+    var SIM_CONTEXT_RETURN_KEY = 'progweb:sim-context-return:v1';
+    var SIM_CONTEXT_RETURN_PARAM = 'resume_sim_modal';
+    var SIM_CONTEXT_MAX_AGE = 30 * 60 * 1000;
+
+    function readSimContextReturn() {
+        if (!window.sessionStorage) {
+            return null;
+        }
+        try {
+            var state = JSON.parse(window.sessionStorage.getItem(SIM_CONTEXT_RETURN_KEY) || 'null');
+            if (!state || typeof state !== 'object') {
+                return null;
+            }
+            if (!state.createdAt || Date.now() - state.createdAt > SIM_CONTEXT_MAX_AGE) {
+                window.sessionStorage.removeItem(SIM_CONTEXT_RETURN_KEY);
+                return null;
+            }
+            return state;
+        } catch (error) {
+            window.sessionStorage.removeItem(SIM_CONTEXT_RETURN_KEY);
+            return null;
+        }
+    }
+
+    function writeSimContextReturn(state) {
+        if (!window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.setItem(SIM_CONTEXT_RETURN_KEY, JSON.stringify(state));
+        } catch (error) {
+            /* Il ritorno standard alla pagina SIM resta comunque disponibile. */
+        }
+    }
+
+    function clearSimContextReturn() {
+        if (!window.sessionStorage) {
+            return;
+        }
+        try {
+            window.sessionStorage.removeItem(SIM_CONTEXT_RETURN_KEY);
+        } catch (error) {
+            /* Nessuna azione necessaria. */
+        }
+    }
+
+    function getSimCodeFromActionLink(link) {
+        var card = link.closest('.sim-card');
+        var code = card ? (card.getAttribute('data-sim-code') || '') : '';
+        if (!code && window.URL) {
+            try {
+                code = new URL(link.href, window.location.href).searchParams.get('codice') || '';
+            } catch (error) {
+                code = '';
+            }
+        }
+        return code.trim();
+    }
+
+    function buildContextualSimReturnUrl(simCode) {
+        var returnUrl = new URL(window.location.href);
+        returnUrl.searchParams.set(SIM_CONTEXT_RETURN_PARAM, simCode);
+        return returnUrl.pathname + returnUrl.search + returnUrl.hash;
+    }
+
+    function configureSimCancelReturn(scope) {
+        var form = scope.querySelector ? scope.querySelector('form[data-sim-crud-form="true"]') : null;
+        if (!form) {
+            return;
+        }
+
+        var state = readSimContextReturn();
+        if (!state || !state.simCode || !state.returnUrl) {
+            return;
+        }
+
+        var codeField = form.querySelector('[name="codice"]');
+        if (codeField && codeField.value && String(codeField.value) !== String(state.simCode)) {
+            return;
+        }
+
+        var cancelLink = form.querySelector('.btn-cancel');
+        if (cancelLink) {
+            cancelLink.href = state.returnUrl;
+        }
+    }
+
     function initSimReturnLinks(root) {
         var scope = root || document;
         scope.querySelectorAll('.action-disable-sim:not([data-sim-return-ready="true"]), .action-edit-sim:not([data-sim-return-ready="true"]), .action-delete-sim:not([data-sim-return-ready="true"])').forEach(function (link) {
             link.dataset.simReturnReady = 'true';
+
+            if (!link.classList.contains('action-disable-sim')) {
+                return;
+            }
+
+            link.addEventListener('click', function () {
+                var modal = link.closest('[data-card-modal="true"].is-visible');
+                if (!modal) {
+                    return;
+                }
+
+                var simCode = getSimCodeFromActionLink(link);
+                if (!simCode) {
+                    return;
+                }
+
+                writeSimContextReturn({
+                    simCode: simCode,
+                    returnUrl: buildContextualSimReturnUrl(simCode),
+                    scrollX: window.scrollX || 0,
+                    scrollY: window.scrollY || 0,
+                    createdAt: Date.now()
+                });
+            });
         });
+
+        configureSimCancelReturn(scope);
+    }
+
+    function restoreContextualSimModal() {
+        if (!window.URL || !window.history || !window.history.replaceState) {
+            return;
+        }
+
+        var currentUrl = new URL(window.location.href);
+        var simCode = (currentUrl.searchParams.get(SIM_CONTEXT_RETURN_PARAM) || '').trim();
+        if (!simCode) {
+            return;
+        }
+
+        currentUrl.searchParams.delete(SIM_CONTEXT_RETURN_PARAM);
+        window.history.replaceState({}, document.title, currentUrl.pathname + currentUrl.search + currentUrl.hash);
+
+        var state = readSimContextReturn();
+        clearSimContextReturn();
+
+        if (state && String(state.simCode) === simCode) {
+            window.setTimeout(function () {
+                window.scrollTo(state.scrollX || 0, state.scrollY || 0);
+            }, 80);
+        }
+
+        var simNavigation = document.querySelector('.main-nav-list li:last-child a[href]');
+        if (!simNavigation) {
+            return;
+        }
+
+        var simUrl = new URL(simNavigation.href, window.location.href);
+        if (/\.php$/i.test(simUrl.pathname)) {
+            simUrl.searchParams.set('stato', 'attive');
+        } else {
+            simUrl.searchParams.set('sim_states', 'attive');
+        }
+        simUrl.searchParams.set('codice', simCode);
+
+        var virtualLink = document.createElement('a');
+        virtualLink.href = simUrl.toString();
+        virtualLink.setAttribute('data-sim-code', simCode);
+
+        window.setTimeout(function () {
+            openSimCardFromLink(virtualLink);
+        }, 120);
     }
 
     function getResultListItemsAnyVisibility(list) {
@@ -4423,6 +4582,7 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         initDynamicBehaviors(document);
+        restoreContextualSimModal();
         window.addEventListener('resize', updateStickyLayout);
         window.addEventListener('load', updateStickyLayout);
         window.setTimeout(updateStickyLayout, 100);

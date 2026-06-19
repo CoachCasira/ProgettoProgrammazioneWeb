@@ -236,6 +236,33 @@ class RegressioniInterfacciaTests(TestCase):
         self.assertContains(response, 'data-sim-card-modal="true"')
         self.assertContains(response, f'data-sim-code="{self.active_sim.codice}"')
 
+    def test_tabella_sim_mantiene_colonne_complete_con_ogni_filtro(self):
+        for state, expected_code in (
+            ("attive", self.active_sim.codice),
+            ("disponibili", self.available_sim.codice),
+            ("disattive", self.disabled_sim.codice),
+        ):
+            response = self.client.get(
+                reverse("gestione_sim"),
+                [("sim_states[]", state)],
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, 'class="data-table sim-data-table sim-table-state-tutte"')
+            self.assertContains(response, ">Stato<", html=False)
+            self.assertContains(response, ">Data disattivazione<", html=False)
+            self.assertContains(response, ">Azioni<", html=False)
+            self.assertContains(response, expected_code)
+            self.assertNotContains(response, 'class="sim-code-actions"')
+
+        active_response = self.client.get(
+            reverse("gestione_sim"),
+            [("sim_states[]", "attive")],
+        )
+        active_html = active_response.content.decode("utf-8")
+        code_position = active_html.index(self.active_sim.codice)
+        action_position = active_html.index("Disattiva SIM", code_position)
+        self.assertGreater(action_position, code_position)
+
     def test_filtro_sim_accetta_il_nome_array_del_form(self):
         response = self.client.get(
             reverse("gestione_sim"),

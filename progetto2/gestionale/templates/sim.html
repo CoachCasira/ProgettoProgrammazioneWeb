@@ -121,17 +121,18 @@
 
         <div class="view-panel view-panel-table" data-view-panel="table">
             <div class="table-container table-container-inner">
-                <table class="data-table sim-data-table sim-table-state-{{ sim_state_key }}">
+                <table class="data-table sim-data-table sim-table-state-tutte" data-filtered-sim-state="{{ sim_state_key }}">
                     <thead>
-                        {% if sim_state_key == 'tutte' %}
-                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-center"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>
-                        {% elif sim_state_key == 'attive' %}
-                        <tr><th class="identifier sim-code-cell table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero associato</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th></tr>
-                        {% elif sim_state_key == 'disponibili' %}
-                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato operativo</th></tr>
-                        {% else %}
-                        <tr><th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th><th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero precedente</th><th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th><th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th><th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th><th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th><th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th></tr>
-                        {% endif %}
+                        <tr>
+                            <th class="identifier table-align-right"><span class="table-header-icon table-icon-sim-code" aria-hidden="true"></span>Codice SIM</th>
+                            <th class="table-align-center"><span class="table-header-icon table-icon-status" aria-hidden="true"></span>Stato</th>
+                            <th class="identifier table-align-right"><span class="table-header-icon table-icon-phone" aria-hidden="true"></span>Numero collegato</th>
+                            <th class="table-align-right"><span class="table-header-icon table-icon-calendar" aria-hidden="true"></span>Data attivazione</th>
+                            <th class="table-align-right"><span class="table-header-icon table-icon-deactivate" aria-hidden="true"></span>Data disattivazione</th>
+                            <th class="table-align-left"><span class="table-header-icon table-icon-format" aria-hidden="true"></span>Formato SIM</th>
+                            <th class="table-align-left"><span class="table-header-icon table-icon-plan" aria-hidden="true"></span>Piano</th>
+                            <th class="sim-actions-column table-align-center"><span class="table-header-icon table-icon-actions" aria-hidden="true"></span>Azioni</th>
+                        </tr>
                     </thead>
                     <tbody data-lazy-list="table">{% include '_sim_table_rows.html' %}</tbody>
                 </table>
